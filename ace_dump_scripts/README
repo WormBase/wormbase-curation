@@ -1,0 +1,44 @@
+transgene_dump_ace.pl
+
+on tazendra acedb/wen/phenote_transgene/transgene_dump_ace.pl
+
+dumps transgene postgres table on a weekly cron job, every Thursday morning at 6:00 am and deposits file on citace
+switched from dumping from phenote to dumping from the OA table starting WS219
+
+
+
+
+use_package.pl
+on tazendra /work/allele_phenotype/use_package.pl Constraints:
+
+does not dump record when value in Curation status is "down right disgusted", this acts as our no dump toggle
+when there is no value for phenotype -this will stop non-curated NBP data from being dumped
+will dump if phenotype is present regardless of curator
+
+
+
+
+
+
+
+get_paper_object.pl
+alle_paper.ace	/home/acedb/karen/phenote/paper_object/get_paper_object.pl
+
+dumps variation paper connections from the variation phenotype OA tables for making sure that papers appended to the relevant gene pages.
+
+run this by naming an output file $ ./get_paper_object.pl > alle_paper.ace
+
+
+
+
+
+
+dump_molecule.ace
+on tazendra acedb/karen/Molecule/dump_molecule_ace.pl (also /home/acedb/public_html/karen/)
+dumps molecule OA postgres tables starting WS219
+dumps to:
+/home/acedb/public_html/karen/Molecule.ace 
+/home/acedb/karen/Molecule/dump_molecule.ace.pl
+which is symlinked to : http://tazendra.caltech.edu/~acedb/karen/Molecule.ace (a publicly accessible list of the molecules)
+(if you want to keep copies, make a copy before the dump; the dump script overwrites the file)
+the original source file is now Molecule.ace.20100728

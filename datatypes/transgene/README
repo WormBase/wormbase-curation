@@ -1,0 +1,24 @@
+See also:
+https://bitbucket.org/kyook/ky_wbprojects/wiki/Transgene_Curation
+
+
+update_textpreso_transgene.pl
+/postgres/work/pgpopulation/textpresso/transgene/update_textpreso_transgene.pl*	 - populates postgres with the results of Arun's transgene pattern matching script track down this script??? 
+- adds new Is/In transgenes and new paper connections to pre-existing ones. 
+Input: C.elegans corpus 
+Input: /home/postgres/work/pgpopulation/textpresso/transgene/Obsolete.Tg.txt (no longer needed with switch to OA) 
+Note: Obsolete.Tg.txt was manually edited to store false transgene objects and paper connections that were picked up by Arun's pattern matching scripts. Obsolete objects are now tagged as 'Fails' so they will not be entered into the transgene table again as they will always be picked up by Arun's script. 
+Output: postgres transgene table   
+Runs: every morning, 4am; the textpresso transgene table is wiped clean during each run and repopulated 
+Written by: Juancarlos
+
+
+on spica /citpub/Karen/TgSummary/getNewTg.pl	
+What: Parses output of transgenes_summary to display only those transgenes that do not exist in WS216 and displays ones that have more than one reference. All new entries will get assigned curator "Arun" and can be retrieved that way 
+Input 1: WSTg.ace lists all transgenes already in WormBase 
+Input 2: transgenes_summary.out output file from Textpresso"	
+Output1: NewTg.txt (all new Ex lines not in WS216.) 
+Output2: NewTgHighPriority.txt (all new Ex lines that has at least 2 paper entry.)	
+Runs: manually		       
+Written by: Wen
+

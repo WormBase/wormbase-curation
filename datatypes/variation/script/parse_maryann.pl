@@ -1,0 +1,100 @@
+#!/usr/bin/perl -w
+
+# update NBP data if the allele already exists, otherwise create a new
+# character.  2008 05 01
+#
+# update NBP timestamp when doing udpates.  grant access to acedb account on
+# these tables.  2008 05 02
+#
+# add filereaddate for Jolene.
+# add filereaddate updates if $found, for Jolene.  2010 04 07
+#
+# changed for DBI.pm  2010 08 11
+#
+# add curator as Mary Ann  2010 08 27
+
+
+use strict;
+use diagnostics;
+use Jex;
+use Encode qw( from_to is_utf8 );
+
+use DBI;
+use Encode qw( from_to is_utf8 );
+
+my $dbh = DBI->connect ( "dbi:Pg:dbname=testdb", "", "") or die "Cannot connect to database!\n"; 
+
+
+my $date = &getPgDate();
+
+# my $infile = 'NBP_latest';
+my $infile = 'NBP_latest';
+open (IN, "<$infile") or die "Cannot open $infile : $!";
+while (my $line = <IN>) {
+    if ($line =~ m/Variation : (\w+) \"(.*?)\"/) { 
+	my $allele = $1; my $remark = $2;
+	&check($allele, $remark);
+    }
+} # while (my $line = <IN>)
+close (IN) or die "Cannot close $infile : $!";
+
+sub check {
+    my ($allele, $remark) = @_;  my %joinkeys;  my $found = 0;
+    unless (is_utf8($remark)) { from_to($remark, "iso-8859-1", "utf8"); }
+    if ($remark =~ m/\'/) { $remark =~ s/\'/''/g; }
+    my $result = $dbh->prepare( "SELECT * FROM app_tempname WHERE app_tempname = '$allele';" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) { if ($row[0]) { $joinkeys{$row[0]}++; $found++; } }
+    my @commands;
+    if ($found) { 
+      my $command = "UPDATE app_nbp SET app_timestamp = CURRENT_TIMESTAMP WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname
+ = '$allele');";
+      push @commands, $command;
+      $command = "UPDATE app_nbp SET app_nbp = '$remark' WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');";
+      push @commands, $command;
+      foreach my $joinkey (sort keys %joinkeys) {
+	  $command = "UPDATE app_filereaddate SET app_timestamp = CURRENT_TIMESTAMP WHERE joinkey = '$joinkey';";
+	  push @commands, $command;
+	  $command = "UPDATE app_filereaddate SET app_filereaddate = '$date' WHERE joinkey = '$joinkey';";
+	  push @commands, $command;
+	  $command = "INSERT INTO app_filereaddate_hst VALUES ('$joinkey', '$date');";
+	  push @commands, $command;
+	  $command = "INSERT INTO app_nbp_hst VALUES ('$joinkey', '$remark');";
+	  push @commands, $command; } }
+    else {
+	my $latest = 0;
+	$result = $dbh->prepare( "SELECT joinkey FROM app_tempname;" );
+	$result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+	while (my @row = $result->fetchrow) { if ($row[0] > $latest) { $latest = $row[0]; } }
+	$result = $dbh->prepare( "SELECT joinkey FROM app_type;" );
+	$result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+	while (my @row = $result->fetchrow) { if ($row[0] > $latest) { $latest = $row[0]; } }
+	$latest++; 
+	my $command = "INSERT INTO app_type_hst VALUES ('$latest', 'Allele');";
+	push @commands, $command;
+	$command = "INSERT INTO app_tempname_hst VALUES ('$latest', '$allele');";
+	push @commands, $command;
+	$command = "INSERT INTO app_nbp_hst VALUES ('$latest', '$remark');";
+	push @commands, $command;
+	$command = "INSERT INTO app_filereaddate_hst VALUES ('$latest', '$date');";
+	push @commands, $command;
+	$command = "INSERT INTO app_curator_hst VALUES ('$latest', 'WBPerson2970');";
+	push @commands, $command;
+	$command = "INSERT INTO app_type VALUES ('$latest', 'Allele');";
+	push @commands, $command;
+	$command = "INSERT INTO app_tempname VALUES ('$latest', '$allele');";
+	push @commands, $command;
+	$command = "INSERT INTO app_nbp VALUES ('$latest', '$remark');";
+	push @commands, $command;
+	$command = "INSERT INTO app_filereaddate VALUES ('$latest', '$date');";
+	push @commands, $command;
+	$command = "INSERT INTO app_curator VALUES ('$latest', 'WBPerson2970');";
+	push @commands, $command; }
+    foreach my $command (@commands) {
+	print "$command\n";
+	my $result2 = $dbh->prepare( $command );
+	$result2->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    } # foreach my $command (@commands)
+} # sub check
+
+__END__
