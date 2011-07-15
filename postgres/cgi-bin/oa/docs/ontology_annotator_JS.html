@@ -1,0 +1,733 @@
+<html><body>
+<ul>
+<li><a href="#_Description"> Description</a></li>
+<li><a href="#_Global_Variables"> Global Variables</a></li>
+<li><a href="#_Window_Load"> Window Load</a></li>
+<li><a href="#_Populate_Fields"> Populate Fields</a></li>
+<li><a href="#_Editor_Frame"> Editor Frame</a></li>
+<ul>
+<li><a href="#__Query">  Query</a></li>
+<li><a href="#__Clear_Editor">  Clear Editor</a></li>
+<li><a href="#__Editor_Label_">  Editor Label </a></li>
+<li><a href="#__Multivalue_Select_Element">  Multivalue Select Element</a></li>
+<li><a href="#__Multivalue_Select_Remove_Button">  Multivalue Select Remove Button</a></li>
+<li><a href="#__Tab_Buttons">  Tab Buttons</a></li>
+<li><a href="#__Reset_Button">  Reset Button</a></li>
+<li><a href="#__Autocomplete_Fields">  Autocomplete Fields</a></li>
+<li><a href="#__Editor_Input">  Editor Input</a></li>
+</ul>
+<li><a href="#_Term_Info_Frame"> Term Info Frame</a></li>
+<li><a href="#_Control_Frame"> Control Frame</a></li>
+<li><a href="#_Data_Table_Frame"> Data Table Frame</a></li>
+<ul>
+<li><a href="#__DataTable_Column">  DataTable Column</a></li>
+</ul>
+<li><a href="#_Disable_Form"> Disable Form</a></li>
+</ul>
+<hr>
+<h1><a name="_Description"> Description</a></h1><p>
+</p>
+
+<p>
+The ontology_annotator.cgi uses a lot of javascript, most of it from the YUI javascript modules, but all the ontology annotator specific code comes from this file.<br />
+The ontology_annotator.js is loaded from the ontology_annotator.cgi table frame, and while it could be moved to a different frame, the calls to get variables from html elements would need to be edited.<br />
+</p>
+
+<hr>
+<h1><a name="_Global_Variables"> Global Variables</a></h1><p>
+Some variables are static and used at various places. myDataTable is a YUI ScrollingDataTable object used in various places.<br />
+@param {Object} myDataTable  is the YUI ScrollingDataTable object used to display data in ontology_annotator.cgi table frame.  Constructed by calling  initializeTable(myColumnDefs)  creating it with  myDataTable = new YAHOO.widget.ScrollingDataTable("myContainer", myColumnDefs, myDataSource, { width:"99.5%", height:"100%", draggableColumns:true});<br />
+@param {Array} myFields  is an array listing all the ontology annotator fields, gotten from all html input elements with class 'fields'.  Initialized by calling  populateMyFields() .<br />
+@param {Object} fieldsData  is a hash mapping all the ontology annotator fields and options to their values, gotten from all html hidden input elements with id 'data_&lt;field&gt;'.  Initialized by calling  populateMyFields() .<br />
+@param {String} datatype  is the datatype loaded into the ontology_annotator.cgi , gotten from the editor frame html hidden input element with id 'datatype'.  Initialized from the window load listener.<br />
+@param {String} curatorTwo  is the id of the curator who loaded into the ontology_annotator.cgi , gotten from the editor frame html hidden input element with id 'curatorTwo'.  Initialized from the window load listener.  curatorTwo is the id of the curator, as opposed to the human name.<br />
+@param {String} cgiUrl  is the ontology_annotator.cgi , used for constructing all the AJAX calls.<br />
+@param {String} loadingGifUrl  is the path to the 'loading' image used when there's a postgres query to load data into the dataTable, and in the YUI wait Panel. <br />
+</p>
+
+<hr>
+<h1><a name="_Window_Load"> Window Load</a></h1><p>
+</p>
+
+<p>
+Event Window Load<br />
+When the window loads an anonymous function is called setting values to global variables and listeners to actions.<br />
+Call  populateMyFields()  to get list of fields from the editor frame into the array  myFields .<br />
+Get  datatype  and  curatorTwo  from editor frame html hidden input elements with ids 'datatype' and 'curatorTwo'.<br />
+For each field in myFields:<br />
+- get editor frame element 'button_&lt;field&gt;' and add 'click' listener to  assignQueryButtonListenerAjax  to query postgres for the corresponding input to load data.<br />
+- get editor frame element 'input_&lt;field&gt;'  and add  'blur' listener to  editorInputBlurListener        to update postgres tables and dataTable for the corresponding input ;  skipping fields of type 'bigtext' which are handled later.<br />
+- get editor frame element 'label_&lt;field&gt;'  and add 'click' listener to  assignEditorLabelTdListener    to toggle corresponding dataTable column hide / show.<br />
+- get tab from  fieldsData[&lt;field&gt;]["tab"]  and add to  tabs  hash.<br />
+- for 'ontology'  fieldsData[&lt;field&gt;]["type"]  get editor frame element 'input_&lt;field&gt;'  and add  'click' listener to  asyncTermInfo(field, this.value)  to change the term info in the obo frame.  input fields add data to postgres, datatable, and corresponding select (if appropriate) when blurred.<br />
+- for 'multiontology' and 'multidropdown'  fieldsData[&lt;field&gt;]["type"]  get editor frame element 'button_remove_&lt;field&gt;'  and add  'click' listener to  removeSelectFieldEntriesListener  to remove values from field's select html element and update postgres table ;  get editor frame element 'select_&lt;field&gt;' and add 'change' listener to load the value into the input field and for 'multiontology' call  asyncTermInfo(field, inputValue)  to change the term info in the obo frame.  multivalue fields load select element into input when changed, load term info into obo frame ;  have a remove button to remove values.<br />
+- for 'toggle' and 'toggletext'  fieldsData[&lt;field&gt;]["type"]  get editor frame element 'toggle_&lt;field&gt;'  and add  'click' listener to  toggle the value of the field on or off ;  'on' sets the background color 'red' and calls  editorFieldBlur(field, fieldsData[field]["label"])  setting the postgres value to be the label ;  'off' sets the background color 'white' and calls  editorFieldBlur(field, "")  setting the postgres value to be deleted.  toggle fields store the label in postgres and show red when on.<br />
+- for 'bigtext'  fieldsData[&lt;field&gt;]["type"]  get editor frame element 'input_&lt;field&gt;'  and add  'focus' listener to hide the element, show the corresponding 'textarea_bigtext_&lt;field&gt;', place the 'input_&lt;field&gt;' value into the 'textarea_bigtext_&lt;field&gt;' value, and focus on the 'textarea_bigtext_&lt;field&gt;' element ;  get editor frame element 'textarea_bigtext_&lt;field&gt;'  and add 'blur' listener to hide the element, show the corresponding 'input_&lt;field&gt;' element, place the 'textarea_bigtext_&lt;field&gt;' value into the 'input_&lt;field&gt;' value, and for all fields except for those with  fieldsData[&lt;field&gt;]["noteditable"]  call  editorFieldBlur(field, top.frames['editor'].document.getElementById("input_" + field).value)  to update dataTable and postgres table.  bigtext input fields switch to textareas when focused and back to input fields when blurred.<br />
+For each tab in  tabs  hash, get editor frame element with id '&lt;tab&gt;'  and add 'click' listener to call  showTab(this.id)  to only show html elements that have class '&lt;tab&gt;'.<br />
+If the datatype has a numeric tab (as opposed to all fields having value 'all'), by default call  showTab("tab" + firstTab);  to show the html elements in the lowest tab.<br />
+Get editor   frame element 'resetPage'     and add 'click'  listener to call  resetButtonListener          to reload the obo frame, clear the dataTable data, and all editor values.<br />
+Get controls frame element 'checkData'     and add 'click'  listener to call  checkDataButtonListener      to reload to check dataTable data against datatype constraints.<br />
+Get controls frame element 'deleteRow'     and add 'click'  listener to call  deleteRowButtonListener      to delete selected dataTable rows from dataTable and postgres tables.<br />
+Get controls frame element 'duplicateRow'  and add 'click'  listener to call  duplicateRowButtonListener   to duplicate selected dataTable rows into the dataTable and postgres tables.<br />
+Get controls frame element 'newRow'        and add 'click'  listener to call  newRowButtonListener         to create a new row in the dataTable and new datatype object in the postgres tables.<br />
+Get controls frame element 'filtersAmount' and add 'change' listener to call  updateFiltersAmountListener  to show that amount of filter pairs.<br />
+For each filter pair showing, get control frame element with id 'filterValue&lt;count&gt;'  and add 'keyup' listener to call  filterDataKeyUpListener  to hide dataTable rows that don't have data matching the filter pairs.<br />
+Get column definitions by looking at each field, setting the key to &lt;field&gt;, sortable to true, resizeable to true, and getting property values from  fieldsData[&lt;field&gt;][&lt;property&gt;] .  columns are entered in order of fields unless the 'columnOrder' property is set.<br />
+Get &lt;myColumnDefs&gt;, an array of hashes, by looping over all fields in &lt;myFields&gt;, adding for each field a (hash) object with pairs 'key' to field, 'sortable' to true, 'resizable' to true, and each pair from &lt;fieldsData[field]&gt;.  If there is an order property set it at that index in the array, otherwise enter them in order.<br />
+Initialize dataTable by calling  initializeTable(myColumnDefs) .<br />
+Initialize the amount of filters by calling  updateFiltersAmount() .<br />
+Initialize autocomplete listeners for fields of type 'dropdown', 'multidropdown', 'ontology', or 'multiontology'.<br />
+Initialize  waitPanel  a YUI Panel to show the  loadingGif  when data is loading to the dataTable from a  postgresQueryField(field, userValue, amountRowsToHighlight)  call.  Hide the panel by default and show while waiting for  AJAX  response.<br />
+</p>
+
+<hr>
+<h1><a name="_Populate_Fields"> Populate Fields</a></h1><p>
+</p>
+
+<p>
+populateMyFields()<br />
+Populates the global array  myFields  and global object hash  fieldsData .<br />
+myFields  has all the ontology annotator fields, gotten from the html input element fields of with class 'fields', in the order they show in the table frame.<br />
+fieldsData  has mappings for each field to the property values in the format  fieldsData[&lt;field&gt;][&lt;property&gt;] = &lt;value&gt; , gotten from the html elements 'data_&lt;field&gt;' and splitting on comma for pairs then splitting the pairs on &lt;space&gt;&lt;colon&gt;&lt;space&gt;.<br />
+</p>
+
+<hr>
+<h1><a name="_Editor_Frame"> Editor Frame</a></h1><p>
+The editor frame contains fields for data input, field query buttons to query postgres, a reset button to reset the OA, tabs to pick which fields to show, field labels to toggle dataTable columns showing or hiding.<br />
+</p>
+
+<h2><a name="__Query">  Query</a></h2><p>
+All fields have a query button, clicking the query button makes an AJAX call for postgres data matching the field's input.<br />
+</p>
+
+<p>
+assignQueryButtonListenerAjax(e)<br />
+Assigns a listener action for when a field's query button is clicked. <br />
+Get the field from the event trigger id.  <br />
+toggle-type fields get the userValue from the backgroundColor, queryonly fields set a dummy userValue 'queryonly', other fields get the userValue from the input field.<br />
+If there is a userValue call  postgresQueryField(field, userValue, 0)  to query postgres to populate dataTable.<br />
+</p>
+
+<p>
+postgresQueryField(field, userValue, amountRowsToHighlight)<br />
+Queries postgres for a field and userValue with an AJAX query, populates the dataTable at the top and highlights &lt;amountRowsToHighlight&gt; from the top.<br />
+@param {String} field  is the field / postgres table to query postgres.<br />
+@param {String} userValue  is the value the curator wants to query postgres for.<br />
+@param {Integer} amountRowsToHighlight  is the amount of rows from the top to highlight after returning data to the dataTable.<br />
+Clear all dataTable selections.<br />
+Clear all input fields and values from the editor frame by calling  clearEditorFields(field) .<br />
+Define callbacks action for AJAX return.<br />
+Get all dataTable pgids into a comma-separated string by calling  getAllDataTableIds() .<br />
+Get maximum amount of records to retrieve from postgres to populate the dataTable from the editor frame html hidden input element with id 'maxPerQuery'.<br />
+Construct a URL for AJAX data query to the CGI with action 'jsonFieldQuery', passing the &lt;userValue&gt;, &lt;curatorTwo&gt;, &lt;maxPerQuery&gt;, and &lt;allDataTableIds&gt;.<br />
+Set the obo frame to have a message on what is being queried.<br />
+Create an html img element with id 'loadingImg' and image &lt;loadingGifUrl&gt;, appending it to the control frame html element with id 'loadingImage'.<br />
+Show the table frame html element with id 'wait_c' because waitPanel.show() doesn't work for some reason.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from postgresQueryField<br />
+Get back AJAX response of return message and jsonData.  Populate dataTable with jsonData and give appropriate messages.<br />
+On successful return do the following.<br />
+Parse &lt;o.responseText&gt; with YAHOO.lang.JSON.parse into a &lt;jsonData&gt; array.<br />
+Shift the first element from the array, it is the &lt;returnedMessage&gt;.<br />
+Add remaining jsonData to the dataTable.<br />
+Add &lt;returnedMessage&gt; to the obo frame.<br />
+If there is no &lt;jsonData&gt; give user a warning of no matches result.<br />
+Autoset dataTable columns's widths with YUI dataTable method validateColumnWidths().<br />
+Get html div elements from dataTable that have been newly added by the query. <br />
+Add or remove the red_square.jpg to those html div elements depending on whether there's too much data in the cell or not (respectively) by calling  colorMoreCells(divArray) .<br />
+Since there's an AJAX return, remove the loading image and hide the 'wait_c' html element.<br />
+If there was data returned, unselect all rows ;  if there are rows to highlight, highlight them ;  load the data from the first row to the editor frame by calling  rowSelectLoadToEditor(recordData) .<br />
+</p>
+
+<h2><a name="__Clear_Editor">  Clear Editor</a></h2><p>
+Clear all inputs and values for all fields in the editor frame, keeping the &lt;fieldToKeep&gt;<br />
+</p>
+
+<p>
+clearEditorFields(fieldToKeep)<br />
+Clear all inputs and values for all fields in the editor frame, keeping the &lt;fieldToKeep&gt;<br />
+@param {String} fieldToKeep  is the field that should not get cleared.<br />
+Loop through all fields:<br />
+- Skip the &lt;fieldToKeep&gt; if it matches the &lt;field&gt; looping through.<br />
+- Skip if the field type is of type 'queryonly', there is no html element to clear.<br />
+- Fields of type 'toggle' or 'toggle_text' have toggle fields with an html element 'toggle_&lt;field&gt;' that has its backgroundColor set to 'white'.<br />
+- Fields not of type 'toggle' nor 'toggle_text' have an html input element 'input_&lt;field&gt;' that has its value set to blank ''.<br />
+- Fields of type 'multiontology' or 'multidropdown' call  removeSelectAllOptions(&lt;elSel&gt;)  to remove all html option elements from the field's html select element.<br />
+</p>
+
+<h2><a name="__Editor_Label_">  Editor Label </a></h2><p>
+Field labels on the editor can be clicked to toggle the column to show or hide.  It also makes an AJAX call for postgres to store the user's preference for that datatype-field.<br />
+</p>
+
+<p>
+assignEditorLabelTdListener(e)<br />
+Assigns a listener action for when a field's label in the editor frame is clicked.<br />
+Get the field from the event trigger id. <br />
+Call  showHideToggle(field)  to update dataTable column state and postgres table.<br />
+</p>
+
+<p>
+showHideToggle(field)<br />
+Updates dataTable and postgres oac_column_showhide table value.<br />
+@param {String} field  is the field whose column state should be updated.<br />
+Get editor frame label td html element with id 'label_&lt;field&gt;' ;  if the corresponding dataTable column is hidden, show it and make the style of the html td element 'black' ;  if it is not hidden, hide it and make the html td element 'grey'.<br />
+Call  updatePostgresShowHideColumn(field, columnShowHide)  to update the state of the column for that curator-datatype-field in the oac_column_showhide postgres table.<br />
+</p>
+
+<h2><a name="__Multivalue_Select_Element">  Multivalue Select Element</a></h2><p>
+Multivalue fields have a select element to store its values and a 'remove' button to remove selecte values.<br />
+</p>
+
+<p>
+removeSelectAllOptions(elSel)<br />
+Remove all html option elements from a given html select element to clear it.<br />
+@param {Object} elSel  is the html select element to clear by removing all its options.<br />
+@return {Boolean}  is the true/false state of whether anything was removed from the html select element.<br />
+Loop through all &lt;elSel&gt; html option elements, removing them.  If any are removed set &lt;haveRemoved&gt; to true.<br />
+Resize the html select element to fit the amount of values (none) by calling  resizeSelectField(elSel) .<br />
+Return &lt;haveRemoved&gt; to pass whether anything was removed or not.<br />
+</p>
+
+<p>
+resizeSelectField(elSel)<br />
+Resize the html select element to exactly fit the amount of values it has. <br />
+@param {Object} elSel  is the html select element to resize<br />
+If it has elements set the size to the amount values, otherwise make the size 1.<br />
+</p>
+
+<h2><a name="__Multivalue_Select_Remove_Button">  Multivalue Select Remove Button</a></h2><p>
+Multivalue fields (multiontology / multidropdown) have an html select element listing all its values.  A 'remove' html button element is needed to remove selected values. <br />
+</p>
+
+<p>
+removeSelectFieldEntriesListener(e)<br />
+Assigns a listener action for when a multivalue field's 'remove' html button element is clicked.<br />
+Get the field from the event trigger id. <br />
+Get the &lt;elSel&gt; html select element from the editor frame element with id 'select_&lt;field&gt;'.<br />
+Call  removeSelected(elSel)  to remove the selected options.<br />
+If a value was removed:<br />
+- Blank out value of the corresponding html input element with id 'input_&lt;field&gt;'.<br />
+- Get array of rows selected in dataTable.<br />
+- Call  convertSelectToDatatableValue(field)  to convert &lt;elSel&gt; values to dataTable format.<br />
+- Call  updateDataTableValues(field, newValue, selectedRows)  to update postgres tables and dataTable.<br />
+</p>
+
+<p>
+removeSelected(elSel)<br />
+Remove all selected values from &lt;elSel&gt; html select element.<br />
+@param {Object} elSel  is the html select element for that field.<br />
+@return {Boolean}  is the true/false state of whether anything was removed from the html select element.<br />
+Loop through all &lt;elSel&gt; html option elements, removing any that are selected.  If any are removed set &lt;haveRemoved&gt; to true.<br />
+Resize the html select element to fit the amount of values (none) by calling  resizeSelectField(elSel) .<br />
+Return &lt;haveRemoved&gt; to pass whether anything was removed or not.<br />
+</p>
+
+<h2><a name="__Tab_Buttons">  Tab Buttons</a></h2><p>
+When a tab is clicked, show only fields that belong to that tab.<br />
+</p>
+
+<p>
+showTab(tabClass)<br />
+When a tab is clicked, show only fields that belong to that tab.<br />
+@param {String} tabClass  is 'tab&lt;number&gt;' or 'all' from  fieldsData[&lt;field&gt;]["tab"]<br />
+Get all html tr elements from the editor frame.  Loop through all elements and if the className matches exactly the &lt;tabClass&gt;, display it ;  otherwise hide it.<br />
+</p>
+
+<h2><a name="__Reset_Button">  Reset Button</a></h2><p>
+Resets ontology annotator by reloading obo frame, deleting all rows in dataTable, and clearing editor fields.  Leaves dataTable and control settings.<br />
+</p>
+
+<p>
+resetButtonListener(e) <br />
+Assigns a listener action for when the editor frame's 'Reset' html button element is clicked.<br />
+Call  resetButton()  to reset the ontology annotator.<br />
+</p>
+
+<p>
+resetButton() <br />
+Resets ontology annotator by reloading obo frame, deleting all rows in dataTable, and clearing editor fields.  Leaves dataTable and control settings.<br />
+Reload obo frame from server, not cache.<br />
+Delete all rows from dataTable.<br />
+Clear all input fields and values from the editor frame by calling  clearEditorFields(field) .<br />
+</p>
+
+<h2><a name="__Autocomplete_Fields">  Autocomplete Fields</a></h2><p>
+Autocomplete fields can be single value or multivalue, and can be 'dropdown' or 'autocomplete'.  Multivalue fields have an html select element to store its value and a button to remove selected values.  'dropdown' fields can have a relatively small amount of values and a button to show all values.  'ontology' fields have term info to show in the obo frame.  <br />
+</p>
+
+<p>
+setAutocompleteListeners()<br />
+Autocomplete fields (dropdown / multidropdown / ontology / multiontology) create a YUI AutoComplete object to autocomplete what the user types into the only possible values.  All Autocomplete fields are forced.  Dropdown-type fields (dropdown / multidropdown) have a button to click to show all possible options.<br />
+Loop through all fields, and if the  fieldsData[&lt;field&gt;][type]  is an autocomplete field (dropdown / multidropdown / ontology / multiontology) set autocomplete listeners by:<br />
+Construct a URL for AJAX autocomplete query to the CGI with action 'autocompleteXHR', passing the &lt;field&gt;, &lt;datatype&gt;, &lt;curatorTwo&gt;, and '&' for YUI to append the 'query' field with the value the user typed in.<br />
+Create &lt;oDS&gt; as a new YUI XHRDataSource, passing in the URL ;  with data response of type text ;  delimiting records with newlines (\n) and fields with tabs (\t) ;  and enabling caching because autocomplete values don't change often.<br />
+All autocompletes force data to be in the ontology, so the container element is gotten from the editor frame html div element with id 'forced&lt;field&gt;Container'.  The input element from the editor frame html input element with id 'input_&lt;field&gt;'.<br />
+Create &lt;forcedOAC&gt; as a new YUI AutoComplete ;  passing in the &lt;inputElement&gt;, &lt;containerElement&gt;, and &lt;oDS&gt;.  Set 'queryQuestionMark' to 'false' because the URL has been built with other value and already has an '&'.  Set 'maxResultsDisplayed' to '500' because even though most results are limited to 20 by the CGI, some GO config ontology values have hundreds that match on some terms and curatos wants to look at hundreds of them.  Set 'forceSelection' to 'false' because it doesn't seem to work, so using  checkValueIsValidAndUpdate(field, newValue, selectedRows)  instead.<br />
+If the field is a 'dropdown' or 'multidropdown' also add a 'click' listener to the editor frame html span element with id 'type_&lt;field&gt;', so that when clicked it will focus on the &lt;forcedOAC&gt; input and send a query for blank, which returns all possible values for the field.  Set the 'minQueryLength' to 0 to allow blank queries which return all values.<br />
+Subscribe a &lt;forcedOAC&gt; itemSelectEvent to call  onAutocompleteItemSelect  to update term information, input field, postgres, and dataTable.<br />
+Subscribe a &lt;forcedOAC&gt; selectionEnforceEvent to call  onAutocompleteSelectionEnforce  to give message in obo frame about what value was cleared.<br />
+Subscribe a &lt;forcedOAC&gt; itemArrowToEvent to call  onAutocompleteItemHighlight  to show the value's term info in the obo frame if it is an ontology-type field.<br />
+Subscribe a &lt;forcedOAC&gt; itemMouseOverEvent to call  onAutocompleteItemHighlight  to show the value's term info in the obo frame if it is an ontology-type field.<br />
+</p>
+
+<p>
+onAutocompleteItemSelect(oSelf, elItem)<br />
+Get the value's id, set the obo frame to show the id's term info, set the field input to the value, and blur to call  editorInputBlurListener  to update postgres and the dataTable.<br />
+@param {Object} oSelf  is the YUI AutoComplete object.<br />
+@param {Object} elItem  is the html li element selected.<br />
+Get the &lt;field&gt; by matching on the &lt;elSel&gt; name.<br />
+Get the user &lt;value&gt; from the &lt;elItem&gt;.<br />
+Set the editor frame html input element with id 'input_&lt;field&gt;' to have value &lt;value&gt;, focus it, and blur it, to trigger  editorInputBlurListener .<br />
+If the type is 'ontology' or 'multiontology': <br />
+- Initialize &lt;id&gt; as a copy of &lt;value&gt;.<br />
+- If the value matches as a '^&lt;syn&gt; ( &lt;id&gt; ) [&lt;name&gt;]$' reconstruct it as '&lt;name&gt; ( &lt;id&gt; ) '.<br />
+- If the value matches as  '( &lt;id&gt; ) ' set the &lt;id&gt; as the matched &lt;id&gt;.<br />
+- Set the obo frame to a &lt;oboUrl&gt;, the ontology_annotator.cgi with action 'oboFrame', passing the &lt;datatype&gt;, &lt;curatorTwo&gt;, &lt;id&gt;, and &lt;field&gt;.<br />
+</p>
+
+<p>
+onAutocompleteSelectionEnforce(oSelf, sClearedValue)<br />
+Give message in obo frame about what value was cleared.<br />
+@param {Object} oSelf  is the YUI AutoComplete object.<br />
+@param {String} sClearedValue  is the value that was cleared.<br />
+Give a message in the obo frame html div element with id 'myObo' about which value was cleared by value enforcement.<br />
+</p>
+
+<p>
+onAutocompleteItemHighlight(oSelf , elItem)<br />
+When highlighting an 'ontology' or 'multiontology' value call  asyncTermInfo(field, value)  to change the term info in the obo frame.<br />
+@param {Object} oSelf  is the YUI AutoComplete object.<br />
+@param {Object} elItem  is the html li element highlighted from mouseOver or arrowTo.<br />
+Get the &lt;field&gt; by matching on the &lt;elSel&gt; name.<br />
+If the &lt;field&gt; is of type 'ontology' or 'multiontology' call  asyncTermInfo(field, value)  to change the term info in the obo frame.<br />
+</p>
+
+<h2><a name="__Editor_Input">  Editor Input</a></h2><p>
+Editor fields make an automatic AJAX call to update the appropriate postgres data table, postgres history table, and ontology annotator dataTable.  'text' and 'bigtext' fields do it when blurred, 'toggle'-type fields do it when clicked, autocomplete-type fields do it when selected or clicked.<br />
+</p>
+
+<p>
+editorInputBlurListener(e)<br />
+Assigns a listener action for when a field's html input element is blurred.<br />
+Get the field from the event trigger id. <br />
+Call  editorFieldBlur(field, newValue)  to update postgres and dataTable.<br />
+</p>
+
+<p>
+editorFieldBlur(field, newValue)<br />
+Updates dataTable and postgres data table values, if appropriate.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {String} newValue  is the new value for that field and pgids.<br />
+Get selected rows from dataTable.<br />
+Skip field 'id', it has no corresponding postgres table to update and its dataTable column cannot be changed.<br />
+Skip fields of type 'noteditable', they should not change.<br />
+Fields of multivalue type (multiontology / multidropdown) check values are valid and update calling  checkValueIsValidAndUpdate(field, newValue, selectedRows) .  Having a blank value doesn't matter, only what is / gets added / gets removed from html select element.  Any autocomplete value needs to be checked before update.<br />
+Other fields with a blank value update postgres and dataTable by calling  updateDataTableValues(field, newValue, selectedRows) .  Blank values are not valid value when checked, so update normally.<br />
+Fields of type 'dropdown' or 'ontology' check values are valid and update calling  checkValueIsValidAndUpdate(field, newValue, selectedRows) .  Autocomplete values need to be checked before update.<br />
+All other fields update postgres and dataTable by calling  updateDataTableValues(field, newValue, selectedRows) .<br />
+</p>
+
+<p>
+checkValueIsValidAndUpdate(field, newValue, selectedRows)<br />
+Check whether a field's new user value is a proper autocomplete value with an AJAX call.  If it is update postgres tables and dataTable.  If it's not replaced the editor input with the last value selected in the dataTable or blank if there isn't one.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {String} newValue  is the new value for that field and pgids.<br />
+@param {Array} selectedRows  is an array of record ids of selected dataTable rows.<br />
+Define callbacks action for AJAX return.<br />
+Call  convertDisplayToUrlFormat(newValue)  to replace any characters to escape with html URL escape characters.<br />
+Construct a URL for AJAX check to the CGI with action 'asyncValidValue', passing the &lt;field&gt;, &lt;newValue&gt;, &lt;datatype&gt;, and &lt;curatorTwo&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from checkValueIsValidAndUpdate<br />
+Get back AJAX response of true / false of whether a field's new user value is a proper autocomplete value.  If it is, update postgres tables and dataTable.  If it's not, replace the editor input with the last value selected in the dataTable (or blank if there isn't one).<br />
+On successful return with &lt;o.responseText&gt; do the following.<br />
+If &lt;o.responseText&gt; is 'true' call  processValuesForDataTable(field, newValue, selectedRows)  to update postgres tables and dataTable.<br />
+If &lt;o.responseText&gt; is not 'true' get the current value from the editor frame html input element with id 'input_&lt;field&gt;' ;  if the &lt;newValue&gt; being checked is the same as was in the editor frame (the user hasn't changed the value while the AJAX call returned) ;  if the first selected record is in the dataTable, get the record, replace the html span element with parentheses, and place the value back in the editor field (The new value the user tried is not a valid autocomplete value so put back the previous value) ;  if there is no corresponding dataTable value, clear the editor input by setting the value to blank ''.<br />
+</p>
+
+<p>
+convertDisplayToUrlFormat(value)<br />
+Convert value from display format to a URL format by converting characters to URL escape characters for making AJAX calls.<br />
+@param {String} value  is the display value to convert to URL format.<br />
+@return {String}  is the URL value, having been converted from the display value.<br />
+If there is a &lt;value&gt;, and it matches a character to escape (+ or #), convert all matches of the character to the html URL escape character.<br />
+</p>
+
+<p>
+processValuesForDataTable(field, newValue, selectedRows)<br />
+Convert values to dataTable format and call  updateDataTableValues(field, newValue, selectedRows)  for AJAX call to update postgres tables and dataTable.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {String} newValue  is the new value for that field.<br />
+@param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
+If the field is a single autocomplete type (dropdown / ontology) replace the &lt;newValue&gt;'s parentheses with an html span element to hide the id in the dataTable.<br />
+If the field is a multi autocomplete type (multidropdown / multiontology) call  addToSelectField(field, newValue)  to add the value to the corresponding html select element ;  convert the &lt;newValue&gt; to dataTable display format ;  and check if &lt;newValue&gt; is a new value, if it already existed in the html select element there is no need to update, so return.<br />
+Call  updateDataTableValues(field, newValue, selectedRows)  to update postgres tables and dataTable.<br />
+</p>
+
+<p>
+addToSelectField(field, newValue)<br />
+If the user's &lt;newValue&gt; is new, add it to the field's html select element and return the element's values in dataTable format, otherwise return 'noChange'.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {String} newValue  is the new value for that field and pgids.<br />
+@return {String}  is 'noChange' if there was no change, or the data in the field's html select element in dataTable format.<br />
+Get the &lt;elSel&gt; html select element with id 'select_&lt;field&gt;' and remove all html option elements.<br />
+Convert value from URL format to display format by converting characters from URL escape characters back to normal characters.<br />
+Check if the &lt;field&gt;'s &lt;newValue&gt; is already in &lt;elSel&gt; by calling  checkValueInSelect(field, newValue, elSel) ;  if not, add it by:<br />
+- Create a new html option element, setting its text and value to &lt;newValue&gt;, and add it to &lt;elSel&gt;.<br />
+- Resize &lt;elSel&gt; to fit the amount of values with  resizeSelectField(elSel) .<br />
+- Blur the corresponding input field with id 'input_&lt;field&gt;' in the editor frame to avoid triggering a manual blur event later.  Set the value to blank ''.<br />
+- Call  convertSelectToDatatableValue(field)  to convert &lt;elSel&gt; values to dataTable format, and return these values.<br />
+If the &lt;newValue&gt; already existed in &lt;elSel&gt; return 'noChange'.  Do not clear the html input element because the user might have entered the value to query postgres.<br />
+</p>
+
+<p>
+checkValueInSelect(field, newValue, elSel)<br />
+Check if the &lt;newValue&gt; already exists in the field's html select element.  If so return 'true', if not return 'false'.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {String} newValue  is the new value for that field and pgids.<br />
+@param {Object} elSel  is the html select element for that field.<br />
+@return {Boolean}  is the true/false state of whether a value already existed in an html select element.<br />
+Loop through all html option elements in &lt;elSel&gt; and if a value matches &lt;newValue&gt; return true.<br />
+If there was no match return false.<br />
+</p>
+
+<p>
+convertSelectToDatatableValue(field)<br />
+Get a field's corresponding html select element's values in dataTable format.<br />
+@param {String} field  is the field whose html select element's values should be converted to dataTable format.<br />
+@return {String}  is the html select element's values in dataTable format.<br />
+Get the &lt;elSel&gt; html select element with id 'select_&lt;field&gt;' and replace all pairs of parentheses with a set of html select element tags with style display 'none'.<br />
+If there are values, group all values with doublequote-comma-doublequote, wrap in doublequotes and return.  If there are no values return blank ''.<br />
+</p>
+
+<p>
+updateDataTableValues(field, newValue, selectedRows)<br />
+Update postgres tables and dataTable by directing to the default or batch more for AJAX call.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {String} newValue  is the new value for that field.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)<br />
+@param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
+The &lt;displayValue&gt; is the value to display in the dataTable, and it is the same as the userValue to pass through AJAX, but converts URL escapes to normal characters.<br />
+Get whether the user wants to use normal mode or the batch unsafe mode (which updates postgres, but does not update the dataTable because changing a lot of values is slow) by getting the editor frame html hidden input element with id 'batchUnsafeFlag'.<br />
+If the batch unsafe flag is selected (originally from the front page of the ontology_annotator.cgi) make changes to postgres tables (only) with an AJAX call by calling  batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .<br />
+If the batch unsafe flag is not selected (default mode) make changes to postgres tables and dataTable with an AJAX call by calling  normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .<br />
+</p>
+
+<p>
+batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)<br />
+Fast and 'unsafe' mode to batch update data from a lot of &lt;selectedRows&gt; in postgres tables with a single AJAX call, but unsafe because dataTable is not updated and there is a single error message for all errors instead of individual error messages per field-pgid-value update.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
+@param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)<br />
+@param {String} displayValue  is the same new value, but in dataTable display format.  Deprecated -- It is not used because the dataTable is not being updated because  myDataTable.updateCell(record, field, displayValue)  seems to happen quickly, but then the browser hangs for many selected rows.  Kept here in case a future update makes it faster.<br />
+Get all ids from dataTable selected rows and put them in an array &lt;arrPgidsToChange&gt; and hash &lt;idHash&gt;.  Deprecated -- &lt;idHash&gt; is not used, but kept here in case a future update makes updating dataTable cells faster.<br />
+If there are pgids to update, join them with comma and update postgres tables and dataTable by calling  updatePostgresTableField(pgidsToChange, field, newValue) .<br />
+Deprecated -- For each selected row, if the pgid is in &lt;idHash&gt; get the record and update the dataTable cell to have the &lt;displayValue&gt;.<br />
+</p>
+
+<p>
+normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)<br />
+Safe and default mode to update data from &lt;selectedRows&gt; one by one with individual AJAX calls to update postgres tables and update dataTable.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
+@param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)<br />
+@param {String} displayValue  is the same new value, but in dataTable display format.<br />
+Get all ids from dataTable selected rows, and if the &lt;newValue&gt; is different from the corresponding dataTable value:<br />
+- Call  updatePostgresTableField(pgidsToChange, field, newValue) to update postgres tables.<br />
+- Update the dataTable cell to show the &lt;displayValue&gt;.  It's possible for this to happen even if  updatePostgresTableField  fails, but a failure there will give an error message for users to check data.<br />
+- Get the html div elements corresponding to this dataTable record.<br />
+- Add or remove the red_square.jpg to those html div elements depending on whether there's too much data in the cell or not (respectively) by calling  colorMoreCells(divArray) .<br />
+</p>
+
+<p>
+updatePostgresTableField(pgid, field, newValue)<br />
+Update data in postgres data tables with an AJAX call, alerting of any errors.<br />
+@param {String} pgid  are the comma-separated pgids that should be updated.<br />
+@param {String} field  is the field whose value should be updated.<br />
+@param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)<br />
+Disable the form if appropriate by calling  disableForm() .<br />
+Define callbacks action for AJAX return.<br />
+Call  convertDisplayToUrlFormat(newValue)  to replace any characters to escape with html URL escape characters.<br />
+Construct a URL for AJAX postgres update to the CGI with action 'updatePostgresTableField', passing the &lt;pgid&gt;, &lt;field&gt;, &lt;newValue&gt;, &lt;datatype&gt;, and &lt;curatorTwo&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from updatePostgresTableField<br />
+Get back AJAX response of 'OK' or error message.  Undisable form if appropriate and warn of any errors in an alert window. <br />
+On successful return undisable the form by calling  undisableForm() .  If the response is not 'OK' make an alert window with the &lt;newValue&gt;, &lt;pgid&gt;, &lt;field&gt;, and &lt;o.responseText&gt;.<br />
+On failure return undisable the form by calling  undisableForm()  and make an alert window with the &lt;newValue&gt;, &lt;pgid&gt;, &lt;field&gt;, and &lt;o.statusText&gt;.<br />
+</p>
+
+<hr>
+<h1><a name="_Term_Info_Frame"> Term Info Frame</a></h1><p>
+Given an autocomplete field and value, make an AJAX call to get the term info and display it in the obo frame.  Display various messages in the obo frame.<br />
+</p>
+
+<p>
+asyncTermInfo(field, value)<br />
+Given an autocomplete &lt;field&gt; and &lt;value&gt;, make an AJAX call to get the term info from postgres and display in the obo frame.<br />
+@param {String} field  is the field whose term needs info.<br />
+@param {String} value  is the term that needs info. <br />
+Define callbacks action for AJAX return.<br />
+Call  convertDisplayToUrlFormat(value)  to replace any characters to escape with html URL escape characters.<br />
+Construct a URL for AJAX term info query to the CGI with action 'asyncTermInfo', passing the &lt;field&gt;, &lt;value&gt;, &lt;datatype&gt;, and &lt;curatorTwo&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from asyncTermInfo<br />
+Get back AJAX response of term information.  Display in obo frame.<br />
+On successful return, if there is data set the &lt;o.responseText&gt; to the innerHTML of the obo frame html div element with id 'termInfo'.<br />
+</p>
+
+<hr>
+<h1><a name="_Control_Frame"> Control Frame</a></h1><p>
+The control frame has controls to:<br />
+- 'Check_Data'  Check all data in the dataTable against mod-datatype specific constraints.<br />
+- 'Delete'  Delete all selected dataTable rows from postgres tables and dataTable.<br />
+- 'Duplicate'  Duplicate selected dataTable rows from postgres tables, query them into the dataTable, and select the new rows.<br />
+- 'New'  Create a new object entry in postgres tables, query it into the dataTable, and select that new row.<br />
+- Filtering for N filter pairs to only show records in the dataTable that match a text value in a given / all column(s).<br />
+</p>
+
+<p>
+checkDataButtonListener(e)<br />
+Assigns a listener action for when the control frame's 'Check_Data' html button element is clicked.  Makes an AJAX call passing pgids to check and adds ok message if 'OK', or pop up window if there's a message.<br />
+Get all dataTable pgids into a comma-separated string by calling  getAllDataTableIds() .<br />
+If there are no pgids in the dataTable, give a message in the obo frame html div element with id 'myObo', and return.<br />
+Disable the form if appropriate by calling  disableForm() .<br />
+Define callbacks action for AJAX return.<br />
+Construct a URL for AJAX postgres check to the CGI with action 'checkDataByPgids', passing the &lt;datatype&gt;, &lt;curatorTwo&gt;, and &lt;allDataTableIds&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from checkDataButtonListener(e)<br />
+Get back AJAX response of 'OK' or message to display.  Undisable form if appropriate.<br />
+On successful return undisable the form by calling  undisableForm() .  If the response is 'OK', give a message in the obo frame html div element with id 'myObo'.  If the response is not 'OK' make a pop up window with innerHTML being the &lt;o.responseText&gt;.<br />
+On failure return undisable the form by calling  undisableForm()  and make an alert window with &lt;allDataTableIds&gt; and &lt;o.statusText&gt;.<br />
+</p>
+
+<p>
+deleteRowButtonListener(e)<br />
+Assigns a listener action for when the control frame's 'Delete' html button element is clicked.  Makes an AJAX call passing pgids to delete ;  adds ok message if 'OK' and removes selected rows from dataTable ;  or alert message if there's an error message.<br />
+Get all pgids from selected dataTable rows into a comma-separated string.<br />
+If there are no selected row pgids, give a message in the obo frame html div element with id 'myObo', and return.<br />
+Disable the form if appropriate by calling  disableForm() .<br />
+Define callbacks action for AJAX return.<br />
+Construct a URL for AJAX postgres update to the CGI with action 'deleteByPgids', passing the &lt;idsToDelete&gt;, &lt;datatype&gt;, and &lt;curatorTwo&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from deleteRowButtonListener(e)<br />
+Get back AJAX response of 'OK' or error message to alert.  Undisable form if appropriate.<br />
+On successful return undisable the form by calling  undisableForm() .  If the response is 'OK', get dataTable selected rows, delete them, and give a message in the obo frame html div element with id 'myObo' about the &lt;idsToDelete&gt; being deleted.  If the response is not 'OK' make an alert message with the &lt;idsToDelete&gt; and &lt;o.responseText&gt;.<br />
+On failure return undisable the form by calling  undisableForm()  and make an alert window with &lt;idsToDelete&gt; and &lt;o.statusText&gt;.<br />
+</p>
+
+<p>
+duplicateRowButtonListener(e)<br />
+Assigns a listener action for when the control frame's 'Duplicate' html button element is clicked.  Makes an AJAX call passing pgids to duplicate ;  adds ok message if 'OK' and newly duplicated rows into dataTable ;  or alert message if there's an error message.<br />
+Get all pgids from selected dataTable rows into a comma-separated string.<br />
+If there are no selected row pgids, give a message in the obo frame html div element with id 'myObo', and return.<br />
+Disable the form if appropriate by calling  disableForm() .<br />
+Define callbacks action for AJAX return.<br />
+Construct a URL for AJAX postgres update to the CGI with action 'duplicateByPgids', passing the &lt;idsToDuplicate&gt;, &lt;datatype&gt;, and &lt;curatorTwo&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from duplicateRowButtonListener(e)<br />
+Get back AJAX response of 'OK&lt;tab&gt; DIVIDER &lt;tab&gt;&lt;comma-separated pgids of duplicated rows&gt;', or error message to alert.  Undisable form if appropriate.<br />
+On successful return undisable the form by calling  undisableForm() .  If the response is 'OK', get comma-separated pgids of duplicated rows, query them from postgres into the dataTable by calling  postgresQueryField('id', arrTextReturned[1], arrIdsReturned.length) , select the newly queried row, and give a message in the obo frame html div element with id 'myObo' about the &lt;idsToDuplicate&gt; being duplicated.  If the response is not 'OK' make an alert window with the response message.  If the &lt;o.responseText&gt; is undefined make an alert window with the &lt;idsToDuplicate&gt; and &lt;o.responseText&gt;.<br />
+On successful return undisable the form by calling  undisableForm() .  If the response message is 'OK', get pgid of duplicated rows, query pgid from postgres into the dataTable by calling  postgresQueryField('id', arrTextReturned[1], 1) , select the newly queried row, and give a message in the obo frame html div element with id 'myObo' about the pgid being created.  If the response message is not 'OK' make an <br />
+On failure return undisable the form by calling  undisableForm()  and make an alert window with &lt;idsToDuplicate&gt; and &lt;o.statusText&gt;.<br />
+</p>
+
+<p>
+newRowButtonListener(e)<br />
+Assigns a listener action for when the control frame's 'New' html button element is clicked.  Makes an AJAX call to create a new entry for the datatype ;  adds ok message if 'OK' and newly created row into dataTable ;  or alert message if there's an error message.<br />
+Disable the form if appropriate by calling  disableForm() .<br />
+Define callbacks action for AJAX return.<br />
+Construct a URL for AJAX postgres update to the CGI with action 'newRow', passing the &lt;datatype&gt;, and &lt;curatorTwo&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from newRowButtonListener(e)<br />
+Get back AJAX response of 'OK&lt;tab&gt; DIVIDER &lt;tab&gt;&lt;pgids of new row&gt;', or error message to alert.  Undisable form if appropriate.<br />
+On successful return undisable the form by calling  undisableForm() .  If the response message is 'OK', get pgid of duplicated rows, query pgid from postgres into the dataTable by calling  postgresQueryField('id', arrTextReturned[1], 1) , select the newly queried row, and give a message in the obo frame html div element with id 'myObo' about the pgid being created.  If the response message is not 'OK' make an alert window with the response message.  If the &lt;o.responseText&gt; is undefined make an alert window with the &lt;o.responseText&gt;.<br />
+On failure return undisable the form by calling  undisableForm()  and make an alert window with &lt;o.statusText&gt;.<br />
+</p>
+
+<p>
+updateFiltersAmountListener(e) <br />
+Assigns a listener action for when the control frame's 'filtersAmount' html select element is changed.<br />
+Call  updateFiltersAmount()  to display that amount of filter pairs of html elements, and filter dataTable based on those filters.<br />
+</p>
+
+<p>
+updateFiltersAmount() <br />
+Displays the amount of control frame filter pair html elements showing on the control frame html hidden input element with id 'filtersMaxAmount', then fitlers dataTable based on the showing pairs.<br />
+Gets the &lt;filtersMaxAmount&gt; from the control frame html hidden input element with id 'filtersMaxAmount'.<br />
+Gets the &lt;filtersAmount&gt; to display and filter on, from the selected html option element in the control frame html select element with id 'filtersAmount'.<br />
+Loop through the &lt;filtersMaxAmount&gt; of filters, and if they number less than or equal to / greater than &lt;filtersAmount&gt;, then display / hide the control frame html select element with id 'filterType&lt;count&gt;' and html input element with id 'filterValue&lt;count&gt;'.<br />
+Call  filterData()  to display the dataTable data based on the displayed filter pairs.<br />
+</p>
+
+<p>
+filterData() <br />
+Display only dataTable data that matches in the showing filter pairs, for each pair matching the value to the specified field type.<br />
+Blank out the obo frame html div element with id 'myObo'.<br />
+Get &lt;records&gt; from dataTable.<br />
+Gets the &lt;filtersAmount&gt; to display and filter on, from the selected html option element in the control frame html select element with id 'filtersAmount'.<br />
+Loop through each record.  For each record get the &lt;recordIndex&gt; and loop through each &lt;filtersAmount&gt;:<br />
+- Get the &lt;filterType&gt; from the control frame html select element with id 'filterType&lt;count&gt;'.<br />
+- Get the &lt;filterValue&gt; from the control frame html select element with id 'filterValue&lt;count&gt;'.<br />
+- The &lt;queryValue&gt; is a lowercased &lt;filterValue&gt;.<br />
+- If &lt;filterType&gt; is 'all' use all values from &lt;myFields&gt;, otherwise use the &lt;filterType&gt;.<br />
+- Loop through each &lt;filterType&gt; value, matching a lowercased value to &lt;queryValue&gt; ;  if it matches flag the record to show and stop checking other &lt;filterType&gt; values.<br />
+If there are greater or equal show flags than &lt;filtersAmount&gt; the record matches all filters, so count it in &lt;recordsShown&gt; and display the html tr element containing the &lt;recordIndex&gt; in the dataTable ;  otherwise hide it.<br />
+Give a message in the obo frame html div element with id 'myObo' about how many records match.<br />
+</p>
+
+<p>
+filterDataKeyUpListener(e)<br />
+Assigns a listener action for when any of the control frame's html input element with id 'filterValue&lt;count&gt;' has a key up (release) action.<br />
+Call  filterData()  to display the dataTable data based on the displayed filter pairs.<br />
+</p>
+
+<hr>
+<h1><a name="_Data_Table_Frame"> Data Table Frame</a></h1><p>
+The table frame has a YUI ScrollingDataTable object used to display the curator's working data.<br />
+</p>
+
+<p>
+initializeTable(myColumnDefs) <br />
+Initialize dataTable column properties and action listeners.<br />
+@param {Array} myColumnDefs  is an array of (hash) objects, listing the fields in the order they should display dataTable columns, and holding key-value pairs of column properties.<br />
+Create a new YUI LocalDataSource &lt;myDataSource&gt;, set its responseSchema to have fields be a copy of &lt;myFields&gt;.<br />
+Create &lt;myDataTable&gt; as a new YUI ScrolingDataTable ;  passing its container element the id for the html div element 'myContainer' ;  &lt;myColumnDefs&gt; for column definitions ;  &lt;myDataSource&gt; for data source ;  and config parameters 'width' to '99.5%' to avoid horizontal scrollbar in frame, 'height' to '100%', and 'draggableColumns' to 'true' so columns can be reordered.<br />
+Call  populateMyFields();  to repopulate &lt;myFields&gt; because creating the scrolling data table changed the data in &lt;myFields&gt; into objects.<br />
+Call  resizeDataTable();  to resize height of dataTable header div and data row div to the frame height minus 29 pixels so a vertical frame scrollbar won't show.<br />
+Set listener for 'rowMouseoverEvent' to highlight row.<br />
+Set listener for 'rowMouseoutEvent' to unhighlight row.<br />
+Set listener for 'rowClickEvent' to select row.  Set additional listener to call  rowSelectLoadToEditor(recordData)  to load the row's data to the editor frame.<br />
+Set listener for 'columnReorderEvent' to get the order of the columns by looping through all html a elements in the html div element with id 'myContainer' and sub-looping through all the fields in &lt;myField&gt; to match the  fieldsData[&lt;field&gt;][label]  to the innerHTML of the html a element and adding to an array.  If there are fields in the array, join with comma and update postgres column table by calling  updatePostgresReorderColumn(columnOrder) .<br />
+Set listener for 'columnResizeEvent' to get all html th elements in the html div element with id 'myContainer', looping through all elements to find the array index &lt;colIndex&gt; of the element matching the target of the object that triggered the listener.  Get all html tr elements in the body of the dataTable and loop to get an array of html div elements &lt;divArray&gt;, and add or remove the red_square.jpg to them depending on whether there's too much data in the cell or not (respectively) by calling  colorMoreCells(divArray) .  Get the field from the column key of the element that triggered the listener, get the new column width for that field column, and update postgres column table by calling  updatePostgresResizeColumn(field, columnWidth) .<br />
+Loop through all fields ;  if there's a  fieldsData[&lt;field&gt;][columnWidth]  set the field column width to that size ;  if there's a  fieldsData[&lt;field&gt;][columnShowHide]  and the value is 'hidden', hide the field column in the dataTable, and set the editor frame html td element with it 'label_&lt;field&gt;' color to 'grey'.<br />
+</p>
+
+<p>
+resizeDataTable()<br />
+Resize height of dataTable header div and data row div to the frame height minus 29 pixels so a vertical frame scrollbar won't show.<br />
+Set &lt;myHeight&gt; to the height of the client minus 29 pixels so the whole dataTable will show without a vertical frame scrollbar.<br />
+Get all html div elements in the html div element with id 'myContainer'.<br />
+Loop through all divs and if they have class 'yui-dt-bd' they refer to either the dataTable header, or the dataTable data rows, and their height should be set to &lt;myHeight&gt; to avoid a vertical frame scrollbar.<br />
+</p>
+
+<p>
+getAllDataTableIds<br />
+Get all dataTable pgids into a comma-separated string.<br />
+@return {String}  all the pgids corresponding to selected rows, joined in a string with commas.<br />
+Get all dataTable records, for each of those get the id, join them with comma, and return.<br />
+</p>
+
+<p>
+colorMoreCells(divArray)<br />
+For the html div elements passed in, see if there's more data than can show and add the red_square.jpg or remove it as appropriate.<br />
+@param {Array} divArray  is an array of all the html div elements in the dataTable that need color check.<br />
+Loop through all html div elements to color, and for those of class 'yui-dt-liner' do the following:<br />
+If the scrollHeight is not the same as the clientHeight, add to the html div element the class 'hidden-overflow-data' to show the red_square.jpg from the ontology_annotator.css .<br />
+If they are the same, remove it instead.<br />
+</p>
+
+<p>
+rowSelectLoadToEditor(recordData)<br />
+Load last selected dataTable &lt;recordData&gt; into the editor frame's inputs and values.<br />
+@param {Object} recordData  is the YAHOO.widget.Record object to load into the editor frame's inputs and values.<br />
+Loop through all fields, get the value from  recordData[&lt;field&gt;] and depending on the  fieldsData[&lt;field&gt;][type]  load differently.<br />
+Skip all fields that are 'queryonly', they have nothing to load.<br />
+Autocomplete fields (dropdown / ontology / multidropdown / multiontology) convert the html span element into parentheses.<br />
+MultiAutocomplete fields call  populateSelectFieldFromDatatable(&lt;field&gt;, &lt;value&gt;)  to populate the html select element.<br />
+Toggle-type fields set the 'toggle_&lt;field&gt;' element background color to 'red' for data and 'white' for no data.<br />
+Bigtext fields sets the 'textarea_bigtext_&lt;field&gt;' html textarea element to blank '', and 'input_&lt;field&gt;' html input element to &lt;value&gt;.<br />
+All fields get the value of 'input_&lt;field&gt;' html input element set to &lt;value&gt;.<br />
+</p>
+
+<p>
+populateSelectFieldFromDatatable(field, value)<br />
+Load &lt;value&gt; into the &lt;field&gt;'s corresponding html select element, and clear the corresponding html input element.<br />
+@param {String} field  is the field whose corresponding html select element should load values.<br />
+@param {String} value  has the comma-separated data to load into the html select element.<br />
+Set the 'input_&lt;field&gt;' value to blank ''.<br />
+Get the 'select_&lt;field&gt;' html select element and remove all html option elements.<br />
+Strip out leading and trailing doublequotes from value, split on comma to get individual values.<br />
+For each individual value create an html option element with that for text and value and append to the html select element.<br />
+Resize the html select element to fit the amount of values by calling  resizeSelectField(elSel) .<br />
+</p>
+
+<h2><a name="__DataTable_Column">  DataTable Column</a></h2><p>
+Changing the state of dataTable columns automatically store the state for the curator-datatype-field in the corresponding oac_column_&lt;type&gt; postgres table.  The types to store are order of fields, show-hide column state, and column's width in pixels.<br />
+</p>
+
+<p>
+updatePostgresReorderColumn(columnOrder)<br />
+@param {String} columnOrder  is a comma-separated string with the fields in column order.<br />
+Calls  updatePostgresColumn(columnOrder, null, 'columnOrder')  to update the column order in postgres.<br />
+</p>
+
+<p>
+updatePostgresShowHideColumn(field, columnState)<br />
+@param {String} field  is the field whose column state should be updated.<br />
+@param {String} columnState  is a string stating whether the new column state is 'visible' or 'hidden'.<br />
+Calls  updatePostgresColumn(columnState, field, 'columnShowHide')  to update the show-hide column state in postgres.<br />
+</p>
+
+<p>
+updatePostgresResizeColumn(field, columnWidth)<br />
+@param {String} field  is the field whose column state should be updated.<br />
+@param {String} columnState  is a string (converted earlier from an Int) with the new column width in pixels.<br />
+Calls  updatePostgresColumn(columnWidth, field, 'columnWidth')  to update the column width in postgres.<br />
+</p>
+
+<p>
+updatePostgresColumn(newValue, field, columnAction)<br />
+@param {String} newValue  is the new value for the column's column action.<br />
+@param {String} field  is the field whose column state should be updated.<br />
+@param {String} columnAction  is the type of column action taken, to specify which postgres table to update.<br />
+Disable the form if appropriate by calling  disableForm() .<br />
+Define callbacks action for AJAX return.<br />
+Call  convertDisplayToUrlFormat(newValue)  to replace any characters to escape with html URL escape characters.<br />
+Construct a URL for AJAX postgres update to the CGI with action 'updatePostgresColumn', passing the &lt;columnAction&gt;, &lt;datatype&gt;, &lt;curatorTwo&gt;, &lt;field&gt;, and &lt;newValue&gt;.<br />
+Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+</p>
+
+<p>
+callbacks from updatePostgresColumn<br />
+Get back AJAX response of 'OK' or error message.  Undisable form if appropriate and warn of any errors in an alert window. <br />
+On successful return undisable the form by calling  undisableForm() .  If the response is not 'OK' make an alert window with the &lt;field&gt;, &lt;columnAction&gt;, &lt;newValue&gt;, &lt;curatorTwo&gt;, and &lt;o.responseText&gt;.<br />
+On failure return undisable the form by calling  undisableForm()  and make an alert window with the &lt;field&gt;, &lt;columnAction&gt;, &lt;newValue&gt;, &lt;curatorTwo&gt;, and &lt;o.statusText&gt;.<br />
+</p>
+
+<hr>
+<h1><a name="_Disable_Form"> Disable Form</a></h1><p>
+</p>
+
+<p>
+disableForm()<br />
+This used to disable the dataTable, editor, and controls ;  but it was removed curators complained that when updating multiple rows in normal mode the dataTable would 'flash' because of the quick disabling (greying out) and undisabling (normal).<br />
+</p>
+
+<p>
+undisableForm()<br />
+This used to undisable the dataTable, editor, and controls ;  but it was removed curators complained that when updating multiple rows in normal mode the dataTable would 'flash' because of the quick disabling (greying out) and undisabling (normal).<br />
+</p>
+
+</body></html>

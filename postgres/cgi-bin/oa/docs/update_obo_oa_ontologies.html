@@ -1,0 +1,101 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>update_obo_oa_ontologies.pl - script to create, populate, or update postgres tables for ontology annotator obotables.</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:root@localhost" />
+</head>
+
+<body style="background-color: white">
+
+
+<!-- INDEX BEGIN -->
+<div name="index">
+<p><a name="__index__"></a></p>
+
+<ul>
+
+	<li><a href="#name">NAME</a></li>
+	<li><a href="#synopsis">SYNOPSIS</a></li>
+	<li><a href="#description">DESCRIPTION</a></li>
+	<ul>
+
+		<li><a href="#script_requirements">SCRIPT REQUIREMENTS</a></li>
+		<li><a href="#create_tables">CREATE TABLES</a></li>
+		<li><a href="#term_info_obo_tree_browsing">TERM INFO OBO TREE BROWSING</a></li>
+		<li><a href="#script_function">SCRIPT FUNCTION</a></li>
+	</ul>
+
+</ul>
+
+<hr name="index" />
+</div>
+<!-- INDEX END -->
+
+<p>
+</p>
+<h1><a name="name">NAME</a></h1>
+<p>update_obo_oa_ontologies.pl - script to create, populate, or update postgres tables for ontology annotator obotables.</p>
+<p>
+</p>
+<hr />
+<h1><a name="synopsis">SYNOPSIS</a></h1>
+<p>Edit the array of users to grant permission to (both 'select' and 'all'), edit obotable to URL hash entries in %obos hash, add optional code for specific obotable types, then run with</p>
+<pre>
+  ./update_obo_oa_ontologies.pl</pre>
+<p>
+</p>
+<hr />
+<h1><a name="description">DESCRIPTION</a></h1>
+<p>The ontology_annotator.cgi allows .obo files to be generically parsed into postgres tables for obotables used in fields of type 'ontology' or 'multiontology'.</p>
+<p>.obo data changes routinely, so this script can run on a cronjob to update data when the obo files's 'date:' line has changed.</p>
+<p>
+</p>
+<h2><a name="script_requirements">SCRIPT REQUIREMENTS</a></h2>
+<p>Create a directory to store the last version of each obo file.  Change the path to it in the $directory variable.</p>
+<p>Edit array of postgres database users to grant permission to (both 'select' and 'all').</p>
+<p>Edit %obos hash for mappings of obotable to URL of .obo file.</p>
+<p>
+</p>
+<h2><a name="create_tables">CREATE TABLES</a></h2>
+<p>If creating an obotable type for the first time:</p>
+<ul>
+<li><strong><a name="comment_out_all_obos_entries_that_already_have_tables" class="item">comment out all %obos entries that already have tables.</a></strong>
+
+</li>
+<li><strong><a name="uncomment_the_lines_to_createtable_for_the_datatype" class="item">uncomment the lines to  &amp;createTable  for the datatype .</a></strong>
+
+</li>
+<li><strong><a name="run_with" class="item">run with</a></strong>
+
+<pre>
+  ./update_obo_oa_ontologies.pl</pre>
+</li>
+<li><strong><a name="put_the_script_back_the_way_it_was" class="item">put the script back the way it was.</a></strong>
+
+</li>
+</ul>
+<p>
+</p>
+<h2><a name="term_info_obo_tree_browsing">TERM INFO OBO TREE BROWSING</a></h2>
+<p>The script can be edited to add custom changes for specific obotables, such as parsing names, IDs, adding URL links in term information, creating obo tree links to browse the term info obo structure.</p>
+<p>When creating obo tree links to browse the term info obo structure:</p>
+<ul>
+<li><strong><a name="add_conditional_to_populate_children_and_change_the_id_matching" class="item">add conditional to populate %children and change the ID matching.</a></strong>
+
+</li>
+<li><strong><a name="add_conditional_to_process_each_term_and_change_the_id_matching" class="item">add conditional to process each term and change the ID matching.</a></strong>
+
+</li>
+</ul>
+<p>%children are populated by matching on 'is_a:' and 'relationship: part_of' tags in .obo file</p>
+<p>
+</p>
+<h2><a name="script_function">SCRIPT FUNCTION</a></h2>
+<p>For each obotable .obo file compare date of downloaded .obo file with date of last .obo file used to populate postgres tables ;  if the date is more recent, delete all data from tables, populate from new file, and write file to flatfile for future comparison.</p>
+<p>The downloaded data file is split on '[Term]'.  Id is a match on 'id: ' to the newline.  Name is a match on 'name: ' to the newline.  Synonyms are matches on 'synonym: &quot;&lt;match&gt;&quot;'.  Data is the whole entry.  Data lines are split, for each line the tag is anything up to the first colon, and it has a span html element tag added to bold it.  There is a single entry for a given term id for name and data, but there can be multiple entries for synonyms, one for each synonym.</p>
+
+</body>
+
+</html>

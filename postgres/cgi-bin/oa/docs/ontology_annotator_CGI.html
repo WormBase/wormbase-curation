@@ -1,0 +1,332 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>ontology_annotator.cgi - Main file with code for ontology_annotator.  CGI for curators to load and make curations through a web browser.</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:root@localhost" />
+</head>
+
+<body style="background-color: white">
+
+
+<!-- INDEX BEGIN -->
+<div name="index">
+<p><a name="__index__"></a></p>
+
+<ul>
+
+	<li><a href="#name">NAME</a></li>
+	<li><a href="#synopsis">SYNOPSIS</a></li>
+	<li><a href="#description">DESCRIPTION</a></li>
+	<ul>
+
+		<li><a href="#files">FILES</a></li>
+		<li><a href="#postgres_tables">POSTGRES TABLES</a></li>
+		<ul>
+
+			<li><a href="#general_postgres_tables">GENERAL POSTGRES TABLES</a></li>
+			<li><a href="#datatype_postgres_tables">DATATYPE POSTGRES TABLES</a></li>
+			<li><a href="#obo_postgres_tables">OBO POSTGRES TABLES</a></li>
+		</ul>
+
+		<li><a href="#globals">GLOBALS</a></li>
+		<ul>
+
+			<li><a href="#oa_globals">OA GLOBALS</a></li>
+			<li><a href="#other_globals">OTHER  GLOBALS</a></li>
+		</ul>
+
+		<li><a href="#subroutines">SUBROUTINES</a></li>
+		<ul>
+
+			<li><a href="#login_subroutine">LOGIN SUBROUTINE</a></li>
+			<li><a href="#initialization_subroutine">INITIALIZATION SUBROUTINE</a></li>
+			<li><a href="#show_main_subroutine">SHOW MAIN SUBROUTINE</a></li>
+			<li><a href="#show_editor_subroutines">SHOW EDITOR SUBROUTINES</a></li>
+			<li><a href="#show_obo_subroutines">SHOW OBO SUBROUTINES</a></li>
+			<li><a href="#show_controls_subroutine">SHOW CONTROLS SUBROUTINE</a></li>
+			<li><a href="#show_table_subroutine">SHOW TABLE SUBROUTINE</a></li>
+			<li><a href="#json_field_query_subroutines">JSON FIELD QUERY SUBROUTINES</a></li>
+			<li><a href="#autocomplete_subroutines">AUTOCOMPLETE SUBROUTINES</a></li>
+			<li><a href="#async_term_info_subroutine">ASYNC TERM INFO SUBROUTINE</a></li>
+			<li><a href="#async_valid_value_subroutines">ASYNC VALID VALUE SUBROUTINES</a></li>
+			<li><a href="#update_postgres_table_field_subroutines">UPDATE POSTGRES TABLE FIELD SUBROUTINES</a></li>
+			<li><a href="#update_postgres_column_subroutine">UPDATE POSTGRES COLUMN SUBROUTINE</a></li>
+			<li><a href="#new_row_subroutines">NEW ROW SUBROUTINES</a></li>
+			<li><a href="#duplicate_by_pgids_subroutine">DUPLICATE BY PGIDS SUBROUTINE</a></li>
+			<li><a href="#delete_by_pgids_subroutine">DELETE BY PGIDS SUBROUTINE</a></li>
+			<li><a href="#check_data_by_pgids_subroutines">CHECK DATA BY PGIDS SUBROUTINES</a></li>
+		</ul>
+
+	</ul>
+
+</ul>
+
+<hr name="index" />
+</div>
+<!-- INDEX END -->
+
+<p>
+</p>
+<h1><a name="name">NAME</a></h1>
+<p>ontology_annotator.cgi - Main file with code for ontology_annotator.  CGI for curators to load and make curations through a web browser (tested with Mozilla's Firefox).</p>
+<p>
+</p>
+<hr />
+<h1><a name="synopsis">SYNOPSIS</a></h1>
+<p>Place on webserver with ontology_annotator.css, ontology_annotator.js, helperOA.pm, yui/ and images/ directories, and MOD-specific perl module (e.g. testOA.pm , wormOA.pm).  Create appropriate MOD-specific perl module for your MOD, in that module add settings for each datatype to curate, and create a postgres table for each datatypes's fields.  Requires web server, CGI, and postgreSQL.</p>
+<p>
+</p>
+<hr />
+<h1><a name="description">DESCRIPTION</a></h1>
+<p>CGI file for curators to load through a web browser.  When using for a new MOD, create a MOD-specific perl module (see testOA.pm for template and instructions, or wormOA.pm for example and instructions).  In this file add to :</p>
+<ul>
+<li><strong><a name="add_use_testoa_only_add_one_module_the_exported_subroutines_have_the_same_name" class="item">add &quot;use testOA;&quot; (only add one module, the exported subroutines have the same name)</a></strong>
+
+</li>
+<li><strong><a name="add_my_configloaded_testoa" class="item">add &quot;my $configLoaded = 'testOA';&quot;</a></strong>
+
+</li>
+</ul>
+<p>
+</p>
+<h2><a name="files">FILES</a></h2>
+<p>ontology_annotator.css  REQUIRED has the css properties to display one row in each dataTable, show red squares in dataTable cells that have data not showing, extra padding on autocomplete results div html elements.</p>
+<p>ontology_annotator.js  REQUIRED has all the Ontology Annotator-specific javascript code.</p>
+<p>helperOA.pm  REQUIRED perl module that has helper subroutines for the main CGI and MOD-specific perl modules.  Get and untaint form variables.  Get timestamps in postgres format.</p>
+<p>yui/  REQUIRED directory to hold local copies of the necessary YUI's .js files.  YUI's website is fast and reliable, but just in case keep a local copy.</p>
+<p>images/  REQUIRED directory to hold necessary images.  The red square for dataTable cells with more data than showing.  Loading image when querying.</p>
+<p>MOD-specific perl modules.  REQUIRED.  See testOA.pm, wormOA.pm for examples.</p>
+<p>docs/  OPTIONAL directory to hold html files documenting how scripts, modules, and the CGI work.  Generated by  scripts/generateDocs.pl .</p>
+<p>scripts/  OPTIONAL directory to hold perl scripts to generate tables, update ontologies, generate documentation.</p>
+<p>
+</p>
+<h2><a name="postgres_tables">POSTGRES TABLES</a></h2>
+<p>There are general postgres tables required for all MODs and datatypes, for curator settings.  There are datatype-specific postgres tables for each MOD's datatypes's field.  See below for specific formats.</p>
+<p>Be sure to GRANT ALL on each table to postgres and the webserver user.</p>
+<p>Note: It's very likely that a different flavor of SQL may be used with minor code change, but this has not been tested.</p>
+<p>
+</p>
+<h3><a name="general_postgres_tables">GENERAL POSTGRES TABLES</a></h3>
+<p>For the OA to remember a given curator-datatype-field dataTable column's width, order, and whether it should show or be hidden, these tables are required :</p>
+<ul>
+<li><strong><a name="oac_column_width_columns_oac_datatype_oac_table_oac_curator_oac_column_width_oac_timestamp_the_oac_timestamp_column_is_a_timestamp_with_default_now_all_others_are_text_the_column_width_is_the_width_in_pixels_that_a_datatable_column_should_have_when_loading_yui_s_datatable_scripts_will_still_resize_is_as_data_gets_queries_added_or_edited_when_a_curator_resizes_a_column_its_corresponding_value_is_updated_here" class="item">oac_column_width  columns oac_datatype, oac_table, oac_curator, oac_column_width, oac_timestamp .  The oac_timestamp column is a timestamp with default now, all others are text.  The column width is the width in pixels that a dataTable column should have when loading.  YUI's datatable scripts will still resize is as data gets queries, added, or edited.  When a curator resizes a column, its corresponding value is updated here.</a></strong>
+
+</li>
+<li><strong><a name="oac_column_order_columns_oac_datatype_oac_table_oac_curator_oac_column_order_oac_timestamp_the_oac_timestamp_column_is_a_timestamp_with_default_now_all_others_are_text_the_order_of_the_columns_are_the_default_order_when_loaded_which_is_different_from_the_order_of_the_fields_in_the_oa_s_editor_frame_when_a_curator_reorders_a_column_all_the_columns_s_corresponding_orders_are_updated_here" class="item">oac_column_order  columns oac_datatype, oac_table, oac_curator, oac_column_order, oac_timestamp .  The oac_timestamp column is a timestamp with default now, all others are text.  The order of the columns are the default order when loaded, which is different from the order of the fields in the OA's editor frame.  When a curator reorders a column, all the columns's corresponding orders are updated here.</a></strong>
+
+</li>
+<li><strong><a name="frame" class="item">oac_column_showhide  columns oac_datatype, oac_table, oac_curator, oac_column_showhide, oac_timestamp .  The oac_timestamp column is a timestamp with default now, all others are text.  dataType columns can be toggled to show or hide by clicking on the corresponding field name in the OA's editor frame (when hidden the text will be grey, when showing the text will be black) ;  this table stores whether to show or hide each column when the dataTable is first loaded.  When a curator toggles a column to hide or show, its corresponding state is updated here.</a></strong>
+
+</li>
+</ul>
+<p>If some MOD really doesn't want this,  &amp;updatePostgresColumn  could probably be edited to only do this for specific  $configLoaded , and this code change would have to be propagated to other MODs.</p>
+<p>create_oac_columns.pl  is a script to delete and re-create these column postgres tables.</p>
+<p>
+</p>
+<h3><a name="datatype_postgres_tables">DATATYPE POSTGRES TABLES</a></h3>
+<p>When creating a new datatype, each field should have its own postgres table and postgres history table.  The datatype by convention is a three-letter code.  The format of each table would be '&lt;datatype&gt;_&lt;field name&gt;' and for history tables '&lt;datatype&gt;_&lt;field name&gt;_hst', so e.g. : 'app_term' 'app_term_hst', 'int_variationone' 'int_variationone_hst', 'trp_driven_by_gene' 'trp_driven_by_gene_hst'.</p>
+<p>Columns are  joinkey, &lt;table_name&gt;, &lt;datatype&gt;_timestamp .  The &lt;datatype&gt;_timestamp column is a timestamp with default now, all others are text.  The &lt;table_name&gt; column is the same as the name of the table.  e.g. the table app_term  has columns named  joinkey, app_term, app_timestamp ;  and app_term_hst  has columns named  joinkey, app_term_hst, app_timestamp .</p>
+<p>There are four different ways of storing data :</p>
+<ul>
+<li><strong><a name="text_and_bigtext_types_store_text_straight" class="item">text and bigtext types store text straight.</a></strong>
+
+</li>
+<li><strong><a name="toggle_type_store_the_label_of_the_field_shown_on_the_editor_for_true_and_for_false" class="item">toggle type store the label of the field shown on the editor for true, and '' for false.</a></strong>
+
+</li>
+<li><strong><a name="dropdown_and_ontology_types_store_the_id_of_the_chosen_value" class="item">dropdown and ontology types store the ID of the chosen value.</a></strong>
+
+</li>
+<li><strong><a name="multidropdown_and_multiontology_types_store_the_ids_of_the_chosen_values_surrounded_by_doublequotes_and_comma_separated_for_this_reason_avoid_having_ids_with_doublequotes_in_them" class="item">multidropdown and multiontology types store the IDs of the chosen values, surrounded by doublequotes and comma-separated.  (for this reason avoid having IDs with doublequotes in them)</a></strong>
+
+</li>
+</ul>
+<p>create_datatype_tables.pl  is a script to create postgres data tables and history tables for a given datatype and tables.</p>
+<p>
+</p>
+<h3><a name="obo_postgres_tables">OBO POSTGRES TABLES</a></h3>
+<p>When creating an ontology or multiontology field, a set of custom subroutines can be created in the MOD-specific perl module (called by  &amp;getAnySpecific...), or the local  &amp;getGenericObo... subroutines, which work off generic obo_ tables in postgres.  To use the latter subroutines, in the MOD-specific perl module, set the fields's  %fields  to have  'ontology_type' = 'obo'  and  'ontology_table' = '&lt;name of ontology type&gt;' .  The name of the ontology type is lowercase by convention.  These two values are set to all fields that use that given ontology for the same MOD ;  multiple datatypes can use it, and/or multiple fields in the same datatype.  Also to use these subroutines, create 3 tables for each set of ontologies :</p>
+<ul>
+<li><strong><a name="obo_name_name_of_ontology_type_columns_joinkey_table_name_obo_timestamp_the_obo_timestamp_column_is_a_timestamp_with_default_now_all_others_are_text_this_table_s_key_is_the_object_id_the_value_is_the_name_of_the_object_an_object_can_only_have_one_entry_for_a_given_joinkey_in_this_table" class="item">obo_name_&lt;name of ontology type&gt;  columns joinkey, &lt;table_name&gt;, obo_timestamp .  The obo_timestamp column is a timestamp with default now, all others are text.  This table's key is the object ID, the value is the name of the object.  An object can only have one entry for a given joinkey in this table.</a></strong>
+
+</li>
+<li><strong><a name="obo_syn_name_of_ontology_type_column_joinkey_table_name_obo_timestamp_the_obo_timestamp_column_is_a_timestamp_with_default_now_all_others_are_text_this_table_s_key_is_the_object_id_the_value_is_the_synonym_of_the_object_an_object_could_have_multiple_synonyms_so_it_could_have_multiple_entries_for_the_same_joinkey_in_this_table" class="item">obo_syn_&lt;name of ontology type&gt;  column joinkey, &lt;table_name&gt;, obo_timestamp .  The obo_timestamp column is a timestamp with default now, all others are text.  This table's key is the object ID, the value is the synonym of the object.  An object could have multiple synonyms, so it could have multiple entries for the same joinkey in this table.</a></strong>
+
+</li>
+<li><strong><a name="obo_data_name_of_ontology_type_column_joinkey_table_name_obo_timestamp_the_obo_timestamp_column_is_a_timestamp_with_default_now_all_others_are_text_this_table_s_key_is_the_object_id_the_value_is_the_data_of_the_object_to_show_in_the_oa_s_term_info_frame_an_object_can_only_have_one_set_of_data_to_show_so_it_can_only_have_one_entry_for_a_given_joinkey_in_this_table_the_data_here_will_show_almost_exactly_as_stored_so_html_markup_is_stored_here_directly_the_exception_is_that_newlines_are_replaced_with_br_n_in_the_getgenericoboterminfo_by_convention_tag_names_and_a_colon_are_wrapped_in_a_span_style_font_weight_bold_sections_can_be_divided_with_a_hr_links_and_embedded_images_can_be_linked_here" class="item">obo_data_&lt;name of ontology type&gt;  column joinkey, &lt;table_name&gt;, obo_timestamp .  The obo_timestamp column is a timestamp with default now, all others are text.  This table's key is the object ID, the value is the data of the object to show in the OA's term info frame.  An object can only have one set of data to show, so it can only have one entry for a given joinkey in this table.  The data here will show almost exactly as stored, so html markup is stored here directly ;  the exception is that newlines are replaced with '&lt;br /&gt;\n' in the  &amp;getGenericOboTermInfo .  By convention tag names and a colon are wrapped in a '&lt;span style=&quot;font-weight: bold&quot;&gt;'.  Sections can be divided with a '&lt;hr&gt;'.  Links and embedded images can be linked here.</a></strong>
+
+</li>
+</ul>
+<p>update_obo_oa_ontologies.pl  is a script to download generic .obo files and update these 3 tables for each corresponding obo ontology type.</p>
+<p>
+</p>
+<h2><a name="globals">GLOBALS</a></h2>
+<p>
+</p>
+<h3><a name="oa_globals">OA GLOBALS</a></h3>
+<p>$configLoaded  is a variable to specify which MOD-specific perl module has been loaded.  Refer to appropriate subroutine in  &amp;asyncTermInfo  &amp;asyncValidValue  &amp;autocompleteXHR  &amp;getTableDisplayData  &amp;showLogin  &amp;showMain  &amp;initFields .</p>
+<p>$filtersMaxAmount  is the amount of filters to put in the OA's control frame.  This could be stored in a postgres table at some point, and code rewritten for it.  The control frame shows one filter by default, and more can be shown by changing the number in the dropdown.</p>
+<p>%fieldIdToValue  is a hash to map IDs of data in postgres to what should be displayed in the dataTable when querying.  When a query will load a lot of values into the dataTable it's wasteful to query each ID to displayValue conversion multiple times for a single ID, so the values are stored in this hash and not re-queried if they already exist.  The first key is the dropdown_type for dropdown / multidropdown fields ;  for ontology / multiontology fields with simple obo_ tables, it's the 'obo_name_&lt;ontology_table&gt; ;  for ontology / multiontology fields with a custom specific lookup, it's the ontology type.  The second key is the ID of the value.  The value of the hash is what should be displayed, &quot;display_value&lt;span style='display: none'&gt;id&lt;/span&gt;&quot; ;  the display_value is usually the name of the object, but it could be the ID in cases like WBPapers ;  the id is the ID of the object ;  the &lt;span&gt;s are html element tags to keep the id hidden in the dataTable display, and are used for getting the IDs in the cell when a dataTable row is clicked and they should be loaded to the OA's editor frame's corresponding fields (some display_values map to multiple IDs in some datatypes).</p>
+<p>%fields  stores options for the datatype configuration's individual fields, in the format  $fields{&lt;datatype&gt;}{&lt;field_name&gt;}{&lt;option&gt;} .  Its values are initialized from the MOD-specific perl module, and returned here.</p>
+<p>%datatypes  stores options for each datatype configuration as a whole, in the format  $datatypes{&lt;datatype&gt;}{&lt;option&gt;} .  Its values are initialized from the MOD-specific perl module, and returned here.</p>
+<p>
+</p>
+<h3><a name="other_globals">OTHER  GLOBALS</a></h3>
+<p>$dbh  is the DBI database handle for postgreSQL queries.</p>
+<p>$query  is the CGI query object.</p>
+<p>$var  is a placeholder variable when getting values from the form.</p>
+<p>$action  is the action performed by the curator on the form.</p>
+<p>
+</p>
+<h2><a name="subroutines">SUBROUTINES</a></h2>
+<p>
+</p>
+<h3><a name="login_subroutine">LOGIN SUBROUTINE</a></h3>
+<p>&amp;showLogin  if there's no curator $action, show a login page, call  &amp;initFields  and the appropriate subroutine for the curator's  $action .  &amp;showLogin  has an html form that gets the login options from the MOD-specific perl module, and also shows gives options for  max_per_query  and  batch_unsafe_flag .  max_per_query  is the maximum amount of entries to get from postgres when querying for previously curated data ;  returning too many entries would slow down or freeze the browser depending on the user's computer and the amount of entries ;  a curator can query multiple times to keep getting more values.  batch_unsafe_flag  is a toggle for the javascript to use the  batchUnsafeUpdateDataTableValues  function instead of the defaul  normalSafeUpdateDataTableValues ;  the normal way sends an AJAX call for each row to change, gives individual errors, and updates the dataTable as appropriate ;  the  batch_unsafe  way is a faster way to update multiple postgres entries / dataTable rows, with a single AJAX call for all of them, a single error for all entries, and does not reflect changes in the dataTable ; if this value is toggled, the OA's editor frame has a different background and warning text.</p>
+<p>
+</p>
+<h3><a name="initialization_subroutine">INITIALIZATION SUBROUTINE</a></h3>
+<p>&amp;initFields  calls the MOD-specific subroutine to initialize %fields and %datatypes for that curator-datatype.  It also queries the oac_ postgres tables for that curator-datatype.</p>
+<p>
+</p>
+<h3><a name="show_main_subroutine">SHOW MAIN SUBROUTINE</a></h3>
+<p>&amp;showMain  gets the login variables, IP address, calls the MOD-specific login subroutine, and creates an html page with four frames :</p>
+<ul>
+<li><strong><a name="editor_frame_calling_action_editorframe_and_passing_all_variables" class="item">'editor' frame, calling action 'editorFrame' and passing all variables.</a></strong>
+
+</li>
+<li><strong><a name="obo_frame_calling_action_oboframe" class="item">'obo' frame, calling action 'oboFrame'.</a></strong>
+
+</li>
+<li><strong><a name="controls_frame_calling_action_controlsframe_and_passing_the_chosen_datatype_and_curator_two" class="item">'controls' frame, calling action 'controlsFrame' and passing the chosen 'datatype' and 'curator_two'.</a></strong>
+
+</li>
+<li><strong><a name="table_frame_calling_action_tableframe_and_passing_the_chosen_datatype_and_curator_two" class="item">'table' frame, calling action 'tableFrame' and passing the chosen 'datatype' and 'curator_two'.</a></strong>
+
+</li>
+</ul>
+<p>
+</p>
+<h3><a name="show_editor_subroutines">SHOW EDITOR SUBROUTINES</a></h3>
+<p>&amp;showEditor  shows the OA editor frame.  Gets user values and makes hidden inputs for the ontology_annotator.js to get them as needed.  If the  batch_unsafe_flag  is set, the background color of the frame is different.  Creates an html table, and for each %fields's datatype field, it sets some variables :</p>
+<ul>
+<li><strong><a name="_freeforced" class="item">$freeForced  is a flag for whether an dropdown / multidropdown / ontology / multiontology should force values or allow anything that doesn't match in them.  By default all are forced.</a></strong>
+
+</li>
+<li><strong><a name="multidropdown" class="item">$span_type  has the html character to display for dropdown / multidropdown (&amp;and), ontology / multiontology (&amp;or), others display nothing.  This value shows between the input and the query button.  dropdown / multidropdown values can have the html characer clicked to see all possible values.</a></strong>
+
+</li>
+<li><strong><a name="_field_type" class="item">$field_type  is the  $fields{&lt;datatype&gt;}{&lt;field&gt;}{'type'} .  Depending on the type, a different  &amp;showEditor...  subroutine is called.</a></strong>
+
+</li>
+<li><strong><a name="_border_style" class="item">$border_style  is the type of border the $span_type html character should have to make it look like a button.</a></strong>
+
+</li>
+<li><strong><a name="_tab" class="item">$tab  is the  $fields{&lt;datatype&gt;}{&lt;field&gt;}{'tab'} .  It also adds to  %tabs  which keeps track of how many tabs should be displayed.  The html tr element has a class $tab to determine whether to show that table row depending on which tab has been clicked.</a></strong>
+
+</li>
+<li><strong><a name="_inline_field" class="item">$inline_field  is the  $fields{&lt;datatype&gt;}{&lt;field&gt;}{'inline'} .  Fields that begin with 'INSIDE_' are skipped, because they are the second or later field to display inline.</a></strong>
+
+</li>
+<li><strong><a name="_input_size" class="item">$input_size  is the  $fields{&lt;datatype&gt;}{&lt;field&gt;}{'input_size'} .  This is the size of the html input element.  There is a default input size and default input size for inline fields.</a></strong>
+
+</li>
+<li><strong><a name="_colspan" class="item">$colspan  is the size of the html colspan.  By default it is 3, allowing inline fields to have a size of 1 for labels and inputs.</a></strong>
+
+</li>
+</ul>
+<p>and creates a table row, calling  &amp;generateEditorLabelTd  to generate and append the field's label to the row, then depending on the  $field_type  it calls the appropriate  &amp;showEditor...  subroutine(s) to create the html elements to display in the table.  Fields that are neither multidropdown nor multiontology also generate and print the value from  &amp;generateEditorSpantypeQuerybuttonTds , because these fields are a single table row so their creation subroutines don't add this.  Creates a 'Reset' button that floats right, which calls  ontology_annotator.cgi  function  resetButton  which reloads the obo frame, removes all rows from the dataTable, and blanks all editor values.  Creates a tab html button for each tab in %tabs which when clicked shows only table rows corresponding to that tab.  If  batch_unsafe_flag  is set, a warning text is displayed in an html span element.</p>
+<p>If the  $field_type  corresponds to something that should show multiple fields in one row, $colspan changes to more values will fit, and the appropriate separate  &amp;showEditor...  subroutines are called.</p>
+<p>&amp;generateEditorLabelTd  generates an html td element, passing in the field and datatype, and returning the td generated td element.  Gets &lt;label&gt; from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{'label'} .  Creates a td element with id 'label_&lt;field&gt;' and &lt;label&gt; for text, the returns it.</p>
+<p>&amp;generateEditorSpantypeQuerybuttonTds  generates two html td elements, passing in the field, border_style, and span_type ;  and returning the created td elements.  The first td element has a span with id 'type_&lt;field&gt;', html style's border-style &lt;border_style&gt; and border-color 'grey', and text of &lt;span_type&gt;.  The second td element has a button with id 'button_&lt;field&gt;' and text 'query'.</p>
+<p>&amp;showEditorText  creates an html td element for normal input fields, passing in the field, datatype, input_size, and colspan ;  and returning the created td element.  Creates a td element of fixed 150 width, colspan &lt;colspan&gt;, and an input field with id 'input_&lt;field&gt;' and size &lt;input_size&gt;.  The width is fixed because of some auto-sizing to nothing if there is no size.</p>
+<p>&amp;showEditorBigtext  is like  &amp;showEditorText  but has an additional html div element with id 'container_bigtext_&lt;field&gt;', which contains a textarea with id 'textarea_bigtext_&lt;field&gt;' with cols &lt;input_size&gt;, rows fixed at '20', and default style 'display:none'.  When the input field is clicked, the ontology_annotator.js transfers the value to the textarea, hides the input, and shows the textarea.  When blurring the textarea, the ontology_annotator.js transfers the value to the input, hides the textarea, and shows the input.  This allows editing and seeing a large amount of text in a textarea, but normally only seeing a smaller input that takes up less space.</p>
+<p>&amp;showEditorQueryonly  creates an html td element for query only fields, passing in the field, datatype, colspan ;  and returning the created td element.  Creates a td element with id 'queryonly_&lt;field&gt;', colspan &lt;colspan&gt;, align 'center', and width of &lt;colspan&gt; / 3 * 100% which makes it take up the full width.  When queried  jsonFieldQuery  gets the custom query from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{queryonlySub} instead of the field's non-existent postgres table.</p>
+<p>&amp;showEditorToggle  creates an html td element for query only fields, passing in the field, datatype, colspan ;  and returning the created td element.  Creates a td element with id 'toggle_&lt;field&gt;', colspan &lt;colspan&gt;, align 'center', and width of &lt;colspan&gt; / 3 * 100% which makes it take up the full width.  Background color is 'white' to show 'false' and when clicked,  ontology_annotator.js  toggles the background color to 'red' to show 'true'.</p>
+<p>&amp;showEditorDropdown  creates an html td element for dropdown fields, passing in the field, datatype, input_size, colspan, freeForced ;  and returning the created td element.  Creates a td element of fixed width 150 and colspan &lt;colspan&gt; containing an html span of id 'container&lt;freeForced&gt;&lt;field&gt;AutoComplete', used by YUI to create autocomplete fields.  This span contains an html div element with id '&lt;freeForced&gt;&lt;field&gt;AutoComplete' and class 'div-autocomplete', which contains an html input element with id 'input_&lt;field&gt;' and size &lt;input_size&gt;, and another html div element with id '&lt;freeForced&gt;&lt;field&gt;Container'.  Anything typed in the input field will have the  ontology_annotator.js  make an AJAX call to the CGI with action 'autocompleteXHR' to get matching values for the corresponding datatype-field-curator, and display them in the container div.  Dropdown fields can click the span_type to pass a blank as the query value, returning all values for that datatype-field-curator.</p>
+<p>&amp;showEditorOntology  is identical to  &amp;showEditorDropdown  but has a separate subroutine, should the display need to become different.  The  ontology_annotator.js  does not set the span_type to query for all values, since ontology fields have too many values for this to be practical.</p>
+<p>&amp;showEditorMultidropdown  creates html td and tr elements for multidropdown fields, passing in the field, datatype, input_size, span_type, colspan, freeForced ;  and returning the created td and tr elements.  Gets &lt;tab&gt; from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{'tab'} .  Generates a dropdown td element with  &amp;showEditorDropdown .  Generates html span_type and query button with  &amp;generateEditorSpantypeQuerybuttonTds .  Closes the html tr element.  Creates a new html tr element with class &lt;tab&gt;.   Adds to it a blank html td element for indentation to show it is part of the same field despite being a new row.  Adds to it another html td element containing an html select element with id 'select_&lt;field&gt;' of size 1 allowing multiple values to be selected.  Adds another html td element, containing an html button with id 'button_remove_&lt;field&gt;' and label 'remove'.  When adding a new value in the autocomplete input element,  ontology_annotator.js  adds it to the select element, and resizes the select element to a size equal to the elements in the field so all values always show in it.  Clicking the remove button calls  ontology_annotator.js  removeSelectFieldEntriesListener  which removes all selected values from the select element and resizes the select element to a size equal to the elements in the select field so it takes up no more space than needed to show all values.</p>
+<p>&amp;showEditorMultiontology  is identical to  &amp;showEditorMultidropdown  but has a separate subroutine, should the display need to become different.  The  ontology_annotator.js  does not set the span_type to query for all values, since ontology fields have too many values for this to be practical.</p>
+<p>
+</p>
+<h3><a name="show_obo_subroutines">SHOW OBO SUBROUTINES</a></h3>
+<p>&amp;showObo  shows the OA obo / term information frame.  Gets text, term_id, datatype, field, obotable from the form.  Creates an html div element with id 'termInfo' with &lt;term_data&gt; as text.  Creates an html div element with id 'myObo' as a placeholder for debugging messages.  The &lt;term_data&gt; comes from  &amp;getAnyTermInfo .  The ac_value is the '&lt;term_name&gt; ( &lt;term_id&gt; ) ' from &lt;term_data&gt;.  Links are created and added at the top :  an arrow left (html &amp;lArr; character) to go back a frame ;  an arrow right (html &amp;rArr; character) to go forward a frame ;  a &quot;check mark&quot; (html &amp;radic; character) to set the value of the 'input_&lt;field&gt;' to &lt;ac_value&gt;, focus, and blur (to trigger the  ontology_annotator.js  blur action to update postgres and the dataTable.  The value of the name tag is moved inside the span to bold it.</p>
+<p>&amp;getAnyTermInfo  generates term_data, passing in datatype, field, term_id ;  and returning the term data.  If the field's ontology_type is 'obo', it calls  &amp;getGenericOboTermInfo  to get data from generic postgres obo_ tables.  Otherwise it checks the  $configLoaded  and calls the MOD-specific subroutine to get term info ;  if any are loaded it calls  &amp;getAnySpecificTermInfo .</p>
+<p>&amp;getGenericOboTermInfo  generates term_data from generic postgres obo_ tables, passing in datatype, field, userValue ;  and returning the term data.  Gets the curator from the form.  Get the obotable from $fields{&lt;datatype&gt;}{&lt;field&gt;}{'ontology_table'} .  Gets the obo_ joinkey from the userValue.  Query postgres obo_data_&lt;obotable&gt;.  Return blank '' if there is no data.  Replace newlines with html br elements + newlines.  If the data has 'action=oboFrame', globally replace it with same + &quot;field=&lt;field&gt;&amp;datatype=&lt;datatype&gt;&amp;curator_two=&lt;curator&gt;&quot;, which is necessary to have the proper values in the obo frame when traveling forward and back, and selecting a value.  Return</p>
+<p>
+</p>
+<h3><a name="show_controls_subroutine">SHOW CONTROLS SUBROUTINE</a></h3>
+<p>&amp;showControls  shows the OA controls frame.</p>
+<p>Gets the datatype from the form.</p>
+<p>Creates an html div element with id 'loadingImage' to hold the image when loading data from a postgres query.</p>
+<p>Creates an html button element with id 'newRow' to create a new dataTable row ;  when clicked the  ontology_annotator.js  calls  newRowButtonListener  which does an AJAX call to the CGI with action 'newRow', creating and getting a new pgid / joinkey, then doing another AJAX call to the CGI with action  jsonFieldQuery  passing the new pgid and getting the created row to load and highlight in the dataTable.</p>
+<p>Creates an html button element with id 'duplicateRow' to create a new dataTable row for each dataTable row that is selected, all values except for pgid / joinkey are duplicated ;  when clicked the  ontology_annotator.js  calls  duplicateRowButtonListener  which does an AJAX call to the CGI with action 'duplicateByPgids', getting the newly created pgids, doing another AJAX call to the CGI with action  jsonFieldQuery  passing the new pgids and getting the created rows to load and highlight in the dataTable.</p>
+<p>Creates an html button element with id 'deleteRow' to delete selected dataTable rows ;  when clicked the  ontology_annotator.js  calls  deleteRowButtonListener  which does an AJAX call to the CGI with action 'deleteByPgids', deleting the entries from the postgres tables and from the dataTable.</p>
+<p>Creates an html button element with id 'checkData' to optionally check data in the dataTable against datatype-specific constraints ;  when clicked the  ontology_annotator.js  calls  checkDataButtonListener  which does an AJAX call to the CGI with action 'checkDataByPgids', if return values are not 'OK', a popup window is openend and focused, loading the messages from the return value.</p>
+<p>Creates a hidden html input element with id 'filtersMaxAmount' that stores the maximum amount of filters.</p>
+<p>Creates an html select element with id 'filtersAmount', and options 1 through the maximum amount of filters.  When the form loads or this value changes, the  ontology_annotator.js  calls  updateFiltersAmount  which shows only that amount of filtering pairs (see next paragraph).</p>
+<p>For the maximum amount of filters, creates pairs of html elements.  An html select element with id 'filterType&lt;count&gt;' with options 'all' and each of the fields from $fields{&lt;datatype&gt;}.  An html input element with id 'filterValue&lt;count&gt;' for the curator's text to filter on.  When something is typed into an input, the  ontology_annotator.js  will show only the dataTable rows that contain the typed text in the corresponding 'filterType&lt;count&gt;' column.</p>
+<p>
+</p>
+<h3><a name="show_table_subroutine">SHOW TABLE SUBROUTINE</a></h3>
+<p>&amp;showTable  shows the OA dataTable frame.  This frame loads all the required .css and .js files into the html head element ;  when reloading the form, be sure to reload this frame to update those files.</p>
+<p>Gets the datatype from the form.</p>
+<p>The html body element needs to have class 'yui-skin-sam'.  When resized, the  ontology_annotator.js  calls  resizeDataTable  which sets the height of html div elements with class 'yui-dt-bd', because they tend to be too big and create scrollbars.</p>
+<p>For each field from $fields{&lt;datatype&gt;}, create an html input element of class 'fields' with value &lt;field&gt;.  For each field's tag, get data from $fields{&lt;datatype&gt;}{&lt;field&gt;}{&lt;tag&gt;} and create &quot;'&lt;tag&gt;' : '&lt;data&gt;'&quot; pairs to join with commas, and store in an html input field with id 'data_&lt;field&gt;'.  The  ontology_annotator.js  looks up all the fields from the inputs of class 'fields', and gets the  fieldsData  from each field's 'data_&lt;field&gt;' html input element.</p>
+<p>
+</p>
+<h3><a name="json_field_query_subroutines">JSON FIELD QUERY SUBROUTINES</a></h3>
+<p>&amp;jsonFieldQuery  generates a text page for returning AJAX queries for postgres data.  Gets userValue, datatype, field, maxPerQuery, allDataTableIds from form ;  and returns JSON of return message and entries for data for each postgres joinkey / dataTable row.   userValue is what to query for, datatype is the datatype to query for, field is the datatype's field to query on, maxPerQuery is the maximum rows to return, allDataTableIds are the joinkeys already in the dataTable that should be skipped when querying.  Fields of type dropdown or multidropdown check the MOD-specific perl module for the subroutine to have their values added to  $fieldType{&lt;dropdown_type&gt;}{&lt;id&gt;} = &lt;autocomplete_value&gt;  where the autocomplete_value has the id hidden in a 'display: none' html span element, for loading into the dataTable.  The pgtable to query is the '&lt;datatype&gt;_&lt;field&gt;', but if the field is 'id', it should instead query the tables from $datatypes{&lt;datatype&gt;}{highestPgidTables} .  For each table to query :  If the field type is multiontology or multidropdown, the value to query should have doublequotes around it ;  query for the userValue on the table where the joinkey is not already in the dataTable in descending timestamp order.  If the field type is ontology or dropdown ;  query for the userValue on the table where the joinkey is not already in the dataTable in descending timestamp order.  If the field type is neither, and the userValue to query has three or more characters, do an exact query ;  if it has less than three characters do a substring query ;  query for the userValue on the table where the joinkey is not already in the dataTable in descending timestamp order.  If the field type is queryonly, remove the crafted queries, because queryonly fields do not correspond to postgres tables, and instead get the postgres query from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{queryonlySub} .  Query postgres for those queries, and get the joinkeys / pgids, ignoring results over the maxPerQuery limit ;  create returnMessage of values the query found.  For each $fields{&lt;datatype&gt;} that has a postgres table, query for the data corresponding to the joinkeys to return, filtering the data through  &amp;getTableDisplayData  and storing it in  $hash{&lt;joinkey&gt;}{&lt;field&gt;} .  Print to text page JSON format representation of hash, with the returnMessage as the first entry, and each joinkey's data as the next entries.</p>
+<p>&amp;getTableDisplayData  converts data to proper JSON-format data, and if appropriate to the MOD-specific perl module adds any specific ontology or multiontology to the %fieldIdToValue.  Passes in datatype, field, data ;  and returns formatted data.  If the field is of type dropdown or multidropdown, get the dropdown_type from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{dropdown_type} ;  if data exists in  $fieldIdToValue{&lt;dropdown_type&gt;}{&lt;data&gt;}  use that as the data value.  If the field is of type multiontology or ontology, and the field's ontology_type is 'obo', call  &amp;getGenericOboIdToValue ;  otherwise check  $configLoaded  and call the appropriate subroutine ;  if any are loaded it calls  &amp;getAnySpecificIdToValue  and updates  %fieldIdToValue from values there.  Any data is cleaned through  &amp;parseJson .</p>
+<p>&amp;getGenericOboIdToValue  converts generic obo values from postgres values (ids) to what someone types for dataTable display, passing in datatype, field, data ;  and returning the parsed data.  Get ontology_table from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{ontology_table} .  Get obotable as 'obo_name_&lt;ontology_table&gt;'.  Strip data of doublequotes (if an Id has a doublequote the lookup here will fail), split user data on commas in case it's multiontology data, and for each id :  Check if it has already been looked up in  $fieldIdToValue{&lt;obotable&gt;}{&lt;id&gt;} , using that value if so ;  otherwise query the postgres table &lt;obotable&gt; for a joinkey of value &lt;id&gt;, and if matching create a value being the postgres table value + an html span element with style 'display: none' containing the &lt;id&gt; / joinkey ;  if the field's type is multiontology add surrounding doublequotes ;  assign this id-value pair to  $fieldIdToValue{&lt;obotable&gt;}{&lt;id&gt;} for future lookup, and to the results to return.  Join results with commas and return.</p>
+<p>&amp;getAnyMultidropdownIdToValue  converts multidropdown postgres values (ids) to what someone types for dataTable display, passing in dropdown_type and data ;  and returning the parsed data.  Strip data of doublequotes (if an Id has a doublequote the lookup here will fail), split user data on commas in case it's multidropdown data, and for each id :  Check if it has already been looked up in  $fieldIdToValue{&lt;dropdown_type&gt;}{&lt;id&gt;} , using that value if so.  Join results with doublequote-comma-doublequote, wrap in doublequotes, and return.</p>
+<p>&amp;parseJson  escapes some xml characters, passing in data and returning the cleaned data.  Newlines are globally replaced with spaces.  Doublequotes are espaced with backslashes.  Literal newlines are stipped.</p>
+<p>
+</p>
+<h3><a name="autocomplete_subroutines">AUTOCOMPLETE SUBROUTINES</a></h3>
+<p>&amp;autocompleteXHR  generates a text page for returning AJAX queries for autocompletion fields.  From the form gets datatype, field, and words from the default YUI autocomplete field 'query' ;  and prints rows of autocomplete values for the container html div element.  Words are lower cased.  If the field type is dropdown or multidropdown call  &amp;getAnySimpleAutocomplete .  If the field type is ontology or multiontology, and the field's ontology_type is 'obo', call  &amp;getGenericOboAutocomplete ;  otherwise check  $configLoaded  and call the appropriate subroutine ;  if any are loaded it calls  &amp;getAnySpecificAutocomplete .  Print result matches.</p>
+<p>&amp;getAnySimpleAutocomplete  generates ordered autocomplete matches for dropdown or multidropdown fields, passing in datatype, field, words ;  and returning the result matches.  Get dropdown_type from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{dropdown_type} .  Call the MOD-specific perl module subroutine to get the values for the dropdown_type.  Return matching values.</p>
+<p>&amp;getGenericOboAutocomplete  generates autocomplete matches from generic postgres obo_ tables, passing in datatype, field, words ;  and returning the result matches.  Get ontology_table from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{ontology_table} .  max_results is the maximum amount of autocomplete objects to return, by default it is 20, but if there are 5 or more characters typed it becomes 500 because some GO ontologies have hundreds of terms with the same words.  Singlequotes are escaped for postgres queries.  The three tabletypes of postgres obo_ tables are name (id to name mapping), syn (id to synonyms), data (id to full data for term info display).  Results are stored in a tied hash to maintain order.  For each tabletype obotable is 'obo_&lt;tabletype&gt;_&lt;ontology_table&gt;'.  The column to match on is the table name, but for tabletype 'data' query the joinkey column.  Query the table matching the column for lower cased values starting with &lt;words&gt;, sorted by column.  Get up to max_results, getting the data as '&lt;data&gt; ( &lt;id&gt; ) '.  If the tabletype is 'syn' or 'data' query the name tabletype to get the object's name.  If the tabletype is 'syn' append a '[&lt;name&gt;]' ;  if the tabletype is 'data', replace the match with '&lt;name&gt; ( &lt;id&gt; ) '.  Query again the same way matching for the word anywhere in the field except for in the beginning.  If there are more matches than max_results replace the last value with 'more ...' to let the user know there are more values.  Return matches.</p>
+<p>
+</p>
+<h3><a name="async_term_info_subroutine">ASYNC TERM INFO SUBROUTINE</a></h3>
+<p>&amp;asyncTermInfo  generates a text page for returning AJAX queries for term information of fields of type ontology or multiontology.  From the form gets datatype, field, userValue ;  and prints term information for the termInfo html div element of the OA's obo frame.  Calls  &amp;getAnyTermInfo  (see  SHOW OBO SUBROUTINES ).</p>
+<p>
+</p>
+<h3><a name="async_valid_value_subroutines">ASYNC VALID VALUE SUBROUTINES</a></h3>
+<p>&amp;asyncValidValue  generates a text page for returning AJAX queries to check if an autocomplete value is valid.  From the form gets datatype, field, userValue ;  and prints whether it is 'OK' or has an error message.  If the field type is dropdown or multidropdown call  &amp;getAnySimpleValidValue .  If the field type is ontology or multiontology, and the field's ontology_type is 'obo', call  &amp;getGenericOboValidValue ;  otherwise check  $configLoaded  and call the appropriate subroutine ;  if any are loaded it calls  &amp;getAnySpecificValidValue .  Print result matches.</p>
+<p>&amp;getAnySimpleValidValue  checks whether a value exists in a dropdown or multidropdown fields, passing in datatype, field, userValue ;  and returning 'true' or 'false'.  Get dropdown_type from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{dropdown_type} .  Call the MOD-specific perl module subroutine to set the values for the dropdown_type, then loop through them returning 'true' if found, returning false if there is no match.</p>
+<p>&amp;getGenericOboValidValue  checks whether a value exists in a generic postgres obo_ tables, passing in datatype, field, userValue ;  and returning 'true' or 'false'.  Get ontology_table from  $fields{&lt;datatype&gt;}{&lt;field&gt;}{ontology_table} .  Get obotable as 'obo_name_&lt;ontology_table&gt;'.  Get the value and joinkey from the userValue.  Convert userValue from URL to postgres format with  &amp;fromUrlToPostgres  for postgres query.  If both joinkey and value have an entry in the postgre obotable return 'true', otherwise return 'false'.</p>
+<p>
+</p>
+<h3><a name="update_postgres_table_field_subroutines">UPDATE POSTGRES TABLE FIELD SUBROUTINES</a></h3>
+<p>&amp;updatePostgresTableField  generates a text page for returning AJAX updates, called when an editor field is blurred, to update corresponding postgres tables.  From the form gets datatype, field, pgid, newValue ;  and prints 'OK' if successful or error message.  If the field's type is multiontology or multidropdown get the ids from within the html span elements, join them with doublequotes, and wrap them in doublequotes ;  otherwise if the field has an html span element, get the id from within it ;  otherwise the value stays the same.  The postgres table is '&lt;datatype&gt;_&lt;field&gt;', call  &amp;updatePostgresByTableJoinkeyNewvalue  and print whether it is 'OK' or has an error message.</p>
+<p>&amp;updatePostgresByTableJoinkeyNewvalue  updates postgres data tables for a given table and pgids, passing in table, pgid, newValue ;  and returning 'OK' if successful or error message.  Convert newValue from URL to postgres format with  &amp;fromUrlToPostgres  for postgres command, wrap in singlequotes, and convert to utf8 if it is not ;  if there's no newValue set it to NULL.  ontology_annotator.js  has a  batchUnsafeUpdateDataTableValues  mode to update multiple table entries at once for multiple pgids, so split on comma to get array of pgids.  For each pgid delete that pgid's entry from the main table, insert NULL or value into the postgres history table, and if there's a value insert into the postgres data table.  If there are errors return them, otherwise return 'OK'.</p>
+<p>
+</p>
+<h3><a name="update_postgres_column_subroutine">UPDATE POSTGRES COLUMN SUBROUTINE</a></h3>
+<p>&amp;updatePostgresColumn  generates a text page for returning AJAX updates, called when a dataTable column setting changes, to update corresponding postgres tables.  From the form gets datatype, table, curator, column action, newValue ;  and prints 'OK' if successful or error message.  Set the pgtable depending on the column action.  Delete from the table for the curator, datatype, and table.  For columnWidth and columnShowHide insert new value.  For columnOrder get the tables in order and insert them with count.  Print whether it is 'OK' or has an error message.</p>
+<p>
+</p>
+<h3><a name="new_row_subroutines">NEW ROW SUBROUTINES</a></h3>
+<p>&amp;newRow  generates a text page for returning AJAX updates of new datatype object creation of dataTable / postgres table data.  From the form gets datatype and curator ;  and prints whether the creation is 'OK' or has an error message.  Get the highest used pgid from  &amp;getHighestPgid .  If it's not a digit give an error.  Make a new pgid by adding one to the highest one.  Call the subroutine from  $datatypes{&lt;datatype&gt;}{newRowSub}  to create a new datatype object in the postgres data tables, getting back the new pgid or error message.  If the value returned is an integer the return message is 'OK', otherwise it's the value returned.  If there are errors print them, otherwise print 'OK' ;  followed by distinct divider for  ontology_annotator.js  newRowButtonListener  to separate data ;  followed by the new pgid.</p>
+<p>&amp;getHighestPgid  gets the highest used pgid from the postgres tables, passing in the datatype ;  and returning the highest pgid.  Gets the postgres tables to check from  $datatypes{&lt;datatype&gt;}{highestPgidTables}  and queries for the highest joinkey as an integer, returning it, or gives an error message.</p>
+<p>
+</p>
+<h3><a name="duplicate_by_pgids_subroutine">DUPLICATE BY PGIDS SUBROUTINE</a></h3>
+<p>&amp;duplicateByPgids  generates a text page for returning AJAX updates of duplications of dataTable / postgres table data.  From the form gets datatype and idsToDuplicate ;  and prints whether the duplications are 'OK' or have an error message, as well as a distinct divider and the newly duplicated pgids.  Get the highest used pgid from  &amp;getHighestPgid (see  NEW ROW SUBROUTINES ).  If it's not a digit give an error.  Split idsToDuplicate on comma to get array of pgids.  For each pgid get a new pgid to create and loop through each datatype's field, skipping 'id' field and fields of type 'queryonly', making the postgres table as '&lt;datatype&gt;_&lt;field&gt;', querying the pgid to duplicate for data, and if it has data calling  &amp;updatePostgresByTableJoinkeyNewvalue  on the table, new pgid, and retrieved data.  If there are errors print them, otherwise print 'OK' ;  followed by distinct divider for  ontology_annotator.js  duplicateRowButtonListener  to separate data ;  followed by comma-joined duplicated pgids.</p>
+<p>
+</p>
+<h3><a name="delete_by_pgids_subroutine">DELETE BY PGIDS SUBROUTINE</a></h3>
+<p>&amp;deleteByPgids  generates a text page for returning AJAX updates of deletions from dataTable / postgres table data.  From the form gets datatype and idsToDelete ;  and prints whether the deletions are 'OK' or have an error message.  Split idsToDelete on comma to get array of pgids.  For each pgid loop through each datatype's field, skipping 'id' field and fields of type 'queryonly', making the postgres table as '&lt;datatype&gt;_&lt;field&gt;', querying it for data, and if it has data calling  &amp;updatePostgresByTableJoinkeyNewvalue  on the table, pgid, and blank '' data.  If there are errors print them, otherwise print 'OK'.  This should never print anything because postgres deletes don't give errors and NULL inserts are skipped.</p>
+<p>
+</p>
+<h3><a name="check_data_by_pgids_subroutines">CHECK DATA BY PGIDS SUBROUTINES</a></h3>
+<p>&amp;checkDataByPgids  generates a text page for returning AJAX queries to check if dataTable data passes tests for the datatype ;  one test can be whether specific tables require data, the other is for custom constraints (e.g. a field's data fits a format, or any of N fields have data).  From the form gets datatype, allDataTableIds ;  and prints whether it is 'OK' or has an error message.  Checks  $datatypes{&lt;datatype&gt;}{constraintTablesHaveData}  to see if there is a list of tables that must have data for the datatype, calling  &amp;checkDataInPgTable .  Checks  $datatypes{$datatype}{constraintSub}  to see if there is a special constraint subroutine for additional checks, calling it.  If either check gets an error message, print the error message(s), otherwise print 'OK'.</p>
+<p>&amp;checkDataInPgTable  checks whether all pgids in the dataTable have data for a list of tables for the datatype, passing in datatype, arrayref, and allDataTableIds ;  and returning any error messages or blank ''.  arrayref is the reference to the array of tables that should have data in  $datatypes{&lt;datatype&gt;}{constraintTablesHaveData} .  allDataTableIds are the comma-separated pgids passed in from the AJAX call to  &amp;checkDataByPgids .  Gets list of ids by splitting on comma, creates joinkeys by joining on singlequote-comma-singlequote for postgres query.  If arrayref has no tables returns (blank).  For each table makes the postgres table as '&lt;datatype&gt;_&lt;table&gt;', querying the table and joinkeys, hashing all joinkeys and tables.  For each pgid to check, if there's no hash entry adds error to returnMessage ;  otherwise checks each table for id-table in the hash, if there's no value add to list of tablesMissingData, then add all pgid-tablesMissingData to returnMessage.  Return returnMessage.</p>
+
+</body>
+
+</html>

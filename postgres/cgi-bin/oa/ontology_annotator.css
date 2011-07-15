@@ -1,0 +1,13 @@
+.yui-dt-liner {				/* to show one line per datatable row */
+    height: 19px;			/* just tall enough for the size of the font */
+    line-height: 121%;			/* vertical spacing for the size of the font */
+    overflow: hidden !important;	/* hide the overflow */
+}
+
+.hidden-overflow-data {			/* cells that have overflow need a red square on the right */
+    background:url(images/red_square.jpg) no-repeat right;
+}
+
+.div-autocomplete {			/* div that gives auto complete results needs some padding */
+    padding-bottom:1.5em;
+}
