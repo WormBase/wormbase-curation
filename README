@@ -1,0 +1,11 @@
+WormBase curation centers:
+Hinxton - Sequence
+WashU - Sequence
+Caltech - Literature
+
+Data is collected and integrated based on data models defined on the following wikipage:
+http://wiki.wormbase.org/index.php/WormBase_Models
+
+ace_dump_scripts -> scripts used by literature curators at Caltech to dump their data into the acedb .ace format
+
+datatypes -> information concerning the status of the curated data with all relevant information of the datatype curation pipeline 

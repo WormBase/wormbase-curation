@@ -3,9 +3,6 @@ tazendra acedb/wen/phenote_transgene/transgene_dump_ace.pl
 dumps transgene postgres table on a weekly cron job, every Thursday morning at 6:00 am and deposits file on spica Data_for_citace/Data_from_Karen
 switched from dumping from phenote to dumping from the OA table starting WS219
 
-
-
-
 *********
 use_package.pl
 tazendra /work/allele_phenotype/use_package.pl 

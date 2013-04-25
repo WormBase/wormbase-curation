@@ -1,0 +1,17 @@
+Curation of drugs/chemicals and small molecules that influence gene function
+
+-----
+Ontologies used
+CheBI
+Paper
+
+-----
+Scripts
+acedb/karen/Molecule/dump_molecule_ace.pl
+ 
+
+-----
+Dependencies
+acedb/karen/Molecule/database.ace
+mol_phen.ace
+molecule.obo used in Phenotype, Process, Interaction (gene regulation), RNAi

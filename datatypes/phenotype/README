@@ -1,0 +1,38 @@
+Model changes: 
+WS219 
+	added Not_observed_phenotype tag
+
+------
+Ontologies used
+
+Paper
+Person
+Variation
+Rearrangements
+Transgene
+Gene
+Phenotype
+Molecule
+Anatomy
+Lifestage
+Laboratory
+Phenotype 
+	http://tazendra.caltech.edu/~azurebrd/cgi-bin/forms/phenotype_ontology_obo.cgi (from CVS on spica?)	
+	/postgres/work/pgpopulation/obo_oa_ontologies/update_obo_oa_ontologies.pl
+
+-----
+Scripts
+
+parse_maryann.pl  (parses NBP data)
+tazendra 
+
+use_package.pl
+acedb/work/allele_phenotype/use_package.pl
+
+get_paper_object.pl
+acedb/karen/phenote/paper_object/get_paper_object.pl 
+
+
+-------
+Other Sources
+https://bitbucket.org/kyook/ky_wbprojects/wiki/NBP_data_parsing

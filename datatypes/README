@@ -1,0 +1,236 @@
+List of datatypes actively curated unless otherwise noted. 
+
+Changes to datatypes reflected through WS models.wrm can be viewed here:
+http://wiki.wormbase.org/index.php/WS223_Models.wrm
+
+_____
+Anatomy
+	Datatype added:<WS170
+	Curation stored in: https://github.com/raymond91125/Wao/raw/master/WBbt.obo
+	Curator: Raymond Lee
+	Notes: From Cell_group? <WS100
+
+Antibody
+	Summary: antibody objects
+	Datatype added:<WS170
+	Curation stored in: Caltech postgres tables ant_
+	Curator: Wen Chen
+	Curator: Xiaodong Wang
+	
+Author
+	Summary:
+	Datatype added: <WS100
+	Curation stored in:
+	Curator: Cecilia
+
+Clone
+	Summary:
+	Datatype added: <WS100
+	Curation stored in: 
+	Curator:
+	
+Concise Descriptions
+	Summary: concise description of gene function
+	Datatype added:<WS100
+	Curation stored in: Caltech postgres tables con_
+	Curator: Kimberly Van Auken
+	Curator: Erick Schwarz
+	Curator: Ranjana Kishore
+	Curator: Snehalata
+	
+Database
+	Summary: For the construction of URLs
+	Datatype added:
+	Curation stored in: ACeDB, also in WB repository on GitHub
+	Curator:
+	
+Disease
+	Summary: worm models of human disease
+	Datatype added: WS236
+	Curation stored in: Caltech postgres tables dis_
+	Curator: Ranjana Kishore
+	
+Expression cluster
+	Summary:
+	Datatype added: WS228
+	Curation stored in:
+	Curator: Wen Chen
+	
+Expression pattern
+	Summary: pattern of gene expression
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables expr_
+	Curator: Wen Chen
+	Curator: Daniela Raciti
+	
+Gene
+	Summary:
+	Datatype added: <WS100
+	Curation stored in: Geneace
+	Curator:
+
+Gene class descriptions
+	Summary: concise description of gene classes
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables 
+	Curator: Uma
+	Curator: Karen Yook 
+
+Gene regulation
+	Summary: regulation of gene expression
+	Datatype added: <WS110
+	Curation stored in: Caltech postgres tables grg_
+	Curator: Xiadong Wang
+	Retired: WS237
+	Changes: datatype moved to Interaction Model WS237
+	
+	
+GO
+	Summary: gene ontology annotation
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables
+	Curator: Kimberly Van Auken
+	Curator: Ranjana Kishore
+
+Interaction (Unified)
+	Summary: genetic and physical interactions
+	Datatype added: WS231
+	Curation stored in: Caltech postgres tables int_
+	Curator: Xiadong Wang (Gene regulation, Y1H, Y2H)
+	Curator: Chris Grove (RNAi-based interactions)
+	Curator: Gary Schindelman (RNAi-based interactions)
+	Curator: Karen Yook (variation-based interactions)
+
+Journal
+	Datatype added: <WS100
+	Retired: WS214
+	Changes: Replaced by ?Paper class
+	
+Laboratory
+	Summary:
+	Datatype added: <WS100
+	Curation stored in:
+	Curator: Mary Ann Tuli
+
+Life stage
+	Summary:
+	Datatype added: <WS100
+	Curation stored in: https://raw.github.com/draciti/Life-stage-obo/master/worm_development.obo
+	Curator: Wen Chen
+	Curator: Daniela Raciti
+	
+Microarray
+	Summary:
+	Datatype added: <WS100
+	Curation stored in:
+	Curator: Igor Antoshechkin
+	Curator: Wen Chen
+	
+Molecule
+	Summary: small molecule, drugs, chemicals that influence phenotype, gene function, disease etc.
+	Datatype added: WS217 
+	Curation stored in: Caltech postgres tables mop
+	Curator: Karen Yook
+
+Movie
+	Summary:
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables mov_
+	Curator: Daniela Raciti
+	
+Paper
+	Summary:
+	Datatype added: WS214
+	Curation stored in: Caltech postgres tables pap_
+	Curator: Kimberly Van Auken
+	
+Person
+	Summary:
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables per_
+	Curator: Cecilia
+	
+PFM/PWM
+	Summary: For known or inferred binding sites of transcription factors to DNA
+	Datatype added: WS185
+	Curation stored in:
+	Curator: Erich Schwarz
+	Curator: Xiaodong Wang
+
+Phenotype_variation
+	Summary: annotations of phenotypes to variations, strains, rearrangements, transgenes
+	Datatype added: <WS170
+	Curation stored in: Caltech postgres tables app_
+	Curator: Carol Bastiani 
+	Curator: Gary Schindelman
+	Curator: Jolene Fernandes
+	Curator: Karen Yook
+
+Physical Interaction
+	Summary: Originally for Y2H interactome data from 2004
+	Datatype added: <WS137	
+	Curator: BioGrid?
+	Curation stored in: 
+	Retired: WS231
+	Changes: merged into the interaction model WS231
+
+Picture
+	Summary: paper figures
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables pic_
+	Curator: Daniela Raciti (WS223-
+	Changes: Picture model significantly reworked in WS223
+	
+Process
+	Summary: process curation to many datatypes
+	Datatype added: WS225
+	Curation stored in: Caltech postgres tables pro_
+	Curator: Karen Yook (WS225-
+
+Process terms
+	Summary: creation and definition of process terms used in process curation
+	Datatype added: WS225
+	Curation stored in: Caltech postgres tables prt_
+	Curator: Karen Yook	(WS225-
+
+Rearrangement
+	Summary:
+	Datatype added: <WS100
+	Curation stored in:
+	Curator: Mary Ann Tuli
+
+RNAi 
+	Summary: RNAi object and phenotype curation
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables rna_
+	Curator: Gary Schindelman
+	Curator: Chris Grove
+	Curator: Wen Chen
+
+Strain
+	Summary:
+	Datatype added: <WS100
+	Curation stored in: Hinxton
+	Curator: Mary Ann Tuli
+
+Transgene
+	Summary: collection of integrated and extrachromosomal transgene objects
+	Datatype added: <WS100
+	Curation stored in: Caltech postgres tables trp_
+	Curator: Wen Chen ( -WS215)
+	Curator: Karen Yook (WS215- )
+		
+Taxon
+	Summary:
+	Datatype added: <WS100
+	Curation stored in: 
+	Curator:
+	
+Variation
+	Summary: Variation objects
+	Datatype added: <WS100
+	Curation stored in: Nameserver, Geneace
+	Curator: Mary Ann Tuli
+	Change:
+
+	
