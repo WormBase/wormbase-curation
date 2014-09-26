@@ -114,6 +114,9 @@
 <li><strong><a name="highestpgidtables_required_array_of_tables_for_this_config_that_should_have_a_value_to_determine_the_highest_used_pgid_also_when_doing_a_jsonfieldquery_if_querying_by_id_use_these_tables_instead" class="item">highestPgidTables	REQUIRED	array of tables for this config that should have a value to determine the highest used pgid.  Also when doing a &amp;jsonFieldQuery if querying by id use these tables instead.</a></strong>
 
 </li>
+<li><strong><a name="label_required_label_to_show_in_editor_frame_which_configuration_has_been_selected" class="item">label	REQUIRED	label to show in Editor frame which configuration has been selected.</a></strong>
+
+</li>
 <li><strong><a name="newrowsub_required_pointer_to_the_config_specific_sub_to_create_a_new_row_most_only_insert_to_postgres_table_of_curator_field_others_also_to_other_tables" class="item">newRowSub	REQUIRED	pointer to the config-specific sub to create a new row.  Most only insert to postgres table of _curator field, others also to other tables.</a></strong>
 
 </li>
@@ -150,10 +153,19 @@
 <li><strong><a name="queryonlysub_dependent_required_for_fields_of_type_queryonly_pointer_to_the_datatype_field_specific_sub_to_create_a_custom_postgres_query_for_queryonly_fields_that_returns_joinkeys" class="item">queryonlySub  DEPENDENT		required for fields of type queryonly.  Pointer to the datatype-field-specific sub to create a custom postgres query for queryonly fields that returns joinkeys.</a></strong>
 
 </li>
-<li><strong><a name="edited" class="item">noteditable	OPTIONAL	flag.  Field can't be edited (affects ontology_annotator.js only).  Values in bigtext field will toggle into the input field, so the editor will change, but values will not update in the datatable, nor change in postgres.</a></strong>
+<li><strong><a name="edited" class="item">noteditable	OPTIONAL	flag.  Field can't be edited (affects ontology_annotator.js only).  Values in bigtext field will toggle into the input field, so the editor will change, but values will not update in the datatable, nor change in postgres.  A bit obsolete with 'disabled' option, but useful if need to copy-paste.</a></strong>
+
+</li>
+<li><strong>disabled   	OPTIONAL	flag.  Field can't be edited (prevents editing html with disabled flag).</strong>
 
 </li>
 <li><strong><a name="input_size_optional_integer_html_input_tag_has_this_size_on_editor" class="item">input_size	OPTIONAL	integer.  Html input tag has this size on editor.</a></strong>
+
+</li>
+<li><strong><a name="cols_size_optional_integer_html_textarea_tag_has_this_cols_size_on_editor" class="item">cols_size	OPTIONAL	integer.  Html textarea tag has this cols size on editor.</a></strong>
+
+</li>
+<li><strong><a name="rows_size_optional_integer_html_textarea_tag_has_this_rows_size_on_editor" class="item">rows_size	OPTIONAL	integer.  Html textarea tag has this rows size on editor.</a></strong>
 
 </li>
 <li><strong><a name="placeholder_optional_fake_field_to_set_the_order_in_the_tied_hash_fields_on_editor_show_in_order_they_were_entered_in_the_tied_fields_hash_this_only_serves_to_set_the_order" class="item">placeholder	OPTIONAL	fake field to set the order in the tied hash.  Fields on editor show in order they were entered in the tied %fields hash, this only serves to set the order.</a></strong>

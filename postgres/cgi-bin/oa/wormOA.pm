@@ -32,14 +32,23 @@ sub initWormFields {
   my $fieldsRef; my $datatypesRef;
   if ($datatype eq 'abp')    { ($fieldsRef, $datatypesRef) = &initWormAbpFields($datatype, $curator_two); }
   elsif ($datatype eq 'app') { ($fieldsRef, $datatypesRef) = &initWormAppFields($datatype, $curator_two); }
+  elsif ($datatype eq 'cns') { ($fieldsRef, $datatypesRef) = &initWormCnsFields($datatype, $curator_two); }
+  elsif ($datatype eq 'con') { ($fieldsRef, $datatypesRef) = &initWormConFields($datatype, $curator_two); }
+  elsif ($datatype eq 'dis') { ($fieldsRef, $datatypesRef) = &initWormDisFields($datatype, $curator_two); }
+  elsif ($datatype eq 'dit') { ($fieldsRef, $datatypesRef) = &initWormDitFields($datatype, $curator_two); }
   elsif ($datatype eq 'exp') { ($fieldsRef, $datatypesRef) = &initWormExpFields($datatype, $curator_two); }
   elsif ($datatype eq 'gcl') { ($fieldsRef, $datatypesRef) = &initWormGclFields($datatype, $curator_two); }
   elsif ($datatype eq 'gop') { ($fieldsRef, $datatypesRef) = &initWormGopFields($datatype, $curator_two); }
   elsif ($datatype eq 'grg') { ($fieldsRef, $datatypesRef) = &initWormGrgFields($datatype, $curator_two); }
   elsif ($datatype eq 'int') { ($fieldsRef, $datatypesRef) = &initWormIntFields($datatype, $curator_two); }
   elsif ($datatype eq 'mop') { ($fieldsRef, $datatypesRef) = &initWormMopFields($datatype, $curator_two); }
+  elsif ($datatype eq 'mov') { ($fieldsRef, $datatypesRef) = &initWormMovFields($datatype, $curator_two); }
   elsif ($datatype eq 'pic') { ($fieldsRef, $datatypesRef) = &initWormPicFields($datatype, $curator_two); }
+  elsif ($datatype eq 'pro') { ($fieldsRef, $datatypesRef) = &initWormProFields($datatype, $curator_two); }
+  elsif ($datatype eq 'prt') { ($fieldsRef, $datatypesRef) = &initWormPrtFields($datatype, $curator_two); }
   elsif ($datatype eq 'ptg') { ($fieldsRef, $datatypesRef) = &initWormPtgFields($datatype, $curator_two); }
+  elsif ($datatype eq 'rna') { ($fieldsRef, $datatypesRef) = &initWormRnaFields($datatype, $curator_two); }
+  elsif ($datatype eq 'sqf') { ($fieldsRef, $datatypesRef) = &initWormSqfFields($datatype, $curator_two); }
   elsif ($datatype eq 'trp') { ($fieldsRef, $datatypesRef) = &initWormTrpFields($datatype, $curator_two); }
   return( $fieldsRef, $datatypesRef);
 } # sub initWormFields
@@ -116,6 +125,7 @@ sub initWormAbpFields {
   $fields{abp}{curator}{tab}                         = 'all';
   $fields{abp}{curator}{dropdown_type}               = 'curator';
   $datatypes{abp}{newRowSub}                         = \&newRowAbp;
+  $datatypes{abp}{label}                             = 'antibody';
   @{ $datatypes{abp}{highestPgidTables} }            = qw( name curator );
   return( \%fields, \%datatypes);
 } # sub initWormAbpFields
@@ -127,10 +137,6 @@ sub initWormAppFields {
   $fields{app}{id}{type}                             = 'text';
   $fields{app}{id}{label}                            = 'pgid';
   $fields{app}{id}{tab}                              = 'tab1';
-  $fields{app}{curation_status}{type}                = 'dropdown';
-  $fields{app}{curation_status}{label}               = 'Curation Status';
-  $fields{app}{curation_status}{tab}                 = 'tab1';
-  $fields{app}{curation_status}{dropdown_type}       = 'curationstatus';
   $fields{app}{curator}{type}                        = 'dropdown';
   $fields{app}{curator}{label}                       = 'Curator';
   $fields{app}{curator}{tab}                         = 'tab1';
@@ -174,6 +180,13 @@ sub initWormAppFields {
   $fields{app}{caused_by_other}{type}                = 'text';
   $fields{app}{caused_by_other}{label}               = 'Caused By Other';
   $fields{app}{caused_by_other}{tab}                 = 'tab1';
+  $fields{app}{curation_status}{type}                = 'dropdown';
+  $fields{app}{curation_status}{label}               = 'Curation Status';
+  $fields{app}{curation_status}{tab}                 = 'tab1';
+  $fields{app}{curation_status}{dropdown_type}       = 'curationstatus';
+  $fields{app}{legacyinfo}{type}                     = 'bigtext';
+  $fields{app}{legacyinfo}{label}                    = 'Legacy Info';
+  $fields{app}{legacyinfo}{tab}                      = 'tab1';
   $fields{app}{not}{type}                            = 'toggle';
   $fields{app}{not}{label}                           = 'NOT';
   $fields{app}{not}{tab}                             = 'tab2';
@@ -200,6 +213,22 @@ sub initWormAppFields {
   $fields{app}{lifestage}{tab}                       = 'tab2';
   $fields{app}{lifestage}{ontology_type}             = 'obo';
   $fields{app}{lifestage}{ontology_table}            = 'lifestage';
+  $fields{app}{rescuedby}{type}                      = 'multiontology';
+  $fields{app}{rescuedby}{label}                     = 'Rescued By';
+  $fields{app}{rescuedby}{tab}                       = 'tab2';
+  $fields{app}{rescuedby}{ontology_type}             = 'Transgene';
+  $fields{app}{easescore}{type}                      = 'dropdown';
+  $fields{app}{easescore}{label}                     = 'ES';
+  $fields{app}{easescore}{tab}                       = 'tab2';
+  $fields{app}{easescore}{dropdown_type}             = 'easescore';
+  $fields{app}{mmateff}{type}                        = 'dropdown';
+  $fields{app}{mmateff}{label}                       = 'ME';
+  $fields{app}{mmateff}{tab}                         = 'tab2';
+  $fields{app}{mmateff}{dropdown_type}               = 'mmateff';
+  $fields{app}{hmateff}{type}                        = 'dropdown';
+  $fields{app}{hmateff}{label}                       = 'HME';
+  $fields{app}{hmateff}{tab}                         = 'tab2';
+  $fields{app}{hmateff}{dropdown_type}               = 'hmateff';
   $fields{app}{suggested}{type}                      = 'text';
   $fields{app}{suggested}{label}                     = 'Suggested';
   $fields{app}{suggested}{tab}                       = 'tab4';
@@ -272,14 +301,15 @@ sub initWormAppFields {
   $fields{app}{nbp}{type}                            = 'bigtext';
   $fields{app}{nbp}{label}                           = 'NBP';
   $fields{app}{nbp}{tab}                             = 'tab5';
+#   $fields{app}{nbp}{disabled}                        = 'disabled';
   $fields{app}{nbp}{noteditable}                     = 'noteditable';
   $fields{app}{filereaddate}{type}                   = 'text';
   $fields{app}{filereaddate}{label}                  = 'NBP / File Date';
   $fields{app}{filereaddate}{tab}                    = 'tab5';
-  $fields{app}{species}{type}                        = 'dropdown';
-  $fields{app}{species}{label}                       = 'Species';
-  $fields{app}{species}{tab}                         = 'tab5';
-  $fields{app}{species}{dropdown_type}               = 'species';
+#   $fields{app}{species}{type}                        = 'dropdown';
+#   $fields{app}{species}{label}                       = 'Species';
+#   $fields{app}{species}{tab}                         = 'tab5';
+#   $fields{app}{species}{dropdown_type}               = 'species';
   $fields{app}{laboratory}{type}                     = 'multiontology';
   $fields{app}{laboratory}{label}                    = 'Laboratory Evidence';
   $fields{app}{laboratory}{tab}                      = 'tab5';
@@ -297,9 +327,316 @@ sub initWormAppFields {
   $fields{app}{quality}{ontology_table}              = 'quality';
   $datatypes{app}{constraintSub}                     = \&checkAppConstraints;
   $datatypes{app}{newRowSub}                         = \&newRowApp;
+  $datatypes{app}{label}                             = 'phenotype';
   @{ $datatypes{app}{highestPgidTables} }            = qw( strain rearrangement transgene variation curator );
   return( \%fields, \%datatypes);
 } # sub initWormAppFields
+
+sub initWormCnsFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{cns} }, "Tie::IxHash";
+  $fields{cns}{id}{type}                             = 'text';
+  $fields{cns}{id}{label}                            = 'pgid';
+  $fields{cns}{id}{tab}                              = 'tab1';
+  $fields{cns}{name}{type}                           = 'text';
+  $fields{cns}{name}{label}                          = 'Name';
+  $fields{cns}{name}{tab}                            = 'tab1';
+  $fields{cns}{summary}{type}                        = 'bigtext';
+  $fields{cns}{summary}{label}                       = 'Summary';
+  $fields{cns}{summary}{tab}                         = 'all';
+  $fields{cns}{constructionsummary}{type}            = 'bigtext';
+  $fields{cns}{constructionsummary}{label}           = 'Construction Details';
+  $fields{cns}{constructionsummary}{tab}             = 'all';
+  $fields{cns}{curator}{type}                        = 'dropdown';
+  $fields{cns}{curator}{label}                       = 'Curator';
+  $fields{cns}{curator}{tab}                         = 'tab1';
+  $fields{cns}{curator}{dropdown_type}               = 'curator';
+  $fields{cns}{person}{type}                         = 'multiontology';
+  $fields{cns}{person}{label}                        = 'Person';
+  $fields{cns}{person}{tab}                          = 'tab1';
+  $fields{cns}{person}{ontology_type}                = 'WBPerson';
+  $fields{cns}{publicname}{type}                     = 'text';
+  $fields{cns}{publicname}{label}                    = 'Public Name';
+  $fields{cns}{publicname}{tab}                      = 'tab1';
+  $fields{cns}{othername}{type}                      = 'text';
+  $fields{cns}{othername}{label}                     = 'Other Name';
+  $fields{cns}{othername}{tab}                       = 'tab1';
+#   $fields{cns}{newtransgene}{type}                   = 'text';
+#   $fields{cns}{newtransgene}{label}                  = 'New Transgene';
+#   $fields{cns}{newtransgene}{tab}                    = 'tab1';
+#   $fields{cns}{merge}{type}                          = 'text';
+#   $fields{cns}{merge}{label}                         = 'Merge';
+#   $fields{cns}{merge}{tab}                           = 'tab1';
+  $fields{cns}{merge}{type}                          = 'ontology';
+  $fields{cns}{merge}{label}                         = 'Merge Into';
+  $fields{cns}{merge}{tab}                           = 'tab1';
+  $fields{cns}{merge}{ontology_type}                 = 'WBConstruct';
+  $fields{cns}{paper}{type}                          = 'multiontology';
+  $fields{cns}{paper}{label}                         = 'Paper';
+  $fields{cns}{paper}{tab}                           = 'tab1';
+  $fields{cns}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{cns}{drivenbygene}{type}                   = 'multiontology';
+  $fields{cns}{drivenbygene}{label}                  = 'Driven By Gene';
+  $fields{cns}{drivenbygene}{tab}                    = 'tab2';
+  $fields{cns}{drivenbygene}{ontology_type}          = 'WBGene';
+  $fields{cns}{gene}{type}                           = 'multiontology';
+  $fields{cns}{gene}{label}                          = 'Gene';
+  $fields{cns}{gene}{tab}                            = 'tab2';
+  $fields{cns}{gene}{ontology_type}                  = 'WBGene';
+  $fields{cns}{reporter}{type}                       = 'multidropdown';
+  $fields{cns}{reporter}{label}                      = 'Reporter';
+  $fields{cns}{reporter}{tab}                        = 'tab2';
+  $fields{cns}{reporter}{dropdown_type}              = 'reporterproduct';
+  $fields{cns}{otherreporter}{type}                  = 'text';
+  $fields{cns}{otherreporter}{label}                 = 'Other Reporter';
+  $fields{cns}{otherreporter}{tab}                   = 'tab2';
+  $fields{cns}{purificationtag}{type}                = 'multidropdown';
+  $fields{cns}{purificationtag}{label}               = 'Purification Tag';
+  $fields{cns}{purificationtag}{tab}                 = 'tab2';
+  $fields{cns}{purificationtag}{dropdown_type}       = 'purification';
+  $fields{cns}{recombinationsite}{type}              = 'multidropdown';
+  $fields{cns}{recombinationsite}{label}             = 'Recombination Site';
+  $fields{cns}{recombinationsite}{tab}               = 'tab2';
+  $fields{cns}{recombinationsite}{dropdown_type}     = 'recombination';
+  $fields{cns}{constructtype}{type}                  = 'dropdown';
+  $fields{cns}{constructtype}{label}                 = 'Construct Type';
+  $fields{cns}{constructtype}{tab}                   = 'tab2';
+  $fields{cns}{constructtype}{dropdown_type}         = 'cnsconstructtype';
+  $fields{cns}{selectionmarker}{type}                = 'text';
+  $fields{cns}{selectionmarker}{label}               = 'Selection Marker';
+  $fields{cns}{selectionmarker}{tab}                 = 'tab2';
+  $fields{cns}{feature}{type}                        = 'ontology';
+  $fields{cns}{feature}{label}                       = 'Feature';
+  $fields{cns}{feature}{tab}                         = 'tab2';
+  $fields{cns}{feature}{ontology_type}               = 'obo';
+  $fields{cns}{feature}{ontology_table}              = 'feature';
+  $fields{cns}{threeutr}{type}                       = 'multiontology';
+  $fields{cns}{threeutr}{label}                      = "3 UTR";
+  $fields{cns}{threeutr}{tab}                        = 'tab2';
+  $fields{cns}{threeutr}{ontology_type}              = 'WBGene';
+  $fields{cns}{fwdprimer}{type}                      = 'bigtext';
+  $fields{cns}{fwdprimer}{label}                     = 'FWD Primer';
+  $fields{cns}{fwdprimer}{tab}                       = 'tab3';
+  $fields{cns}{revprimer}{type}                      = 'bigtext';
+  $fields{cns}{revprimer}{label}                     = 'REV Primer';
+  $fields{cns}{revprimer}{tab}                       = 'tab3';
+  $fields{cns}{dna}{type}                            = 'bigtext';
+  $fields{cns}{dna}{label}                           = 'DNA Text';
+  $fields{cns}{dna}{tab}                             = 'tab3';
+  $fields{cns}{proposedfeature}{type}                = 'text';
+  $fields{cns}{proposedfeature}{label}               = 'Proposed Seq Feature';
+  $fields{cns}{proposedfeature}{tab}                 = 'tab3';
+  $fields{cns}{genewithfeature}{type}                = 'ontology';
+  $fields{cns}{genewithfeature}{label}               = 'Feature Gene';
+  $fields{cns}{genewithfeature}{tab}                 = 'tab3';
+  $fields{cns}{genewithfeature}{ontology_type}       = 'WBGene';
+  $fields{cns}{clone}{type}                          = 'multiontology';
+  $fields{cns}{clone}{label}                         = 'Clone';
+  $fields{cns}{clone}{tab}                           = 'tab3';
+  $fields{cns}{clone}{ontology_type}                 = 'obo';
+  $fields{cns}{clone}{ontology_table}                = 'clone';
+  $fields{cns}{laboratory}{type}                     = 'multiontology';
+  $fields{cns}{laboratory}{label}                    = 'Laboratory';
+  $fields{cns}{laboratory}{tab}                      = 'tab3';
+  $fields{cns}{laboratory}{ontology_type}            = 'obo';
+  $fields{cns}{laboratory}{ontology_table}           = 'laboratory';
+  $fields{cns}{remark}{type}                         = 'bigtext';
+  $fields{cns}{remark}{label}                        = 'Remark';
+  $fields{cns}{remark}{tab}                          = 'tab3';
+  $datatypes{cns}{newRowSub}                         = \&newRowCns;
+  $datatypes{cns}{label}                             = 'construct';
+  @{ $datatypes{cns}{highestPgidTables} }            = qw( name curator );
+  return( \%fields, \%datatypes);
+} # sub initWormCnsFields
+
+sub initWormConFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{con} }, "Tie::IxHash";
+  if ($curator_two eq 'two1823') { $fields{con}{id}{placeholder} = ''; }
+  $fields{con}{wbgene}{type}                         = 'ontology';
+  $fields{con}{wbgene}{label}                        = 'WBGene';
+  $fields{con}{wbgene}{tab}                          = 'all';
+  $fields{con}{wbgene}{ontology_type}                = 'WBGene';
+  $fields{con}{curator}{type}                        = 'dropdown';
+  $fields{con}{curator}{label}                       = 'Curator';
+  $fields{con}{curator}{tab}                         = 'all';
+  $fields{con}{curator}{dropdown_type}               = 'curator';
+  $fields{con}{curhistory}{type}                     = 'ontology';
+  $fields{con}{curhistory}{label}                    = 'Curator History';
+  $fields{con}{curhistory}{tab}                      = 'all';
+  $fields{con}{curhistory}{ontology_type}            = 'Concurhst';
+  $fields{con}{desctype}{type}                       = 'dropdown';
+  $fields{con}{desctype}{label}                      = 'Description Type';
+  $fields{con}{desctype}{tab}                        = 'all';
+  $fields{con}{desctype}{dropdown_type}              = 'condescription';
+  $fields{con}{desctext}{type}                       = 'textarea';
+  $fields{con}{desctext}{label}                      = 'Description Text';
+  $fields{con}{desctext}{tab}                        = 'all';
+  $fields{con}{desctext}{cols_size}                  = '90';
+  $fields{con}{desctext}{rows_size}                  = '12';
+  $fields{con}{paper}{type}                          = 'multiontology';
+  $fields{con}{paper}{label}                         = 'Reference';
+  $fields{con}{paper}{tab}                           = 'all';
+  $fields{con}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{con}{accession}{type}                      = 'text';
+  $fields{con}{accession}{label}                     = 'Accession Evidence';
+  $fields{con}{accession}{tab}                       = 'all';
+  $fields{con}{inferredauto}{type}                   = 'bigtext';
+  $fields{con}{inferredauto}{label}                  = 'Inferred Automatically';
+  $fields{con}{inferredauto}{tab}                    = 'all';
+  $fields{con}{lastupdate}{type}                     = 'text';
+  $fields{con}{lastupdate}{label}                    = 'Last Updated';
+  $fields{con}{lastupdate}{tab}                      = 'all';
+  $fields{con}{comment}{type}                        = 'bigtext';
+  $fields{con}{comment}{label}                       = 'Comment';
+  $fields{con}{comment}{tab}                         = 'all';
+  $fields{con}{comment}{cols_size}                   = '100';
+  $fields{con}{id}{type}                             = 'text';
+  $fields{con}{id}{label}                            = 'pgid';
+  $fields{con}{id}{tab}                              = 'all';
+  $fields{con}{nodump}{type}                         = 'toggle';
+  $fields{con}{nodump}{label}                        = 'NO DUMP';
+  $fields{con}{nodump}{tab}                          = 'all';
+  $fields{con}{person}{type}                         = 'multiontology';
+  $fields{con}{person}{label}                        = 'Person';
+  $fields{con}{person}{tab}                          = 'all';
+  $fields{con}{person}{ontology_type}                = 'WBPerson';
+  $fields{con}{exprtext}{type}                       = 'text';
+  $fields{con}{exprtext}{label}                      = 'Expression Pattern';
+  $fields{con}{exprtext}{tab}                        = 'all';
+  $fields{con}{rnai}{type}                           = 'text';
+  $fields{con}{rnai}{label}                          = 'RNAi';
+  $fields{con}{rnai}{tab}                            = 'all';
+#   $fields{con}{genereg}{type}                        = 'text';		# removed for Kimberly and Ranjana 2013 03 05
+#   $fields{con}{genereg}{label}                       = 'Gene Regulation';
+#   $fields{con}{genereg}{tab}                         = 'all';
+  $fields{con}{microarray}{type}                     = 'text';
+  $fields{con}{microarray}{label}                    = 'Microarray';
+  $fields{con}{microarray}{tab}                      = 'all';
+  $datatypes{con}{newRowSub}                         = \&newRowCon;
+  $datatypes{con}{label}                             = 'concise';
+  @{ $datatypes{con}{constraintTablesHaveData} }     = qw( wbgene curator desctype desctext lastupdate );
+  @{ $datatypes{con}{highestPgidTables} }            = qw( wbgene curator desctype );
+  return( \%fields, \%datatypes);
+} # sub initWormConFields
+
+sub initWormDisFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{dis} }, "Tie::IxHash";
+  if ($curator_two eq 'two1823') { $fields{dis}{id}{placeholder} = ''; }
+  $fields{dis}{wbgene}{type}                         = 'ontology';
+  $fields{dis}{wbgene}{label}                        = 'WBGene';
+  $fields{dis}{wbgene}{tab}                          = 'all';
+  $fields{dis}{wbgene}{ontology_type}                = 'WBGene';
+  $fields{dis}{curator}{type}                        = 'dropdown';
+  $fields{dis}{curator}{label}                       = 'Curator';
+  $fields{dis}{curator}{tab}                         = 'all';
+  $fields{dis}{curator}{dropdown_type}               = 'curator';
+  $fields{dis}{curhistory}{type}                     = 'ontology';
+  $fields{dis}{curhistory}{label}                    = 'Curator History';
+  $fields{dis}{curhistory}{tab}                      = 'all';
+  $fields{dis}{curhistory}{ontology_type}            = 'Discurhst';
+  $fields{dis}{humandoid}{type}                      = 'multiontology';
+  $fields{dis}{humandoid}{label}                     = 'Experimental Model for';
+  $fields{dis}{humandoid}{tab}                       = 'all';
+  $fields{dis}{humandoid}{ontology_type}             = 'obo';
+  $fields{dis}{humandoid}{ontology_table}            = 'humando';
+  $fields{dis}{paperexpmod}{type}                    = 'multiontology';
+  $fields{dis}{paperexpmod}{label}                   = 'Paper for Exp Mod';
+  $fields{dis}{paperexpmod}{tab}                     = 'all';
+  $fields{dis}{paperexpmod}{ontology_type}           = 'WBPaper';
+  $fields{dis}{dbexpmod}{type}                       = 'text';
+  $fields{dis}{dbexpmod}{label}                      = 'OMIM disease for Exp Mod';
+  $fields{dis}{dbexpmod}{tab}                        = 'all';
+  $fields{dis}{lastupdateexpmod}{type}               = 'text';
+  $fields{dis}{lastupdateexpmod}{label}              = 'Last Updated for Exp Mod';
+  $fields{dis}{lastupdateexpmod}{tab}                = 'all';
+  $fields{dis}{species}{type}                        = 'dropdown';
+  $fields{dis}{species}{label}                       = 'Species';
+  $fields{dis}{species}{tab}                         = 'all';
+  $fields{dis}{species}{dropdown_type}               = 'species';
+  $fields{dis}{diseaserelevance}{type}               = 'textarea';
+  $fields{dis}{diseaserelevance}{label}              = 'Disease relevance';
+  $fields{dis}{diseaserelevance}{tab}                = 'all';
+  $fields{dis}{diseaserelevance}{cols_size}          = '60';
+  $fields{dis}{diseaserelevance}{rows_size}          = '12';
+  $fields{dis}{paperdisrel}{type}                    = 'multiontology';
+  $fields{dis}{paperdisrel}{label}                   = 'Paper for Disease Rel';
+  $fields{dis}{paperdisrel}{tab}                     = 'all';
+  $fields{dis}{paperdisrel}{ontology_type}           = 'WBPaper';
+  $fields{dis}{dbdisrel}{type}                       = 'text';
+  $fields{dis}{dbdisrel}{label}                      = 'OMIM disease for Disease Rel';
+  $fields{dis}{dbdisrel}{tab}                        = 'all';
+  $fields{dis}{genedisrel}{type}                     = 'text';
+  $fields{dis}{genedisrel}{label}                    = 'OMIM gene for Disease Rel';
+  $fields{dis}{genedisrel}{tab}                      = 'all';
+  $fields{dis}{lastupdatedisrel}{type}               = 'text';
+  $fields{dis}{lastupdatedisrel}{label}              = 'Last Updated for Disease Rel';
+  $fields{dis}{lastupdatedisrel}{tab}                = 'all';
+  $fields{dis}{comment}{type}                        = 'bigtext';
+  $fields{dis}{comment}{label}                       = 'Comment';
+  $fields{dis}{comment}{tab}                         = 'all';
+  $fields{dis}{comment}{cols_size}                   = '100';
+  $fields{dis}{id}{type}                             = 'text';
+  $fields{dis}{id}{label}                            = 'pgid';
+  $fields{dis}{id}{tab}                              = 'all';
+  $datatypes{dis}{newRowSub}                         = \&newRowDis;
+  $datatypes{dis}{label}                             = 'disease';
+  @{ $datatypes{dis}{constraintTablesHaveData} }     = qw( wbgene curator humandoid paperexpmod species diseaserelevance paperdisrel lastupdatedisrel );
+  @{ $datatypes{dis}{highestPgidTables} }            = qw( wbgene curator );
+  return( \%fields, \%datatypes);
+} # sub initWormDisFields
+
+sub initWormDitFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{dit} }, "Tie::IxHash";
+  if ($curator_two eq 'two1823') { $fields{dit}{id}{placeholder} = ''; }
+  $fields{dit}{doterm}{type}                         = 'ontology';
+  $fields{dit}{doterm}{label}                        = 'DO Term';
+  $fields{dit}{doterm}{tab}                          = 'all';
+  $fields{dit}{doterm}{ontology_type}                = 'obo';
+  $fields{dit}{doterm}{ontology_table}               = 'humando';
+  $fields{dit}{curator}{type}                        = 'dropdown';
+  $fields{dit}{curator}{label}                       = 'Curator';
+  $fields{dit}{curator}{tab}                         = 'all';
+  $fields{dit}{curator}{dropdown_type}               = 'curator';
+  $fields{dit}{curhistory}{type}                     = 'ontology';
+  $fields{dit}{curhistory}{label}                    = 'Curator History';
+  $fields{dit}{curhistory}{tab}                      = 'all';
+  $fields{dit}{curhistory}{ontology_type}            = 'Ditcurhst';
+  $fields{dit}{species}{type}                        = 'dropdown';
+  $fields{dit}{species}{label}                       = 'Species';
+  $fields{dit}{species}{tab}                         = 'all';
+  $fields{dit}{species}{dropdown_type}               = 'species';
+  $fields{dit}{wormmodeldesc}{type}                  = 'textarea';
+  $fields{dit}{wormmodeldesc}{label}                 = 'Worm Model Description';
+  $fields{dit}{wormmodeldesc}{tab}                   = 'all';
+  $fields{dit}{wormmodeldesc}{cols_size}             = '60';
+  $fields{dit}{wormmodeldesc}{rows_size}             = '12';
+  $fields{dit}{paper}{type}                          = 'multiontology';
+  $fields{dit}{paper}{label}                         = 'Paper';
+  $fields{dit}{paper}{tab}                           = 'all';
+  $fields{dit}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{dit}{lastupdate}{type}                     = 'text';
+  $fields{dit}{lastupdate}{label}                    = 'Last Updated';
+  $fields{dit}{lastupdate}{tab}                      = 'all';
+  $fields{dit}{comment}{type}                        = 'bigtext';
+  $fields{dit}{comment}{label}                       = 'Comment';
+  $fields{dit}{comment}{tab}                         = 'all';
+  $fields{dit}{comment}{cols_size}                   = '100';
+  $fields{dit}{id}{type}                             = 'text';
+  $fields{dit}{id}{label}                            = 'pgid';
+  $fields{dit}{id}{tab}                              = 'all';
+  $datatypes{dit}{newRowSub}                         = \&newRowDit;
+  $datatypes{dit}{label}                             = 'disease term';
+  @{ $datatypes{dit}{constraintTablesHaveData} }     = qw( doterm curator species wormmodeldesc paper lastupdate );
+  @{ $datatypes{dit}{highestPgidTables} }            = qw( doterm curator );
+  return( \%fields, \%datatypes);
+} # sub initWormDitFields
 
 sub initWormExpFields {
   my ($datatype, $curator_two) = @_;
@@ -319,6 +656,9 @@ sub initWormExpFields {
   $fields{exp}{gene}{label}                          = 'Gene';
   $fields{exp}{gene}{tab}                            = 'tab1';
   $fields{exp}{gene}{ontology_type}                  = 'WBGene';
+  $fields{exp}{endogenous}{type}                     = 'toggle';
+  $fields{exp}{endogenous}{label}                    = 'Endogenous';
+  $fields{exp}{endogenous}{tab}                      = 'tab1';
   $fields{exp}{anatomy}{type}                        = 'multiontology';
   $fields{exp}{anatomy}{label}                       = 'Anatomy';
   $fields{exp}{anatomy}{tab}                         = 'tab1';
@@ -344,6 +684,10 @@ sub initWormExpFields {
   $fields{exp}{lifestage}{tab}                       = 'tab1';
   $fields{exp}{lifestage}{ontology_type}             = 'obo';
   $fields{exp}{lifestage}{ontology_table}            = 'lifestage';
+  $fields{exp}{species}{type}                        = 'dropdown';
+  $fields{exp}{species}{label}                       = 'Species';
+  $fields{exp}{species}{tab}                         = 'tab1';
+  $fields{exp}{species}{dropdown_type}               = 'species';
   $fields{exp}{exprtype}{type}                       = 'multidropdown';
   $fields{exp}{exprtype}{label}                      = 'Type';
   $fields{exp}{exprtype}{tab}                        = 'tab2';
@@ -385,10 +729,19 @@ sub initWormExpFields {
   $fields{exp}{transgene}{type}                      = 'multiontology';
   $fields{exp}{transgene}{label}                     = 'Transgene';
   $fields{exp}{transgene}{tab}                       = 'tab2';
+  $fields{exp}{construct}{type}                      = 'multiontology';
+  $fields{exp}{construct}{label}                     = 'Construct';
+  $fields{exp}{construct}{tab}                       = 'tab2';
+  $fields{exp}{construct}{ontology_type}             = 'WBConstruct';
   $fields{exp}{transgene}{ontology_type}             = 'Transgene';
   $fields{exp}{transgeneflag}{type}                  = 'toggle';
   $fields{exp}{transgeneflag}{label}                 = 'Transgene_Flag';
   $fields{exp}{transgeneflag}{tab}                   = 'tab2';
+  $fields{exp}{seqfeature}{type}                     = 'multiontology';
+  $fields{exp}{seqfeature}{label}                    = 'Sequence Feature';
+  $fields{exp}{seqfeature}{tab}                      = 'tab2';
+  $fields{exp}{seqfeature}{ontology_type}            = 'obo';
+  $fields{exp}{seqfeature}{ontology_table}           = 'feature';
   $fields{exp}{curator}{type}                        = 'dropdown';
   $fields{exp}{curator}{label}                       = 'Curator';
   $fields{exp}{curator}{tab}                         = 'tab2';
@@ -420,6 +773,11 @@ sub initWormExpFields {
   $fields{exp}{laboratory}{tab}                      = 'tab3';
   $fields{exp}{laboratory}{ontology_type}            = 'obo';
   $fields{exp}{laboratory}{ontology_table}           = 'laboratory';
+  $fields{exp}{variation}{type}                      = 'multiontology';
+  $fields{exp}{variation}{label}                     = 'Variation';
+  $fields{exp}{variation}{tab}                       = 'tab3';
+  $fields{exp}{variation}{ontology_type}             = 'obo';
+  $fields{exp}{variation}{ontology_table}            = 'variation';
 #   $fields{exp}{author}{type}                         = 'text';
 #   $fields{exp}{author}{label}                        = 'Author';
 #   $fields{exp}{author}{tab}                          = 'tab3';
@@ -430,6 +788,7 @@ sub initWormExpFields {
 #   $fields{exp}{curatedby}{label}                     = 'Curated by';
 #   $fields{exp}{curatedby}{tab}                       = 'tab3';
   $datatypes{exp}{newRowSub}                         = \&newRowExp;
+  $datatypes{exp}{label}                             = 'exprpat';
   @{ $datatypes{exp}{highestPgidTables} }            = qw( name curator );
   return( \%fields, \%datatypes);
 } # sub initWormExpFields
@@ -470,6 +829,7 @@ sub initWormGclFields {
   $fields{gcl}{type}{dropdown_type}                  = 'gcltype';
   @{ $datatypes{gcl}{highestPgidTables} }            = qw( name curator );
   $datatypes{gcl}{newRowSub}                         = \&newRowGcl;
+  $datatypes{gcl}{label}                             = 'gene class';
   return( \%fields, \%datatypes);
 } # sub initWormGclFields
 
@@ -487,10 +847,10 @@ sub initWormGopFields {
   $fields{gop}{wbgene}{label}                        = 'WBGene';
   $fields{gop}{wbgene}{tab}                          = 'all';
   $fields{gop}{wbgene}{ontology_type}                = 'WBGene';
-  $fields{gop}{project}{type}                        = 'multiontology';
+  $fields{gop}{project}{type}                        = 'multidropdown';
   $fields{gop}{project}{label}                       = 'Project';
   $fields{gop}{project}{tab}                         = 'all';
-  $fields{gop}{project}{ontology_type}               = 'goproject';
+  $fields{gop}{project}{dropdown_type}               = 'goproject';
   $fields{gop}{curator}{type}                        = 'dropdown';
   $fields{gop}{curator}{label}                       = 'Curator';
   $fields{gop}{curator}{tab}                         = 'all';
@@ -552,6 +912,7 @@ sub initWormGopFields {
   @{ $datatypes{gop}{constraintTablesHaveData} }     = qw( paper wbgene curator goid goontology goinference dbtype lastupdate );
   @{ $datatypes{gop}{highestPgidTables} }            = qw( wbgene curator );
   $datatypes{gop}{newRowSub}                         = \&newRowGop;
+  $datatypes{gop}{label}                             = 'go';
   return( \%fields, \%datatypes);
 } # sub initWormGopFields
 
@@ -570,26 +931,16 @@ sub initWormGrgFields {
   $fields{grg}{paper}{label}                         = 'Reference';
   $fields{grg}{paper}{tab}                           = 'tab1';
   $fields{grg}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{grg}{intid}{type}                          = 'ontology';
+  $fields{grg}{intid}{label}                         = 'Interaction ID';
+  $fields{grg}{intid}{tab}                           = 'tab1';
+  $fields{grg}{intid}{ontology_type}                 = 'WBInteraction';
   $fields{grg}{name}{type}                           = 'text';
   $fields{grg}{name}{label}                          = 'Name';
   $fields{grg}{name}{tab}                            = 'tab1';
   $fields{grg}{summary}{type}                        = 'bigtext';
   $fields{grg}{summary}{label}                       = 'Summary';
   $fields{grg}{summary}{tab}                         = 'tab1';
-  $fields{grg}{antibody}{type}                       = 'multiontology';
-  $fields{grg}{antibody}{label}                      = 'Antibody Info';
-  $fields{grg}{antibody}{tab}                        = 'tab1';
-  $fields{grg}{antibody}{ontology_type}              = 'Antibody';
-  $fields{grg}{antibodyremark}{type}                 = 'text';
-  $fields{grg}{antibodyremark}{label}                = 'Antibody Remark';
-  $fields{grg}{antibodyremark}{tab}                  = 'tab1';
-  $fields{grg}{reportergene}{type}                   = 'text';
-  $fields{grg}{reportergene}{label}                  = 'Reporter Gene';
-  $fields{grg}{reportergene}{tab}                    = 'tab1';
-  $fields{grg}{transgene}{type}                      = 'multiontology';
-  $fields{grg}{transgene}{label}                     = 'Transgene';
-  $fields{grg}{transgene}{tab}                       = 'tab1';
-  $fields{grg}{transgene}{ontology_type}             = 'Transgene';
   $fields{grg}{insitu}{type}                         = 'toggle_text';
   $fields{grg}{insitu}{label}                        = 'In Situ';
   $fields{grg}{insitu}{tab}                          = 'tab1';
@@ -630,82 +981,169 @@ sub initWormGrgFields {
   $fields{grg}{othermethod_text}{label}              = 'OM Text';
   $fields{grg}{othermethod_text}{tab}                = 'tab1';
   $fields{grg}{othermethod_text}{inline}             = 'INSIDE_othermethod_text';
-  $fields{grg}{allele}{type}                         = 'multiontology';
-  $fields{grg}{allele}{label}                        = 'Allele';
-  $fields{grg}{allele}{tab}                          = 'tab1';
-  $fields{grg}{allele}{ontology_type}                = 'obo';
-  $fields{grg}{allele}{ontology_table}               = 'variation';
-  $fields{grg}{rnai}{type}                           = 'text';
+#   $fields{grg}{rnai}{type}                           = 'text';
+#   $fields{grg}{rnai}{label}                          = 'RNAi';
+#   $fields{grg}{rnai}{tab}                            = 'tab1';
+  $fields{grg}{rnai}{type}                           = 'multiontology';
   $fields{grg}{rnai}{label}                          = 'RNAi';
   $fields{grg}{rnai}{tab}                            = 'tab1';
-  $fields{grg}{type}{type}                           = 'multidropdown';
-  $fields{grg}{type}{label}                          = 'Type';
-  $fields{grg}{type}{tab}                            = 'tab2';
-  $fields{grg}{type}{dropdown_type}                  = 'grgtype';
-  $fields{grg}{regulationlevel}{type}                = 'multidropdown';
-  $fields{grg}{regulationlevel}{label}               = 'Regulation Level';
-  $fields{grg}{regulationlevel}{tab}                 = 'tab2';
-  $fields{grg}{regulationlevel}{dropdown_type}       = 'regulationlevel';
-  $fields{grg}{transregulator}{type}                 = 'multiontology';
-  $fields{grg}{transregulator}{label}                = 'Trans Regulator Gene';
-  $fields{grg}{transregulator}{tab}                  = 'tab2';
-  $fields{grg}{transregulator}{ontology_type}        = 'WBGene';
-  $fields{grg}{moleculeregulator}{type}              = 'multiontology';
-  $fields{grg}{moleculeregulator}{label}             = 'Molecule Regulator';
-  $fields{grg}{moleculeregulator}{tab}               = 'tab2';
-  $fields{grg}{moleculeregulator}{ontology_type}     = 'Molecule';
-  $fields{grg}{transregulatorseq}{type}              = 'text';				# x wants text instead of gin_sequence 2011 03 16
-  $fields{grg}{transregulatorseq}{label}             = 'Trans Regulator Seq';
-  $fields{grg}{transregulatorseq}{tab}               = 'tab2';
-  $fields{grg}{otherregulator}{type}                 = 'text';
-  $fields{grg}{otherregulator}{label}                = 'Other Regulator';
-  $fields{grg}{otherregulator}{tab}                  = 'tab2';
-  $fields{grg}{transregulated}{type}                 = 'multiontology';
-  $fields{grg}{transregulated}{label}                = 'Trans Regulated Gene';
-  $fields{grg}{transregulated}{tab}                  = 'tab2';
-  $fields{grg}{transregulated}{ontology_type}        = 'WBGene';
-  $fields{grg}{transregulatedseq}{type}              = 'text';				# x wants text instead of gin_sequence 2011 03 16
-  $fields{grg}{transregulatedseq}{label}             = 'Trans Regulated Seq';
-  $fields{grg}{transregulatedseq}{tab}               = 'tab2';
-  $fields{grg}{otherregulated}{type}                 = 'text';
-  $fields{grg}{otherregulated}{label}                = 'Other Regulated';
-  $fields{grg}{otherregulated}{tab}                  = 'tab2';
+  $fields{grg}{rnai}{ontology_type}                  = 'WBRnai';
+  $fields{grg}{fromrnai}{type}                       = 'toggle';
+  $fields{grg}{fromrnai}{label}                      = 'From RNAi';
+  $fields{grg}{fromrnai}{tab}                        = 'tab1';
+  $fields{grg}{nodump}{type}                         = 'toggle';
+  $fields{grg}{nodump}{label}                        = 'NO DUMP';
+  $fields{grg}{nodump}{tab}                          = 'tab1';
+
+  $fields{grg}{antibody}{type}                       = 'multiontology';
+  $fields{grg}{antibody}{label}                      = 'Antibody Info';
+  $fields{grg}{antibody}{tab}                        = 'tab2';
+  $fields{grg}{antibody}{ontology_type}              = 'Antibody';
+  $fields{grg}{antibodyremark}{type}                 = 'text';
+  $fields{grg}{antibodyremark}{label}                = 'Antibody Remark';
+  $fields{grg}{antibodyremark}{tab}                  = 'tab2';
+  $fields{grg}{reportergene}{type}                   = 'text';
+  $fields{grg}{reportergene}{label}                  = 'Reporter Gene';
+  $fields{grg}{reportergene}{tab}                    = 'tab2';
+  $fields{grg}{transgene}{type}                      = 'multiontology';
+  $fields{grg}{transgene}{label}                     = 'Transgene';
+  $fields{grg}{transgene}{tab}                       = 'tab2';
+  $fields{grg}{transgene}{ontology_type}             = 'Transgene';
+  $fields{grg}{construct}{type}                      = 'multiontology';
+  $fields{grg}{construct}{label}                     = 'Construct';
+  $fields{grg}{construct}{tab}                       = 'tab2';
+  $fields{grg}{construct}{ontology_type}             = 'WBConstruct';
+  $fields{grg}{allele}{type}                         = 'multiontology';
+  $fields{grg}{allele}{label}                        = 'Allele';
+  $fields{grg}{allele}{tab}                          = 'tab2';
+  $fields{grg}{allele}{ontology_type}                = 'obo';
+  $fields{grg}{allele}{ontology_table}               = 'variation';
+  $fields{grg}{rearrangement}{type}                  = 'multiontology';
+  $fields{grg}{rearrangement}{label}                 = 'Rearrangement';
+  $fields{grg}{rearrangement}{tab}                   = 'tab2';
+  $fields{grg}{rearrangement}{ontology_type}         = 'obo';
+  $fields{grg}{rearrangement}{ontology_table}        = 'rearrangement';
   $fields{grg}{exprpattern}{type}                    = 'multiontology';
   $fields{grg}{exprpattern}{label}                   = 'Expression Pattern';
   $fields{grg}{exprpattern}{tab}                     = 'tab2';
-  $fields{grg}{exprpattern}{ontology_type}           = 'obo';
-  $fields{grg}{exprpattern}{ontology_table}          = 'exprpattern';
-  $fields{grg}{nodump}{type}                         = 'toggle';
-  $fields{grg}{nodump}{label}                        = 'NO DUMP';
-  $fields{grg}{nodump}{tab}                          = 'tab2';
+  $fields{grg}{exprpattern}{ontology_type}           = 'Expr';
+#   $fields{grg}{exprpattern}{ontology_type}           = 'obo';
+#   $fields{grg}{exprpattern}{ontology_table}          = 'exprpattern';
+
+  $fields{grg}{type}{type}                           = 'multidropdown';
+  $fields{grg}{type}{label}                          = 'Type';
+  $fields{grg}{type}{tab}                            = 'tab3';
+  $fields{grg}{type}{dropdown_type}                  = 'grgtype';
+  $fields{grg}{sentid}{type}                         = 'ontology';
+  $fields{grg}{sentid}{label}                        = 'Sentence ID';
+  $fields{grg}{sentid}{tab}                          = 'tab3';
+  $fields{grg}{sentid}{ontology_type}                = 'obo';
+  $fields{grg}{sentid}{ontology_table}               = 'intsentid';
+  $fields{grg}{regulationlevel}{type}                = 'multidropdown';
+  $fields{grg}{regulationlevel}{label}               = 'Regulation Level';
+  $fields{grg}{regulationlevel}{tab}                 = 'tab3';
+  $fields{grg}{regulationlevel}{dropdown_type}       = 'regulationlevel';
+  $fields{grg}{transregulator}{type}                 = 'multiontology';
+  $fields{grg}{transregulator}{label}                = 'Trans Regulator Gene';
+  $fields{grg}{transregulator}{tab}                  = 'tab3';
+  $fields{grg}{transregulator}{ontology_type}        = 'WBGene';
+  $fields{grg}{moleculeregulator}{type}              = 'multiontology';
+  $fields{grg}{moleculeregulator}{label}             = 'Molecule Regulator';
+  $fields{grg}{moleculeregulator}{tab}               = 'tab3';
+  $fields{grg}{moleculeregulator}{ontology_type}     = 'Molecule';
+  $fields{grg}{transregulatorseq}{type}              = 'multiontology';	# x wants text instead of gin_sequence 2011 03 16 # want multiontology 2012 03 28
+  $fields{grg}{transregulatorseq}{label}             = 'Trans Regulator Seq';
+  $fields{grg}{transregulatorseq}{tab}               = 'tab3';
+  $fields{grg}{transregulatorseq}{ontology_type}     = 'WBSequence';
+  $fields{grg}{cisregulatorfeature}{type}            = 'multiontology';
+  $fields{grg}{cisregulatorfeature}{label}           = 'Cis Regulator Feature';
+  $fields{grg}{cisregulatorfeature}{tab}             = 'tab3';
+  $fields{grg}{cisregulatorfeature}{ontology_type}   = 'obo';
+  $fields{grg}{cisregulatorfeature}{ontology_table}  = 'feature';
+  $fields{grg}{otherregulator}{type}                 = 'text';
+  $fields{grg}{otherregulator}{label}                = 'Other Regulator';
+  $fields{grg}{otherregulator}{tab}                  = 'tab3';
+  $fields{grg}{transregulated}{type}                 = 'multiontology';
+  $fields{grg}{transregulated}{label}                = 'Trans Regulated Gene';
+  $fields{grg}{transregulated}{tab}                  = 'tab3';
+  $fields{grg}{transregulated}{ontology_type}        = 'WBGene';
+  $fields{grg}{cisregulated}{type}                   = 'multiontology';
+  $fields{grg}{cisregulated}{label}                  = 'Cis Regulated Gene';
+  $fields{grg}{cisregulated}{tab}                    = 'tab3';
+  $fields{grg}{cisregulated}{ontology_type}          = 'WBGene';
+  $fields{grg}{transregulatedseq}{type}              = 'multiontology';	# x wants text instead of gin_sequence 2011 03 16 # want multiontology 2012 03 28
+  $fields{grg}{transregulatedseq}{label}             = 'Trans Regulated Seq';
+  $fields{grg}{transregulatedseq}{tab}               = 'tab3';
+  $fields{grg}{transregulatedseq}{ontology_type}     = 'WBSequence';
+  $fields{grg}{otherregulated}{type}                 = 'text';
+  $fields{grg}{otherregulated}{label}                = 'Other Regulated';
+  $fields{grg}{otherregulated}{tab}                  = 'tab3';
+  $fields{grg}{pos_anatomy}{type}                    = 'multiontology';
+  $fields{grg}{pos_anatomy}{label}                   = 'Positive Anatomy';
+  $fields{grg}{pos_anatomy}{tab}                     = 'tab4';
+  $fields{grg}{pos_anatomy}{ontology_type}           = 'obo';
+  $fields{grg}{pos_anatomy}{ontology_table}          = 'anatomy';
+  $fields{grg}{pos_lifestage}{type}                  = 'multiontology';
+  $fields{grg}{pos_lifestage}{label}                 = 'Positive Life Stage';
+  $fields{grg}{pos_lifestage}{tab}                   = 'tab4';
+  $fields{grg}{pos_lifestage}{ontology_type}         = 'obo';
+  $fields{grg}{pos_lifestage}{ontology_table}        = 'lifestage';
+  $fields{grg}{pos_scl}{type}                        = 'toggle_text';
+  $fields{grg}{pos_scl}{label}                       = 'Positive SCL';
+  $fields{grg}{pos_scl}{tab}                         = 'tab4';
+  $fields{grg}{pos_scl}{inline}                      = 'pos_scltext';
+  $fields{grg}{pos_scltext}{type}                    = 'text';
+  $fields{grg}{pos_scltext}{label}                   = 'Positive SCL Text';
+  $fields{grg}{pos_scltext}{tab}                     = 'tab4';
+  $fields{grg}{pos_scltext}{inline}                  = 'INSIDE_pos_scltext';
+  $fields{grg}{neg_anatomy}{type}                    = 'multiontology';
+  $fields{grg}{neg_anatomy}{label}                   = 'Negative Anatomy';
+  $fields{grg}{neg_anatomy}{tab}                     = 'tab4';
+  $fields{grg}{neg_anatomy}{ontology_type}           = 'obo';
+  $fields{grg}{neg_anatomy}{ontology_table}          = 'anatomy';
+  $fields{grg}{neg_lifestage}{type}                  = 'multiontology';
+  $fields{grg}{neg_lifestage}{label}                 = 'Negative Life Stage';
+  $fields{grg}{neg_lifestage}{tab}                   = 'tab4';
+  $fields{grg}{neg_lifestage}{ontology_type}         = 'obo';
+  $fields{grg}{neg_lifestage}{ontology_table}        = 'lifestage';
+  $fields{grg}{neg_scl}{type}                        = 'toggle_text';
+  $fields{grg}{neg_scl}{label}                       = 'Negative SCL';
+  $fields{grg}{neg_scl}{tab}                         = 'tab4';
+  $fields{grg}{neg_scl}{inline}                      = 'neg_scltext';
+  $fields{grg}{neg_scltext}{type}                    = 'text';
+  $fields{grg}{neg_scltext}{label}                   = 'Negative SCL Text';
+  $fields{grg}{neg_scltext}{tab}                     = 'tab4';
+  $fields{grg}{neg_scltext}{inline}                  = 'INSIDE_neg_scltext';
+  $fields{grg}{not_anatomy}{type}                    = 'multiontology';
+  $fields{grg}{not_anatomy}{label}                   = 'Does Not Anatomy';
+  $fields{grg}{not_anatomy}{tab}                     = 'tab4';
+  $fields{grg}{not_anatomy}{ontology_type}           = 'obo';
+  $fields{grg}{not_anatomy}{ontology_table}          = 'anatomy';
+  $fields{grg}{not_lifestage}{type}                  = 'multiontology';
+  $fields{grg}{not_lifestage}{label}                 = 'Does Not Life Stage';
+  $fields{grg}{not_lifestage}{tab}                   = 'tab4';
+  $fields{grg}{not_lifestage}{ontology_type}         = 'obo';
+  $fields{grg}{not_lifestage}{ontology_table}        = 'lifestage';
+  $fields{grg}{not_scl}{type}                        = 'toggle_text';
+  $fields{grg}{not_scl}{label}                       = 'Does Not SCL';
+  $fields{grg}{not_scl}{tab}                         = 'tab4';
+  $fields{grg}{not_scl}{inline}                      = 'not_scltext';
+  $fields{grg}{not_scltext}{type}                    = 'text';
+  $fields{grg}{not_scltext}{label}                   = 'Does Not SCL Text';
+  $fields{grg}{not_scltext}{tab}                     = 'tab4';
+  $fields{grg}{not_scltext}{inline}                  = 'INSIDE_not_scltext';
   $fields{grg}{result}{type}                         = 'dropdown';
-  $fields{grg}{result}{label}                        = 'Result';
-  $fields{grg}{result}{tab}                          = 'tab3';
-  $fields{grg}{result}{dropdown_type}                = 'regulates';
-  $fields{grg}{anat_term}{type}                      = 'multiontology';
-  $fields{grg}{anat_term}{label}                     = 'Anatomy Term';
-  $fields{grg}{anat_term}{tab}                       = 'tab3';
-  $fields{grg}{anat_term}{ontology_type}             = 'obo';
-  $fields{grg}{anat_term}{ontology_table}            = 'anatomy';
-  $fields{grg}{lifestage}{type}                      = 'multiontology';
-  $fields{grg}{lifestage}{label}                     = 'Life Stage';
-  $fields{grg}{lifestage}{tab}                       = 'tab3';
-  $fields{grg}{lifestage}{ontology_type}             = 'obo';
-  $fields{grg}{lifestage}{ontology_table}            = 'lifestage';
-  $fields{grg}{subcellloc}{type}                     = 'toggle_text';
-  $fields{grg}{subcellloc}{label}                    = 'Subcellular Localization';
-  $fields{grg}{subcellloc}{tab}                      = 'tab3';
-  $fields{grg}{subcellloc}{inline}                   = 'subcellloc_text';
-  $fields{grg}{subcellloc_text}{type}                = 'text';
-  $fields{grg}{subcellloc_text}{label}               = 'SCL Text';
-  $fields{grg}{subcellloc_text}{tab}                 = 'tab3';
-  $fields{grg}{subcellloc_text}{inline}              = 'INSIDE_subcellloc_text';
+  $fields{grg}{result}{label}                        = 'No Subdata Result';
+  $fields{grg}{result}{tab}                          = 'tab4';
+  $fields{grg}{result}{dropdown_type}                = 'grgresult';
+
   $fields{grg}{remark}{type}                         = 'bigtext';
   $fields{grg}{remark}{label}                        = 'Remark';
-  $fields{grg}{remark}{tab}                          = 'tab3';
+  $fields{grg}{remark}{tab}                          = 'tab4';
   @{ $datatypes{grg}{constraintTablesHaveData} }     = qw( paper name summary );
   @{ $datatypes{grg}{highestPgidTables} }            = qw( name curator );
   $datatypes{grg}{newRowSub}                         = \&newRowGrg;
+  $datatypes{grg}{label}                             = 'genereg';
   return( \%fields, \%datatypes);
 } # sub initWormGrgFields
 
@@ -720,93 +1158,262 @@ sub initWormIntFields {
   $fields{int}{name}{label}                          = 'Interaction ID';
   $fields{int}{name}{tab}                            = 'tab1';
   $fields{int}{name}{ontology_type}                  = 'WBInteraction';
-  $fields{int}{nondirectional}{type}                 = 'toggle';
-  $fields{int}{nondirectional}{label}                = 'Non_directional';
-  $fields{int}{nondirectional}{tab}                  = 'tab1';
+  $fields{int}{curator}{type}                        = 'dropdown';
+  $fields{int}{curator}{label}                       = 'Curator';
+  $fields{int}{curator}{tab}                         = 'tab1';
+  $fields{int}{curator}{dropdown_type}               = 'curator';
+#   $fields{int}{nondirectional}{type}                 = 'toggle';
+#   $fields{int}{nondirectional}{label}                = 'Non_directional';
+#   $fields{int}{nondirectional}{tab}                  = 'tab1';
+  $fields{int}{process}{type}                        = 'multiontology';
+  $fields{int}{process}{label}                       = 'Process';
+  $fields{int}{process}{tab}                         = 'tab1';
+  $fields{int}{process}{ontology_type}               = 'WBProcess';
+  $fields{int}{database}{type}                       = 'text';
+  $fields{int}{database}{label}                      = 'Database field accession number';
+  $fields{int}{database}{tab}                        = 'tab1';
+  $fields{int}{paper}{type}                          = 'ontology';
+  $fields{int}{paper}{label}                         = 'Paper';
+  $fields{int}{paper}{tab}                           = 'tab1';
+  $fields{int}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{int}{person}{type}                         = 'multiontology';
+  $fields{int}{person}{label}                        = 'Person';
+  $fields{int}{person}{tab}                          = 'tab1';
+  $fields{int}{person}{ontology_type}                = 'WBPerson';
   $fields{int}{type}{type}                           = 'dropdown';
   $fields{int}{type}{label}                          = 'Interaction Type';
   $fields{int}{type}{tab}                            = 'tab1';
   $fields{int}{type}{dropdown_type}                  = 'inttype';
+  $fields{int}{summary}{type}                        = 'bigtext';
+  $fields{int}{summary}{label}                       = 'Interaction Summary';
+  $fields{int}{summary}{tab}                         = 'tab1';
+  $fields{int}{remark}{type}                         = 'bigtext';
+  $fields{int}{remark}{label}                        = 'Remark';
+  $fields{int}{remark}{tab}                          = 'tab1';
+  $fields{int}{phenotype}{type}                      = 'multiontology';
+  $fields{int}{phenotype}{label}                     = 'Interaction Phenotype(s)';
+  $fields{int}{phenotype}{tab}                       = 'tab1';
+  $fields{int}{phenotype}{ontology_type}             = 'obo';
+  $fields{int}{phenotype}{ontology_table}            = 'phenotype';
+  $fields{int}{nodump}{type}                         = 'toggle';
+  $fields{int}{nodump}{label}                        = 'NO DUMP';
+  $fields{int}{nodump}{tab}                          = 'tab1';
+
+  $fields{int}{detectionmethod}{type}                = 'multidropdown';
+  $fields{int}{detectionmethod}{label}               = 'Physical Interaction Detection Method';
+  $fields{int}{detectionmethod}{tab}                 = 'tab2';
+  $fields{int}{detectionmethod}{dropdown_type}       = 'intphysdetmethod';
+  $fields{int}{library}{type}                        = 'text';
+  $fields{int}{library}{label}                       = 'Library screened and Times found';
+  $fields{int}{library}{tab}                         = 'tab2';
+  $fields{int}{laboratory}{type}                     = 'ontology';
+  $fields{int}{laboratory}{label}                    = 'From Laboratory';
+  $fields{int}{laboratory}{tab}                      = 'tab2';
+  $fields{int}{laboratory}{ontology_type}            = 'obo';
+  $fields{int}{laboratory}{ontology_table}           = 'laboratory';
+  $fields{int}{company}{type}                        = 'text';
+  $fields{int}{company}{label}                       = 'From Company';
+  $fields{int}{company}{tab}                         = 'tab2';
+  $fields{int}{pcrbait}{type}                        = 'multiontology';
+  $fields{int}{pcrbait}{label}                       = 'PCR Bait';
+  $fields{int}{pcrbait}{tab}                         = 'tab2';
+  $fields{int}{pcrbait}{ontology_type}               = 'obo';
+  $fields{int}{pcrbait}{ontology_table}              = 'pcrproduct';
+  $fields{int}{pcrtarget}{type}                      = 'multiontology';
+  $fields{int}{pcrtarget}{label}                     = 'PCR Target';
+  $fields{int}{pcrtarget}{tab}                       = 'tab2';
+  $fields{int}{pcrtarget}{ontology_type}             = 'obo';
+  $fields{int}{pcrtarget}{ontology_table}            = 'pcrproduct';
+  $fields{int}{pcrnondir}{type}                      = 'multiontology';
+  $fields{int}{pcrnondir}{label}                     = 'Non-directional PCR(s)';
+  $fields{int}{pcrnondir}{tab}                       = 'tab2';
+  $fields{int}{pcrnondir}{ontology_type}             = 'obo';
+  $fields{int}{pcrnondir}{ontology_table}            = 'pcrproduct';
+  $fields{int}{sequencebait}{type}                   = 'text';
+  $fields{int}{sequencebait}{label}                  = 'Sequence Bait';
+  $fields{int}{sequencebait}{tab}                    = 'tab2';
+  $fields{int}{sequencetarget}{type}                 = 'text';
+  $fields{int}{sequencetarget}{label}                = 'Sequence Target(s)';
+  $fields{int}{sequencetarget}{tab}                  = 'tab2';
+  $fields{int}{sequencenondir}{type}                 = 'text';
+  $fields{int}{sequencenondir}{label}                = 'Non-directional Sequence(s)';
+  $fields{int}{sequencenondir}{tab}                  = 'tab2';
+  $fields{int}{featurebait}{type}                    = 'multiontology';
+  $fields{int}{featurebait}{label}                   = 'Feature Bait';
+  $fields{int}{featurebait}{tab}                     = 'tab2';
+  $fields{int}{featurebait}{ontology_type}           = 'obo';
+  $fields{int}{featurebait}{ontology_table}          = 'feature';
+  $fields{int}{featuretarget}{type}                  = 'multiontology';
+  $fields{int}{featuretarget}{label}                 = 'Feature Target';
+  $fields{int}{featuretarget}{tab}                   = 'tab2';
+  $fields{int}{featuretarget}{ontology_type}         = 'obo';
+  $fields{int}{featuretarget}{ontology_table}        = 'feature';
+  $fields{int}{cdsbait}{type}                        = 'text';
+  $fields{int}{cdsbait}{label}                       = 'Bait Overlapping CDS';
+  $fields{int}{cdsbait}{tab}                         = 'tab2';
+  $fields{int}{cdstarget}{type}                      = 'text';
+  $fields{int}{cdstarget}{label}                     = 'Target Overlapping CDS(s)';
+  $fields{int}{cdstarget}{tab}                       = 'tab2';
+  $fields{int}{cdsnondir}{type}                      = 'text';
+  $fields{int}{cdsnondir}{label}                     = 'Non-directional Overlapping CDS(s)';
+  $fields{int}{cdsnondir}{tab}                       = 'tab2';
+  $fields{int}{proteinbait}{type}                    = 'text';
+  $fields{int}{proteinbait}{label}                   = 'Bait Overlapping Protein';
+  $fields{int}{proteinbait}{tab}                     = 'tab2';
+  $fields{int}{proteintarget}{type}                  = 'text';
+  $fields{int}{proteintarget}{label}                 = 'Target Overlapping Protein(s)';
+  $fields{int}{proteintarget}{tab}                   = 'tab2';
+  $fields{int}{proteinnondir}{type}                  = 'text';
+  $fields{int}{proteinnondir}{label}                 = 'Non-directional Overlapping Protein(s)';
+  $fields{int}{proteinnondir}{tab}                   = 'tab2';
+  $fields{int}{genebait}{type}                       = 'ontology';
+  $fields{int}{genebait}{label}                      = 'Bait Overlapping Gene';
+  $fields{int}{genebait}{tab}                        = 'tab2';
+  $fields{int}{genebait}{ontology_type}              = 'WBGene';
+  $fields{int}{genetarget}{type}                     = 'multiontology';
+  $fields{int}{genetarget}{label}                    = 'Target Overlapping Gene';
+  $fields{int}{genetarget}{tab}                      = 'tab2';
+  $fields{int}{genetarget}{ontology_type}            = 'WBGene';
+  $fields{int}{antibody}{type}                       = 'multiontology';
+  $fields{int}{antibody}{label}                      = 'Antibody';
+  $fields{int}{antibody}{tab}                        = 'tab2';
+  $fields{int}{antibody}{ontology_type}              = 'Antibody';
+  $fields{int}{antibodyremark}{type}                 = 'text';
+  $fields{int}{antibodyremark}{label}                = 'Antibody Remark';
+  $fields{int}{antibodyremark}{tab}                  = 'tab2';
+
+  $fields{int}{genenondir}{type}                     = 'multiontology';
+  $fields{int}{genenondir}{label}                    = 'Non-directional Gene(s)';
+  $fields{int}{genenondir}{tab}                      = 'tab3';
+  $fields{int}{genenondir}{ontology_type}            = 'WBGene';
   $fields{int}{geneone}{type}                        = 'multiontology';
-  $fields{int}{geneone}{label}                       = 'Effector Gene';
-  $fields{int}{geneone}{tab}                         = 'tab1';
+  $fields{int}{geneone}{label}                       = 'Effector Gene(s)';
+  $fields{int}{geneone}{tab}                         = 'tab3';
   $fields{int}{geneone}{ontology_type}               = 'WBGene';
+  $fields{int}{genetwo}{type}                        = 'multiontology';
+  $fields{int}{genetwo}{label}                       = 'Affected Gene(s)';
+  $fields{int}{genetwo}{tab}                         = 'tab3';
+  $fields{int}{genetwo}{ontology_type}               = 'WBGene';
+  $fields{int}{variationnondir}{type}                = 'multiontology';
+  $fields{int}{variationnondir}{label}               = 'Non-directional Variation(s)';
+  $fields{int}{variationnondir}{tab}                 = 'tab3';
+  $fields{int}{variationnondir}{ontology_type}       = 'obo';
+  $fields{int}{variationnondir}{ontology_table}      = 'variation';
   $fields{int}{variationone}{type}                   = 'multiontology';
-  $fields{int}{variationone}{label}                  = 'Effector Variation';
-  $fields{int}{variationone}{tab}                    = 'tab1';
+  $fields{int}{variationone}{label}                  = 'Effector Variation(s)';
+  $fields{int}{variationone}{tab}                    = 'tab3';
   $fields{int}{variationone}{ontology_type}          = 'obo';
   $fields{int}{variationone}{ontology_table}         = 'variation';
-  $fields{int}{transgeneone}{type}                   = 'ontology';
-  $fields{int}{transgeneone}{label}                  = 'Effector Transgene Name';
-  $fields{int}{transgeneone}{tab}                    = 'tab1';
-  $fields{int}{transgeneone}{ontology_type}          = 'Transgene';
-  $fields{int}{transgeneonegene}{type}               = 'multiontology';
-  $fields{int}{transgeneonegene}{label}              = 'Effector Transgene Gene';
-  $fields{int}{transgeneonegene}{tab}                = 'tab1';
-  $fields{int}{transgeneonegene}{ontology_type}      = 'WBGene';
+  $fields{int}{variationtwo}{type}                   = 'multiontology';
+  $fields{int}{variationtwo}{label}                  = 'Affected Variation(s)';
+  $fields{int}{variationtwo}{tab}                    = 'tab3';
+  $fields{int}{variationtwo}{ontology_type}          = 'obo';
+  $fields{int}{variationtwo}{ontology_table}         = 'variation';
+  $fields{int}{intravariationone}{type}              = 'multiontology';
+  $fields{int}{intravariationone}{label}             = 'Intragenic Effector Variation(s)';
+  $fields{int}{intravariationone}{tab}               = 'tab3';
+  $fields{int}{intravariationone}{ontology_type}     = 'obo';
+  $fields{int}{intravariationone}{ontology_table}    = 'variation';
+  $fields{int}{intravariationtwo}{type}              = 'multiontology';
+  $fields{int}{intravariationtwo}{label}             = 'Intragenic Affected Variation(s)';
+  $fields{int}{intravariationtwo}{tab}               = 'tab3';
+  $fields{int}{intravariationtwo}{ontology_type}     = 'obo';
+  $fields{int}{intravariationtwo}{ontology_table}    = 'variation';
+  $fields{int}{deviation}{type}                      = 'bigtext';
+  $fields{int}{deviation}{label}                     = 'Deviation from expectation';
+  $fields{int}{deviation}{tab}                       = 'tab4';
+  $fields{int}{neutralityfxn}{type}                  = 'dropdown';
+  $fields{int}{neutralityfxn}{label}                 = 'Neutrality function';
+  $fields{int}{neutralityfxn}{tab}                   = 'tab4';
+  $fields{int}{neutralityfxn}{dropdown_type}         = 'intneutralityfxn';
+  $fields{int}{rearrnondir}{type}                    = 'multiontology';
+  $fields{int}{rearrnondir}{label}                   = 'Non-directional Rearrangement(s)';
+  $fields{int}{rearrnondir}{tab}                     = 'tab4';
+  $fields{int}{rearrnondir}{ontology_type}           = 'obo';
+  $fields{int}{rearrnondir}{ontology_table}          = 'rearrangement';
+  $fields{int}{rearrone}{type}                       = 'multiontology';
+  $fields{int}{rearrone}{label}                      = 'Effector Rearrangement(s)';
+  $fields{int}{rearrone}{tab}                        = 'tab4';
+  $fields{int}{rearrone}{ontology_type}              = 'obo';
+  $fields{int}{rearrone}{ontology_table}             = 'rearrangement';
+  $fields{int}{rearrtwo}{type}                       = 'multiontology';
+  $fields{int}{rearrtwo}{label}                      = 'Affected Rearrangement(s)';
+  $fields{int}{rearrtwo}{tab}                        = 'tab4';
+  $fields{int}{rearrtwo}{ontology_type}              = 'obo';
+  $fields{int}{rearrtwo}{ontology_table}             = 'rearrangement';
+  $fields{int}{rnai}{type}                           = 'multiontology';
+  $fields{int}{rnai}{label}                          = 'RNAi';
+  $fields{int}{rnai}{tab}                            = 'tab4';
+  $fields{int}{rnai}{ontology_type}                  = 'WBRnai';
+  $fields{int}{lsrnai}{type}                         = 'text';
+  $fields{int}{lsrnai}{label}                        = 'Large scale RNAi';
+  $fields{int}{lsrnai}{tab}                          = 'tab4';
+  $fields{int}{exprpattern}{type}                    = 'multiontology';
+  $fields{int}{exprpattern}{label}                   = 'Expression Pattern';
+  $fields{int}{exprpattern}{tab}                     = 'tab4';
+  $fields{int}{exprpattern}{ontology_type}           = 'Expr';
+  $fields{int}{transgene}{type}                      = 'multiontology';
+  $fields{int}{transgene}{label}                     = 'Transgene(s)';
+  $fields{int}{transgene}{tab}                       = 'tab4';
+  $fields{int}{transgene}{ontology_type}             = 'Transgene';
+  $fields{int}{construct}{type}                      = 'multiontology';
+  $fields{int}{construct}{label}                     = 'Construct';
+  $fields{int}{construct}{tab}                       = 'tab4';
+  $fields{int}{construct}{ontology_type}             = 'WBConstruct';
   $fields{int}{otheronetype}{type}                   = 'dropdown';
   $fields{int}{otheronetype}{label}                  = 'Effector Other Type';
-  $fields{int}{otheronetype}{tab}                    = 'tab1';
+  $fields{int}{otheronetype}{tab}                    = 'tab4';
   $fields{int}{otheronetype}{dropdown_type}          = 'intothertype';
   $fields{int}{otherone}{type}                       = 'text';
   $fields{int}{otherone}{label}                      = 'Effector Other';
-  $fields{int}{otherone}{tab}                        = 'tab1';
-  $fields{int}{genetwo}{type}                        = 'multiontology';
-  $fields{int}{genetwo}{label}                       = 'Effected Gene';
-  $fields{int}{genetwo}{tab}                         = 'tab1';
-  $fields{int}{genetwo}{ontology_type}               = 'WBGene';
-  $fields{int}{variationtwo}{type}                   = 'multiontology';
-  $fields{int}{variationtwo}{label}                  = 'Effected Variation';
-  $fields{int}{variationtwo}{tab}                    = 'tab1';
-  $fields{int}{variationtwo}{ontology_type}          = 'obo';
-  $fields{int}{variationtwo}{ontology_table}         = 'variation';
-  $fields{int}{transgenetwo}{type}                   = 'ontology';
-  $fields{int}{transgenetwo}{label}                  = 'Effected Transgene Name';
-  $fields{int}{transgenetwo}{tab}                    = 'tab1';
-  $fields{int}{transgenetwo}{ontology_type}          = 'Transgene';
-  $fields{int}{transgenetwogene}{type}               = 'multiontology';
-  $fields{int}{transgenetwogene}{label}              = 'Effected Transgene Gene';
-  $fields{int}{transgenetwogene}{tab}                = 'tab1';
-  $fields{int}{transgenetwogene}{ontology_type}      = 'WBGene';
+  $fields{int}{otherone}{tab}                        = 'tab4';
   $fields{int}{othertwotype}{type}                   = 'dropdown';
-  $fields{int}{othertwotype}{label}                  = 'Effected Other Type';
-  $fields{int}{othertwotype}{tab}                    = 'tab1';
+  $fields{int}{othertwotype}{label}                  = 'Affected Other Type';
+  $fields{int}{othertwotype}{tab}                    = 'tab4';
   $fields{int}{othertwotype}{dropdown_type}          = 'intothertype';
   $fields{int}{othertwo}{type}                       = 'text';
-  $fields{int}{othertwo}{label}                      = 'Effected Other';
-  $fields{int}{othertwo}{tab}                        = 'tab1';
-  $fields{int}{curator}{type}                        = 'dropdown';
-  $fields{int}{curator}{label}                       = 'Curator';
-  $fields{int}{curator}{tab}                         = 'tab2';
-  $fields{int}{curator}{dropdown_type}               = 'curator';
-  $fields{int}{paper}{type}                          = 'ontology';
-  $fields{int}{paper}{label}                         = 'Paper';
-  $fields{int}{paper}{tab}                           = 'tab2';
-  $fields{int}{paper}{ontology_type}                 = 'WBPaper';
-  $fields{int}{person}{type}                         = 'multiontology';
-  $fields{int}{person}{label}                        = 'Person';
-  $fields{int}{person}{tab}                          = 'tab2';
-  $fields{int}{person}{ontology_type}                = 'WBPerson';
-  $fields{int}{rnai}{type}                           = 'text';
-  $fields{int}{rnai}{label}                          = 'RNAi';
-  $fields{int}{rnai}{tab}                            = 'tab2';
-  $fields{int}{phenotype}{type}                      = 'multiontology';
-  $fields{int}{phenotype}{label}                     = 'Phenotype';
-  $fields{int}{phenotype}{tab}                       = 'tab2';
-  $fields{int}{phenotype}{ontology_type}             = 'obo';
-  $fields{int}{phenotype}{ontology_table}            = 'phenotype';
-  $fields{int}{remark}{type}                         = 'bigtext';
-  $fields{int}{remark}{label}                        = 'Remark';
-  $fields{int}{remark}{tab}                          = 'tab2';
+  $fields{int}{othertwo}{label}                      = 'Affected Other';
+  $fields{int}{othertwo}{tab}                        = 'tab4';
+
+#   $fields{int}{transgeneone}{type}                   = 'ontology';
+#   $fields{int}{transgeneone}{label}                  = 'Effector Transgene Name';
+#   $fields{int}{transgeneone}{tab}                    = 'tab3';
+#   $fields{int}{transgeneone}{ontology_type}          = 'Transgene';
+#   $fields{int}{transgeneonegene}{type}               = 'multiontology';
+#   $fields{int}{transgeneonegene}{label}              = 'Effector Transgene Gene';
+#   $fields{int}{transgeneonegene}{tab}                = 'tab3';
+#   $fields{int}{transgeneonegene}{ontology_type}      = 'WBGene';
+#   $fields{int}{transgenetwo}{type}                   = 'ontology';
+#   $fields{int}{transgenetwo}{label}                  = 'Effected Transgene Name';
+#   $fields{int}{transgenetwo}{tab}                    = 'tab3';
+#   $fields{int}{transgenetwo}{ontology_type}          = 'Transgene';
+#   $fields{int}{transgenetwogene}{type}               = 'multiontology';
+#   $fields{int}{transgenetwogene}{label}              = 'Effected Transgene Gene';
+#   $fields{int}{transgenetwogene}{tab}                = 'tab3';
+#   $fields{int}{transgenetwogene}{ontology_type}      = 'WBGene';
+
+  $fields{int}{confidence}{type}                     = 'text';
+  $fields{int}{confidence}{label}                    = 'Confidence description';
+  $fields{int}{confidence}{tab}                      = 'tab5';
+  $fields{int}{pvalue}{type}                         = 'text';
+  $fields{int}{pvalue}{label}                        = 'P-value';
+  $fields{int}{pvalue}{tab}                          = 'tab5';
+  $fields{int}{loglikelihood}{type}                  = 'text';
+  $fields{int}{loglikelihood}{label}                 = 'Log-likelihood score';
+  $fields{int}{loglikelihood}{tab}                   = 'tab5';
+  $fields{int}{throughput}{type}                     = 'toggle';
+  $fields{int}{throughput}{label}                    = 'High_throughput';
+  $fields{int}{throughput}{tab}                      = 'tab5';
   $fields{int}{sentid}{type}                         = 'ontology';
   $fields{int}{sentid}{label}                        = 'Sentence ID';
-  $fields{int}{sentid}{tab}                          = 'tab2';
+  $fields{int}{sentid}{tab}                          = 'tab5';
   $fields{int}{sentid}{ontology_type}                = 'obo';
   $fields{int}{sentid}{ontology_table}               = 'intsentid';
   $fields{int}{falsepositive}{type}                  = 'toggle';
   $fields{int}{falsepositive}{label}                 = 'False Positive';
-  $fields{int}{falsepositive}{tab}                   = 'tab2';
+  $fields{int}{falsepositive}{tab}                   = 'tab5';
   $datatypes{int}{newRowSub}                         = \&newRowInt;
+  $datatypes{int}{label}                             = 'interaction';
   @{ $datatypes{int}{highestPgidTables} }            = qw( name curator );
   return( \%fields, \%datatypes);
 } # sub initWormIntFields
@@ -822,6 +1429,9 @@ sub initWormMopFields {
   $fields{mop}{paper}{label}                         = 'WBPaper';
   $fields{mop}{paper}{tab}                           = 'all';
   $fields{mop}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{mop}{name}{type}                           = 'text';
+  $fields{mop}{name}{label}                          = 'Name';
+  $fields{mop}{name}{tab}                            = 'all';
   $fields{mop}{publicname}{type}                     = 'bigtext';
   $fields{mop}{publicname}{label}                    = 'Public Name';
   $fields{mop}{publicname}{tab}                      = 'all';
@@ -831,6 +1441,15 @@ sub initWormMopFields {
   $fields{mop}{moleculeuse}{type}                    = 'bigtext';
   $fields{mop}{moleculeuse}{label}                   = 'Molecule Use';
   $fields{mop}{moleculeuse}{tab}                     = 'all';
+  $fields{mop}{gotarget}{type}                       = 'multiontology';
+  $fields{mop}{gotarget}{label}                      = 'GO target';
+  $fields{mop}{gotarget}{tab}                        = 'all';
+  $fields{mop}{gotarget}{ontology_type}              = 'obo';
+  $fields{mop}{gotarget}{ontology_table}             = 'goid';
+  $fields{mop}{genetarget}{type}                     = 'multiontology';
+  $fields{mop}{genetarget}{label}                    = 'Gene target';
+  $fields{mop}{genetarget}{tab}                      = 'all';
+  $fields{mop}{genetarget}{ontology_type}            = 'WBGene';
   $fields{mop}{molecule}{type}                       = 'text';
   $fields{mop}{molecule}{label}                      = 'MeSH / CTD or default';
   $fields{mop}{molecule}{tab}                        = 'all';
@@ -846,7 +1465,7 @@ sub initWormMopFields {
   $fields{mop}{kegg}{label}                          = 'Kegg compound (Acc#)';
   $fields{mop}{kegg}{tab}                            = 'all';
   $fields{mop}{smmid}{type}                          = 'text';
-  $fields{mop}{smmid}{label}                         = 'SMMID';
+  $fields{mop}{smmid}{label}                         = 'SMID-DB';
   $fields{mop}{smmid}{tab}                           = 'all';
   $fields{mop}{curator}{type}                        = 'dropdown';
   $fields{mop}{curator}{label}                       = 'Curator';
@@ -856,9 +1475,58 @@ sub initWormMopFields {
   $fields{mop}{remark}{label}                        = 'Remark';
   $fields{mop}{remark}{tab}                          = 'all';
   $datatypes{mop}{newRowSub}                         = \&newRowMop;
-  @{ $datatypes{mop}{highestPgidTables} }            = qw( molecule curator );
+  $datatypes{mop}{label}                             = 'molecule';
+  @{ $datatypes{mop}{highestPgidTables} }            = qw( name curator );
   return( \%fields, \%datatypes);
 } # sub initWormMopFields
+
+sub initWormMovFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{mov} }, "Tie::IxHash";
+  $fields{mov}{id}{type}                             = 'text';
+  $fields{mov}{id}{label}                            = 'pgid';
+  $fields{mov}{id}{tab}                              = 'all';
+  $fields{mov}{name}{type}                           = 'text';
+  $fields{mov}{name}{label}                          = 'Name';
+  $fields{mov}{name}{tab}                            = 'all';
+  $fields{mov}{paper}{type}                          = 'ontology';
+  $fields{mov}{paper}{label}                         = 'WBPaper';
+  $fields{mov}{paper}{tab}                           = 'all';
+  $fields{mov}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{mov}{source}{type}                         = 'text';
+  $fields{mov}{source}{label}                        = 'Source';
+  $fields{mov}{source}{tab}                          = 'all';
+  $fields{mov}{description}{type}                    = 'bigtext';
+  $fields{mov}{description}{label}                   = 'Description';
+  $fields{mov}{description}{tab}                     = 'all';
+  $fields{mov}{rnai}{type}                           = 'text';		# citaceMinus objects, no plan to curate to rnaiOA objects - Daniela 2012 10 15
+  $fields{mov}{rnai}{label}                          = 'RNAi';
+  $fields{mov}{rnai}{tab}                            = 'all';
+  $fields{mov}{exprpattern}{type}                    = 'multiontology';
+  $fields{mov}{exprpattern}{label}                   = 'Expression Pattern';
+  $fields{mov}{exprpattern}{tab}                     = 'all';
+  $fields{mov}{exprpattern}{ontology_type}           = 'Expr';
+  $fields{mov}{dbinfo}{type}                         = 'text';
+  $fields{mov}{dbinfo}{label}                        = 'DB_INFO';
+  $fields{mov}{dbinfo}{tab}                          = 'all';
+  $fields{mov}{variation}{type}                      = 'multiontology';
+  $fields{mov}{variation}{label}                     = 'Variation';
+  $fields{mov}{variation}{tab}                       = 'all';
+  $fields{mov}{variation}{ontology_type}             = 'obo';
+  $fields{mov}{variation}{ontology_table}            = 'variation';
+  $fields{mov}{remark}{type}                         = 'bigtext';
+  $fields{mov}{remark}{label}                        = 'Remark';
+  $fields{mov}{remark}{tab}                          = 'all';
+  $fields{mov}{curator}{type}                        = 'dropdown';
+  $fields{mov}{curator}{label}                       = 'Curator';
+  $fields{mov}{curator}{tab}                         = 'all';
+  $fields{mov}{curator}{dropdown_type}               = 'curator';
+  $datatypes{mov}{newRowSub}                         = \&newRowMov;
+  $datatypes{mov}{label}                             = 'movie';
+  @{ $datatypes{mov}{highestPgidTables} }            = qw( name curator );
+  return( \%fields, \%datatypes);
+} # sub initWormMovFields
 
 sub initWormPicFields {
   my ($datatype, $curator_two) = @_;
@@ -891,8 +1559,9 @@ sub initWormPicFields {
   $fields{pic}{exprpattern}{type}                    = 'multiontology';
   $fields{pic}{exprpattern}{label}                   = 'Expression Pattern';
   $fields{pic}{exprpattern}{tab}                     = 'all';
-  $fields{pic}{exprpattern}{ontology_type}           = 'obo';
-  $fields{pic}{exprpattern}{ontology_table}          = 'exprpattern';
+  $fields{pic}{exprpattern}{ontology_type}           = 'Expr';
+#   $fields{pic}{exprpattern}{ontology_type}           = 'obo';
+#   $fields{pic}{exprpattern}{ontology_table}          = 'exprpattern';
   $fields{pic}{remark}{type}                         = 'bigtext';
   $fields{pic}{remark}{label}                        = 'Remark';
   $fields{pic}{remark}{tab}                          = 'all';
@@ -932,9 +1601,180 @@ sub initWormPicFields {
   $fields{pic}{chris}{label}                         = 'Chris Flag';
   $fields{pic}{chris}{tab}                           = 'all';
   $datatypes{pic}{newRowSub}                         = \&newRowPic;
+  $datatypes{pic}{label}                             = 'picture';
   @{ $datatypes{pic}{highestPgidTables} }            = qw( name curator );
   return( \%fields, \%datatypes);
 } # sub initWormPicFields
+
+sub initWormProFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{pro} }, "Tie::IxHash";
+
+  $fields{pro}{id}{type}                             = 'text';
+  $fields{pro}{id}{label}                            = 'pgid';
+  $fields{pro}{id}{tab}                              = 'tab1';
+  $fields{pro}{curator}{type}                        = 'dropdown';
+  $fields{pro}{curator}{label}                       = 'Curator';
+  $fields{pro}{curator}{tab}                         = 'tab1';
+  $fields{pro}{curator}{dropdown_type}               = 'curator';
+  $fields{pro}{paper}{type}                          = 'ontology';
+  $fields{pro}{paper}{label}                         = 'WBPaper';
+  $fields{pro}{paper}{tab}                           = 'tab1';
+  $fields{pro}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{pro}{paperprimarystatus}{type}             = 'text';
+  $fields{pro}{paperprimarystatus}{label}            = 'Paper Primary Status';
+  $fields{pro}{paperprimarystatus}{tab}              = 'tab1';
+  $fields{pro}{paperprimarystatus}{disabled}         = 'disabled';
+  $fields{pro}{topicpaperstatus}{type}               = 'dropdown';
+  $fields{pro}{topicpaperstatus}{label}              = 'Topic Paper Status';
+  $fields{pro}{topicpaperstatus}{tab}                = 'tab1';
+  $fields{pro}{topicpaperstatus}{dropdown_type}      = 'topicpaperstatus';
+  $fields{pro}{process}{type}                        = 'ontology';
+  $fields{pro}{process}{label}                       = 'Topic';
+  $fields{pro}{process}{tab}                         = 'tab1';
+  $fields{pro}{process}{ontology_type}               = 'WBProcess';
+#   $fields{pro}{goid}{type}                           = 'multiontology';	# removed and moved to prt_
+#   $fields{pro}{goid}{label}                          = 'GO_term';
+#   $fields{pro}{goid}{tab}                            = 'tab1';
+#   $fields{pro}{goid}{ontology_type}                  = 'obo';
+#   $fields{pro}{goid}{ontology_table}                 = 'goid';
+  $fields{pro}{wbgene}{type}                         = 'multiontology';
+  $fields{pro}{wbgene}{label}                        = 'Gene';
+  $fields{pro}{wbgene}{tab}                          = 'tab1';
+  $fields{pro}{wbgene}{ontology_type}                = 'WBGene';
+  $fields{pro}{phenotype}{type}                      = 'multiontology';
+  $fields{pro}{phenotype}{label}                     = 'Phenotype';
+  $fields{pro}{phenotype}{tab}                       = 'tab1';
+  $fields{pro}{phenotype}{ontology_type}             = 'obo';
+  $fields{pro}{phenotype}{ontology_table}            = 'phenotype';
+  $fields{pro}{molecule}{type}                       = 'multiontology';
+  $fields{pro}{molecule}{label}                      = 'Molecule';
+  $fields{pro}{molecule}{tab}                        = 'tab1';
+  $fields{pro}{molecule}{ontology_type}              = 'Molecule';
+  $fields{pro}{sentid}{type}                         = 'ontology';
+  $fields{pro}{sentid}{label}                        = 'Sentence ID';
+  $fields{pro}{sentid}{tab}                          = 'tab1';
+  $fields{pro}{sentid}{ontology_type}                = 'obo';
+  $fields{pro}{sentid}{ontology_table}               = 'prosentid';
+  $fields{pro}{falsepositive}{type}                  = 'toggle';
+  $fields{pro}{falsepositive}{label}                 = 'False Positive';
+  $fields{pro}{falsepositive}{tab}                   = 'tab1';
+  $fields{pro}{anatomy}{type}                        = 'multiontology';
+  $fields{pro}{anatomy}{label}                       = 'Anatomy_term';
+  $fields{pro}{anatomy}{tab}                         = 'tab2';
+  $fields{pro}{anatomy}{ontology_type}               = 'obo';
+  $fields{pro}{anatomy}{ontology_table}              = 'anatomy';
+  $fields{pro}{lifestage}{type}                      = 'multiontology';
+  $fields{pro}{lifestage}{label}                     = 'Life_stage';
+  $fields{pro}{lifestage}{tab}                       = 'tab2';
+  $fields{pro}{lifestage}{ontology_type}             = 'obo';
+  $fields{pro}{lifestage}{ontology_table}            = 'lifestage';
+  $fields{pro}{taxon}{type}                          = 'multiontology';
+  $fields{pro}{taxon}{label}                         = 'Taxon';
+  $fields{pro}{taxon}{tab}                           = 'tab2';
+  $fields{pro}{taxon}{ontology_type}                 = 'obo';
+  $fields{pro}{taxon}{ontology_table}                = 'taxon';
+  $fields{pro}{exprcluster}{type}                    = 'multiontology';
+  $fields{pro}{exprcluster}{label}                   = 'Expression_cluster';
+  $fields{pro}{exprcluster}{tab}                     = 'tab2';
+  $fields{pro}{exprcluster}{ontology_type}           = 'obo';
+  $fields{pro}{exprcluster}{ontology_table}          = 'exprcluster';
+  $fields{pro}{construct}{type}                      = 'multiontology';
+  $fields{pro}{construct}{label}                     = 'Marker Construct';
+  $fields{pro}{construct}{tab}                       = 'tab2';
+  $fields{pro}{construct}{ontology_type}             = 'WBConstruct';
+#   $fields{pro}{humdisease}{type}                     = 'text';			# TO CHANGE
+#   $fields{pro}{humdisease}{label}                    = 'Human_disease';
+#   $fields{pro}{humdisease}{tab}                      = 'tab3';
+  $fields{pro}{humdisease}{type}                      = 'multiontology';
+  $fields{pro}{humdisease}{label}                     = 'Human_disease';
+  $fields{pro}{humdisease}{tab}                       = 'tab3';
+  $fields{pro}{humdisease}{ontology_type}             = 'obo';
+  $fields{pro}{humdisease}{ontology_table}            = 'humando';
+  $fields{pro}{picture}{type}                        = 'multiontology';
+  $fields{pro}{picture}{label}                       = 'Picture';
+  $fields{pro}{picture}{tab}                         = 'tab3';
+  $fields{pro}{picture}{ontology_type}               = 'WBPicture';
+  $fields{pro}{movie}{type}                          = 'text';			# TO CHANGE
+  $fields{pro}{movie}{label}                         = 'Movie';
+  $fields{pro}{movie}{tab}                           = 'tab3';
+  $fields{pro}{pathwaydb}{type}                      = 'bigtext';		# TO CHANGE
+  $fields{pro}{pathwaydb}{label}                     = 'Pathway Database';
+  $fields{pro}{pathwaydb}{tab}                       = 'tab3';
+  $fields{pro}{remark}{type}                         = 'bigtext';
+  $fields{pro}{remark}{label}                        = 'Remark';
+  $fields{pro}{remark}{tab}                          = 'tab3';
+  $fields{pro}{curationstatusomit}{type}             = 'toggle';
+  $fields{pro}{curationstatusomit}{label}            = 'Curation Status Omit';
+  $fields{pro}{curationstatusomit}{tab}              = 'tab3';
+  $datatypes{pro}{newRowSub}                         = \&newRowPro;
+  $datatypes{pro}{label}                             = 'topic';
+  @{ $datatypes{pro}{highestPgidTables} }            = qw( process curator );
+
+  return( \%fields, \%datatypes);
+} # sub initWormProFields
+
+sub initWormPrtFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{prt} }, "Tie::IxHash";
+  $fields{prt}{id}{type}                             = 'text';
+  $fields{prt}{id}{label}                            = 'pgid';
+  $fields{prt}{id}{tab}                              = 'tab1';
+  $fields{prt}{curator}{type}                        = 'dropdown';
+  $fields{prt}{curator}{label}                       = 'Curator';
+  $fields{prt}{curator}{tab}                         = 'tab1';
+  $fields{prt}{curator}{dropdown_type}               = 'curator';
+  $fields{prt}{processid}{type}                      = 'text';
+  $fields{prt}{processid}{label}                     = 'WBbioprID';
+  $fields{prt}{processid}{tab}                       = 'all';
+  $fields{prt}{processname}{type}                    = 'text';
+  $fields{prt}{processname}{label}                   = 'Process Name';
+  $fields{prt}{processname}{tab}                     = 'all';
+  $fields{prt}{summary}{type}                        = 'bigtext';
+  $fields{prt}{summary}{label}                       = 'Summary';
+  $fields{prt}{summary}{tab}                         = 'tab1';
+  $fields{prt}{othername}{type}                      = 'bigtext';
+  $fields{prt}{othername}{label}                     = 'Other_name';
+  $fields{prt}{othername}{tab}                       = 'tab1';
+  $fields{prt}{goid}{type}                           = 'multiontology';
+  $fields{prt}{goid}{label}                          = 'GO_term';
+  $fields{prt}{goid}{tab}                            = 'all';
+  $fields{prt}{goid}{ontology_type}                  = 'obo';
+  $fields{prt}{goid}{ontology_table}                 = 'goid';
+  $fields{prt}{relation}{type}                       = 'ontology';
+  $fields{prt}{relation}{label}                      = 'WBro_relation';
+  $fields{prt}{relation}{tab}                        = 'tab2';
+  $fields{prt}{relation}{ontology_type}              = 'obo';
+  $fields{prt}{relation}{ontology_table}             = 'topicrelations';
+  $fields{prt}{relprocess}{type}                     = 'multiontology';
+  $fields{prt}{relprocess}{label}                    = 'Related_process';
+  $fields{prt}{relprocess}{tab}                      = 'tab2';
+  $fields{prt}{relprocess}{ontology_type}            = 'WBProcess';
+  $fields{prt}{specialisationof}{type}               = 'multiontology';
+  $fields{prt}{specialisationof}{label}              = 'Specialisation_of';
+  $fields{prt}{specialisationof}{tab}                = 'all';
+  $fields{prt}{specialisationof}{ontology_type}      = 'WBProcess';
+  $fields{prt}{generalisationof}{type}               = 'multiontology';
+  $fields{prt}{generalisationof}{label}              = 'Generalisation_of';
+  $fields{prt}{generalisationof}{tab}                = 'all';
+  $fields{prt}{generalisationof}{ontology_type}      = 'WBProcess';
+  $fields{prt}{remark}{type}                         = 'bigtext';
+  $fields{prt}{remark}{label}                        = 'Remark';
+  $fields{prt}{remark}{tab}                          = 'all';
+  $fields{prt}{paper}{type}                          = 'multiontology';
+  $fields{prt}{paper}{label}                         = 'WBPaper';
+  $fields{prt}{paper}{tab}                           = 'tab1';
+  $fields{prt}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{prt}{nodump}{type}                         = 'toggle';
+  $fields{prt}{nodump}{label}                        = 'NO DUMP';
+  $fields{prt}{nodump}{tab}                          = 'tab1';
+  $datatypes{prt}{newRowSub}                         = \&newRowPrt;
+  $datatypes{prt}{label}                             = 'process term';
+  @{ $datatypes{prt}{highestPgidTables} }            = qw( processid curator );
+  return( \%fields, \%datatypes);
+} # sub initWormPrtFields
 
 sub initWormPtgFields {
   my ($datatype, $curator_two) = @_;
@@ -961,9 +1801,284 @@ sub initWormPtgFields {
   $fields{ptg}{lastupdate}{label}                    = 'Last Updated';
   $fields{ptg}{lastupdate}{tab}                      = 'all';
   $datatypes{ptg}{newRowSub}                         = \&newRowPtg;
+  $datatypes{ptg}{label}                             = 'transgene';
   @{ $datatypes{ptg}{highestPgidTables} }            = qw( term curator );
   return( \%fields, \%datatypes);
 } # sub initWormPtgFields
+
+sub initWormRnaFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{rna} }, "Tie::IxHash";
+  $fields{rna}{id}{type}                             = 'text';
+  $fields{rna}{id}{label}                            = 'pgid';
+  $fields{rna}{id}{tab}                              = 'tab1';
+  $fields{rna}{name}{type}                           = 'text';
+  $fields{rna}{name}{label}                          = 'Name';
+  $fields{rna}{name}{tab}                            = 'tab1';
+  $fields{rna}{paper}{type}                          = 'ontology';
+  $fields{rna}{paper}{label}                         = 'Paper';
+  $fields{rna}{paper}{tab}                           = 'tab1';
+  $fields{rna}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{rna}{laboratory}{type}                     = 'multiontology';
+  $fields{rna}{laboratory}{label}                    = 'Laboratory';
+  $fields{rna}{laboratory}{tab}                      = 'tab1';
+  $fields{rna}{laboratory}{ontology_type}            = 'obo';
+  $fields{rna}{laboratory}{ontology_table}           = 'laboratory';
+  $fields{rna}{date}{type}                           = 'text';
+  $fields{rna}{date}{label}                          = 'Date';
+  $fields{rna}{date}{tab}                            = 'tab1';
+  $fields{rna}{curator}{type}                        = 'dropdown';
+  $fields{rna}{curator}{label}                       = 'Curator';
+  $fields{rna}{curator}{tab}                         = 'tab1';
+  $fields{rna}{curator}{dropdown_type}               = 'curator';
+  $fields{rna}{pcrproduct}{type}                     = 'multiontology';
+  $fields{rna}{pcrproduct}{label}                    = 'PCR Product';
+  $fields{rna}{pcrproduct}{tab}                      = 'tab1';
+  $fields{rna}{pcrproduct}{ontology_type}            = 'obo';
+  $fields{rna}{pcrproduct}{ontology_table}           = 'pcrproduct';
+  $fields{rna}{dnatext}{type}                        = 'bigtext';
+  $fields{rna}{dnatext}{label}                       = 'DNA text';
+  $fields{rna}{dnatext}{tab}                         = 'tab1';
+#   $fields{rna}{sequence}{type}                       = 'multiontology';
+#   $fields{rna}{sequence}{label}                      = 'Sequence';
+#   $fields{rna}{sequence}{tab}                        = 'tab1';
+#   $fields{rna}{sequence}{ontology_type}              = 'WBSequence';
+  $fields{rna}{sequence}{type}                       = 'text';
+  $fields{rna}{sequence}{label}                      = 'Sequence';
+  $fields{rna}{sequence}{tab}                        = 'tab1';
+  $fields{rna}{strain}{type}                         = 'ontology';
+  $fields{rna}{strain}{label}                        = 'Strain';
+  $fields{rna}{strain}{tab}                          = 'tab1';
+  $fields{rna}{strain}{ontology_type}                = 'obo';
+  $fields{rna}{strain}{ontology_table}               = 'strain';
+  $fields{rna}{genotype}{type}                       = 'bigtext';
+  $fields{rna}{genotype}{label}                      = 'Genotype';
+  $fields{rna}{genotype}{tab}                        = 'tab1';
+  $fields{rna}{treatment}{type}                      = 'bigtext';
+  $fields{rna}{treatment}{label}                     = 'Treatment';
+  $fields{rna}{treatment}{tab}                       = 'tab1';
+  $fields{rna}{lifestage}{type}                      = 'ontology';
+  $fields{rna}{lifestage}{label}                     = 'Life Stage';
+  $fields{rna}{lifestage}{tab}                       = 'tab1';
+  $fields{rna}{lifestage}{ontology_type}             = 'obo';
+  $fields{rna}{lifestage}{ontology_table}            = 'lifestage';
+  $fields{rna}{temperature}{type}                    = 'text';
+  $fields{rna}{temperature}{label}                   = 'Temperature';
+  $fields{rna}{temperature}{tab}                     = 'tab1';
+  $fields{rna}{deliverymethod}{type}                 = 'multidropdown';
+  $fields{rna}{deliverymethod}{label}                = 'Delivery Method';
+  $fields{rna}{deliverymethod}{tab}                  = 'tab1';
+  $fields{rna}{deliverymethod}{dropdown_type}        = 'deliverymethod';
+  $fields{rna}{species}{type}                        = 'dropdown';
+  $fields{rna}{species}{label}                       = 'Species';
+  $fields{rna}{species}{tab}                         = 'tab1';
+  $fields{rna}{species}{dropdown_type}               = 'species';
+  $fields{rna}{remark}{type}                         = 'bigtext';
+  $fields{rna}{remark}{label}                        = 'Remark';
+  $fields{rna}{remark}{tab}                          = 'tab1';
+  $fields{rna}{fromgenereg}{type}                    = 'toggle';
+  $fields{rna}{fromgenereg}{label}                   = 'From Genereg';
+  $fields{rna}{fromgenereg}{tab}                     = 'tab2';
+  $fields{rna}{nodump}{type}                         = 'toggle';
+  $fields{rna}{nodump}{label}                        = 'NO DUMP';
+  $fields{rna}{nodump}{tab}                          = 'tab2';
+  $fields{rna}{phenotype}{type}                      = 'multiontology';
+  $fields{rna}{phenotype}{label}                     = 'Phenotype Observed';
+  $fields{rna}{phenotype}{tab}                       = 'tab2';
+  $fields{rna}{phenotype}{ontology_type}             = 'obo';
+  $fields{rna}{phenotype}{ontology_table}            = 'phenotype';
+  $fields{rna}{penfromto}{type}                      = 'text';
+  $fields{rna}{penfromto}{label}                     = 'Penetrance From To';
+  $fields{rna}{penfromto}{tab}                       = 'tab2';
+  $fields{rna}{penetrance}{type}                     = 'dropdown';
+  $fields{rna}{penetrance}{label}                    = 'Penetrance';
+  $fields{rna}{penetrance}{tab}                      = 'tab2';
+  $fields{rna}{penetrance}{dropdown_type}            = 'penetrance';
+#   $fields{rna}{penincomplete}{type}                  = 'toggle';
+#   $fields{rna}{penincomplete}{label}                 = 'Penetrance Incomplete';
+#   $fields{rna}{penincomplete}{tab}                   = 'tab2';
+#   $fields{rna}{penlow}{type}                         = 'toggle';
+#   $fields{rna}{penlow}{label}                        = 'Penetrance Low';
+#   $fields{rna}{penlow}{tab}                          = 'tab2';
+#   $fields{rna}{penhigh}{type}                        = 'toggle';
+#   $fields{rna}{penhigh}{label}                       = 'Penetrance High';
+#   $fields{rna}{penhigh}{tab}                         = 'tab2';
+#   $fields{rna}{pencomplete}{type}                    = 'toggle';
+#   $fields{rna}{pencomplete}{label}                   = 'Penetrance Complete';
+#   $fields{rna}{pencomplete}{tab}                     = 'tab2';
+  $fields{rna}{heatsens}{type}                       = 'toggle';
+  $fields{rna}{heatsens}{label}                      = 'Heat Sensitive';
+  $fields{rna}{heatsens}{tab}                        = 'tab2';
+  $fields{rna}{coldsens}{type}                       = 'toggle';
+  $fields{rna}{coldsens}{label}                      = 'Cold Sensitive';
+  $fields{rna}{coldsens}{tab}                        = 'tab2';
+  $fields{rna}{quantfromto}{type}                    = 'text';
+  $fields{rna}{quantfromto}{label}                   = 'Quantity From To';
+  $fields{rna}{quantfromto}{tab}                     = 'tab2';
+  $fields{rna}{quantdesc}{type}                      = 'bigtext';
+  $fields{rna}{quantdesc}{label}                     = 'Quantity Description';
+  $fields{rna}{quantdesc}{tab}                       = 'tab2';
+  $fields{rna}{phenremark}{type}                     = 'bigtext';
+  $fields{rna}{phenremark}{label}                    = 'Phenotype Remark';
+  $fields{rna}{phenremark}{tab}                      = 'tab2';
+  $fields{rna}{molecule}{type}                       = 'multiontology';
+  $fields{rna}{molecule}{label}                      = 'Molecule';
+  $fields{rna}{molecule}{tab}                        = 'tab2';
+  $fields{rna}{molecule}{ontology_type}              = 'Molecule';
+  $fields{rna}{phenotypenot}{type}                   = 'toggle';
+  $fields{rna}{phenotypenot}{label}                  = 'NOT';
+  $fields{rna}{phenotypenot}{tab}                    = 'tab2';
+  $fields{rna}{flaggeneticintxn}{type}               = 'toggle';
+  $fields{rna}{flaggeneticintxn}{label}              = 'Flag Genetic Intxn';
+  $fields{rna}{flaggeneticintxn}{tab}                = 'tab2';
+  $fields{rna}{flaggenereg}{type}                    = 'toggle';
+  $fields{rna}{flaggenereg}{label}                   = 'Flag Gene Reg';
+  $fields{rna}{flaggenereg}{tab}                     = 'tab2';
+#   $fields{rna}{phenotypenot}{type}                   = 'multiontology';
+#   $fields{rna}{phenotypenot}{label}                  = 'NOT';
+#   $fields{rna}{phenotypenot}{tab}                    = 'tab2';
+#   $fields{rna}{phenotypenot}{ontology_type}          = 'obo';
+#   $fields{rna}{phenotypenot}{ontology_table}         = 'phenotype';
+  $fields{rna}{person}{type}                         = 'multiontology';
+  $fields{rna}{person}{label}                        = 'Person Evidence';
+  $fields{rna}{person}{tab}                          = 'tab3';
+  $fields{rna}{person}{ontology_type}                = 'WBPerson';
+  $fields{rna}{historyname}{type}                    = 'text';
+  $fields{rna}{historyname}{label}                   = 'History Name';
+  $fields{rna}{historyname}{tab}                     = 'tab3';
+  $fields{rna}{movie}{type}                          = 'bigtext';
+  $fields{rna}{movie}{label}                         = 'Movie';
+  $fields{rna}{movie}{tab}                           = 'tab3';
+  $fields{rna}{database}{type}                       = 'text';
+  $fields{rna}{database}{label}                      = 'Database';
+  $fields{rna}{database}{tab}                        = 'tab3';
+  $fields{rna}{exprprofile}{type}                    = 'text';
+  $fields{rna}{exprprofile}{label}                   = 'Expression Profile';
+  $fields{rna}{exprprofile}{tab}                     = 'tab3';
+  $fields{rna}{suggested}{type}                      = 'text';
+  $fields{rna}{suggested}{label}                     = 'Phenotype Suggestion';
+  $fields{rna}{suggested}{tab}                       = 'tab3';
+  $fields{rna}{suggested_definition}{type}           = 'bigtext';
+  $fields{rna}{suggested_definition}{label}          = 'Suggested Definition';
+  $fields{rna}{suggested_definition}{tab}            = 'tab3';
+  $fields{rna}{child_of}{type}                       = 'multiontology';
+  $fields{rna}{child_of}{label}                      = 'Child Of';
+  $fields{rna}{child_of}{tab}                        = 'tab3';
+  $fields{rna}{child_of}{ontology_type}              = 'obo';
+  $fields{rna}{child_of}{ontology_table}             = 'phenotype';
+  $datatypes{rna}{newRowSub}                         = \&newRowRna;
+  $datatypes{rna}{label}                             = 'rnai';
+  @{ $datatypes{rna}{highestPgidTables} }            = qw( name curator );
+  return( \%fields, \%datatypes);
+} # sub initWormRnaFields
+
+sub initWormSqfFields {
+  my ($datatype, $curator_two) = @_;
+  my %fields; my %datatypes;
+  tie %{ $fields{sqf} }, "Tie::IxHash";
+  $fields{sqf}{id}{type}                             = 'text';
+  $fields{sqf}{id}{label}                            = 'pgid';
+  $fields{sqf}{id}{tab}                              = 'tab1';
+  $fields{sqf}{curator}{type}                        = 'dropdown';
+  $fields{sqf}{curator}{label}                       = 'Curator';
+  $fields{sqf}{curator}{tab}                         = 'tab1';
+  $fields{sqf}{curator}{dropdown_type}               = 'curator';
+  $fields{sqf}{name}{type}                           = 'text';
+  $fields{sqf}{name}{label}                          = 'Name';
+  $fields{sqf}{name}{tab}                            = 'tab1';
+  $fields{sqf}{publicname}{type}                     = 'text';
+  $fields{sqf}{publicname}{label}                    = 'Public Name';
+  $fields{sqf}{publicname}{tab}                      = 'tab1';
+  $fields{sqf}{othername}{type}                      = 'text';
+  $fields{sqf}{othername}{label}                     = 'Other Name';
+  $fields{sqf}{othername}{tab}                       = 'tab1';
+  $fields{sqf}{description}{type}                    = 'bigtext';
+  $fields{sqf}{description}{label}                   = 'Description';
+  $fields{sqf}{description}{tab}                     = 'tab1';
+  $fields{sqf}{species}{type}                        = 'dropdown';
+  $fields{sqf}{species}{label}                       = 'Species';
+  $fields{sqf}{species}{tab}                         = 'tab1';
+  $fields{sqf}{species}{dropdown_type}               = 'species';
+  $fields{sqf}{deprecated}{type}                     = 'bigtext';
+  $fields{sqf}{deprecated}{label}                    = 'Deprecated';
+  $fields{sqf}{deprecated}{tab}                      = 'tab1';
+  $fields{sqf}{paper}{type}                          = 'multiontology';
+  $fields{sqf}{paper}{label}                         = 'Paper';
+  $fields{sqf}{paper}{tab}                           = 'tab1';
+  $fields{sqf}{paper}{ontology_type}                 = 'WBPaper';
+  $fields{sqf}{person}{type}                         = 'multiontology';
+  $fields{sqf}{person}{label}                        = 'Person';
+  $fields{sqf}{person}{tab}                          = 'tab1';
+  $fields{sqf}{person}{ontology_type}                = 'WBPerson';
+  $fields{sqf}{analysis}{type}                       = 'text';
+  $fields{sqf}{analysis}{label}                      = 'Analysis';
+  $fields{sqf}{analysis}{tab}                        = 'tab1';
+  $fields{sqf}{method}{type}                         = 'dropdown';
+  $fields{sqf}{method}{label}                        = 'Method';
+  $fields{sqf}{method}{tab}                          = 'tab2';
+  $fields{sqf}{method}{dropdown_type}                = 'seqfeatmethod';
+  $fields{sqf}{so}{type}                             = 'text';
+  $fields{sqf}{so}{label}                            = 'SO';
+  $fields{sqf}{so}{tab}                              = 'tab2';
+  $fields{sqf}{dnatext}{type}                        = 'bigtext';
+  $fields{sqf}{dnatext}{label}                       = 'DNA text';
+  $fields{sqf}{dnatext}{tab}                         = 'tab2';
+  $fields{sqf}{flanka}{type}                         = 'text';
+  $fields{sqf}{flanka}{label}                        = 'Flanking Sequence A';
+  $fields{sqf}{flanka}{tab}                          = 'tab2';
+  $fields{sqf}{flankb}{type}                         = 'text';
+  $fields{sqf}{flankb}{label}                        = 'Flanking Sequence B';
+  $fields{sqf}{flankb}{tab}                          = 'tab2';
+  $fields{sqf}{target}{type}                         = 'text';
+  $fields{sqf}{target}{label}                        = 'Mapping Target';
+  $fields{sqf}{target}{tab}                          = 'tab2';
+  $fields{sqf}{sequence}{type}                       = 'text';
+  $fields{sqf}{sequence}{label}                      = 'Sequence';
+  $fields{sqf}{sequence}{tab}                        = 'tab2';
+  $fields{sqf}{wbgene}{type}                         = 'multiontology';
+  $fields{sqf}{wbgene}{label}                        = 'readOnly WBGene';
+  $fields{sqf}{wbgene}{tab}                          = 'tab3';
+  $fields{sqf}{wbgene}{ontology_type}                = 'WBGene';
+  $fields{sqf}{exprpattern}{type}                    = 'multiontology';
+  $fields{sqf}{exprpattern}{label}                   = 'readOnly Expression Pattern';
+  $fields{sqf}{exprpattern}{tab}                     = 'tab3';
+  $fields{sqf}{exprpattern}{ontology_type}           = 'Expr';
+  $fields{sqf}{intid}{type}                          = 'multiontology';
+  $fields{sqf}{intid}{label}                         = 'readOnly Interaction ID';
+  $fields{sqf}{intid}{tab}                           = 'tab3';
+  $fields{sqf}{intid}{ontology_type}                 = 'WBInteraction';
+  $fields{sqf}{cds}{type}                            = 'text';
+  $fields{sqf}{cds}{label}                           = 'readOnly CDS';
+  $fields{sqf}{cds}{tab}                             = 'tab3';
+  $fields{sqf}{operon}{type}                         = 'text';
+  $fields{sqf}{operon}{label}                        = 'readOnly Operon';
+  $fields{sqf}{operon}{tab}                          = 'tab3';
+  $fields{sqf}{construct}{type}                      = 'multiontology';
+  $fields{sqf}{construct}{label}                     = 'readOnly Construct';
+  $fields{sqf}{construct}{tab}                       = 'tab3';
+  $fields{sqf}{construct}{ontology_type}             = 'WBConstruct';
+  $fields{sqf}{boundbyproduct}{type}                 = 'multiontology';
+  $fields{sqf}{boundbyproduct}{label}                = 'Bound By Product Of';
+  $fields{sqf}{boundbyproduct}{tab}                  = 'tab3';
+  $fields{sqf}{boundbyproduct}{ontology_type}        = 'WBGene';
+  $fields{sqf}{trascriptionfactor}{type}             = 'text';
+  $fields{sqf}{trascriptionfactor}{label}            = 'Transcription Factor';
+  $fields{sqf}{trascriptionfactor}{tab}              = 'tab3';
+  $fields{sqf}{confidential}{type}                   = 'bigtext';
+  $fields{sqf}{confidential}{label}                  = 'Confidential Remark';
+  $fields{sqf}{confidential}{tab}                    = 'tab3';
+  $fields{sqf}{remark}{type}                         = 'bigtext';
+  $fields{sqf}{remark}{label}                        = 'Remark';
+  $fields{sqf}{remark}{tab}                          = 'tab3';
+  $fields{sqf}{score}{type}                          = 'text';
+  $fields{sqf}{score}{label}                         = 'Score';
+  $fields{sqf}{score}{tab}                           = 'tab3';
+  $datatypes{sqf}{newRowSub}                         = \&newRowSqf;
+  $datatypes{sqf}{label}                             = 'Sequence Feature';
+  @{ $datatypes{sqf}{highestPgidTables} }            = qw( name curator );
+  return( \%fields, \%datatypes);
+} # sub initWormSqfFields
 
 sub initWormTrpFields {
   my ($datatype, $curator_two) = @_;
@@ -975,51 +2090,47 @@ sub initWormTrpFields {
   $fields{trp}{name}{type}                           = 'text';
   $fields{trp}{name}{label}                          = 'Name';
   $fields{trp}{name}{tab}                            = 'tab1';
+  $fields{trp}{publicname}{type}                     = 'text';
+  $fields{trp}{publicname}{label}                    = 'Public Name';
+  $fields{trp}{publicname}{tab}                      = 'all';
   $fields{trp}{synonym}{type}                        = 'text';
   $fields{trp}{synonym}{label}                       = 'Synonym';
   $fields{trp}{synonym}{tab}                         = 'tab1';
   $fields{trp}{summary}{type}                        = 'bigtext';
   $fields{trp}{summary}{label}                       = 'Summary';
   $fields{trp}{summary}{tab}                         = 'tab1';
-  $fields{trp}{driven_by_gene}{type}                 = 'multiontology';
-  $fields{trp}{driven_by_gene}{label}                = 'Driven By Gene';
-  $fields{trp}{driven_by_gene}{tab}                  = 'tab1';
-  $fields{trp}{driven_by_gene}{ontology_type}        = 'WBGene';
-  $fields{trp}{reporter_product}{type}               = 'multidropdown';
-  $fields{trp}{reporter_product}{label}              = 'Reporter Product';
-  $fields{trp}{reporter_product}{tab}                = 'tab1';
-  $fields{trp}{reporter_product}{dropdown_type}      = 'reporterproduct';
-  $fields{trp}{other_reporter}{type}                 = 'text';			# pipe separated
-  $fields{trp}{other_reporter}{label}                = 'Other Reporter';
-  $fields{trp}{other_reporter}{tab}                  = 'tab1';
-  $fields{trp}{gene}{type}                           = 'multiontology';
-  $fields{trp}{gene}{label}                          = 'Gene';
-  $fields{trp}{gene}{tab}                            = 'tab1';
-  $fields{trp}{gene}{ontology_type}                  = 'WBGene';
+  $fields{trp}{construct}{type}                      = 'multiontology';
+  $fields{trp}{construct}{label}                     = 'Construct';
+  $fields{trp}{construct}{tab}                       = 'tab1';
+  $fields{trp}{construct}{ontology_type}             = 'WBConstruct';
+  $fields{trp}{coinjectionconstruct}{type}           = 'multiontology';
+  $fields{trp}{coinjectionconstruct}{label}          = 'Coinjection Construct';
+  $fields{trp}{coinjectionconstruct}{tab}            = 'tab1';
+  $fields{trp}{coinjectionconstruct}{ontology_type}  = 'WBConstruct';
   $fields{trp}{coinjection}{type}                    = 'text';
-  $fields{trp}{coinjection}{label}                   = 'Coninjection';
+  $fields{trp}{coinjection}{label}                   = 'Coinjection';
   $fields{trp}{coinjection}{tab}                     = 'tab1';
-  $fields{trp}{reporter_type}{type}                  = 'dropdown';
-  $fields{trp}{reporter_type}{label}                 = 'Reporter Type';
-  $fields{trp}{reporter_type}{tab}                   = 'tab1';
-  $fields{trp}{reporter_type}{dropdown_type}         = 'trpreportertype';
-  $fields{trp}{remark}{type}                         = 'bigtext';
-  $fields{trp}{remark}{label}                        = 'Remark';
-  $fields{trp}{remark}{tab}                          = 'tab1';
-  $fields{trp}{rescues}{type}                        = 'ontology';
-  $fields{trp}{rescues}{label}                       = 'Rescues';
-  $fields{trp}{rescues}{tab}                         = 'tab2';
-  $fields{trp}{rescues}{ontology_type}               = 'obo';
-  $fields{trp}{rescues}{ontology_table}              = 'variation';
-  $fields{trp}{clone}{type}                          = 'multiontology';
-  $fields{trp}{clone}{label}                         = 'Clone';
-  $fields{trp}{clone}{tab}                           = 'tab2';
-  $fields{trp}{clone}{ontology_type}                 = 'obo';
-  $fields{trp}{clone}{ontology_table}                = 'clone';
+  $fields{trp}{constructionsummary}{type}            = 'bigtext';
+  $fields{trp}{constructionsummary}{label}           = 'Construction Summary';
+  $fields{trp}{constructionsummary}{tab}             = 'tab1';
+  $fields{trp}{mergedinto}{type}                     = 'ontology';		# TODO create this new table for what an duplicated invalid transgene merges into
+  $fields{trp}{mergedinto}{label}                    = 'Merged Into';
+  $fields{trp}{mergedinto}{tab}                      = 'tab1';
+  $fields{trp}{mergedinto}{ontology_type}            = 'Transgene';
+
+  $fields{trp}{integratedfrom}{type}                 = 'ontology';
+  $fields{trp}{integratedfrom}{label}                = 'Integrated From';
+  $fields{trp}{integratedfrom}{tab}                  = 'tab2';
+  $fields{trp}{integratedfrom}{ontology_type}        = 'Transgene';
   $fields{trp}{integration_method}{type}             = 'dropdown';
   $fields{trp}{integration_method}{label}            = 'Integration Method';
   $fields{trp}{integration_method}{tab}              = 'tab2';
   $fields{trp}{integration_method}{dropdown_type}    = 'integrationmethod';
+  $fields{trp}{variation}{type}                      = 'ontology';
+  $fields{trp}{variation}{label}                     = 'Corresponding Variation';
+  $fields{trp}{variation}{tab}                       = 'tab2';
+  $fields{trp}{variation}{ontology_type}             = 'obo';
+  $fields{trp}{variation}{ontology_table}            = 'variation';
   $fields{trp}{map}{type}                            = 'multidropdown';
   $fields{trp}{map}{label}                           = 'Map';
   $fields{trp}{map}{tab}                             = 'tab2';
@@ -1044,14 +2155,6 @@ sub initWormTrpFields {
   $fields{trp}{curator}{label}                       = 'Curator';
   $fields{trp}{curator}{tab}                         = 'tab3';
   $fields{trp}{curator}{dropdown_type}               = 'curator';
-  $fields{trp}{paper}{type}                          = 'multiontology';
-  $fields{trp}{paper}{label}                         = 'Paper';
-  $fields{trp}{paper}{tab}                           = 'tab3';
-  $fields{trp}{paper}{ontology_type}                 = 'WBPaper';
-  $fields{trp}{person}{type}                         = 'multiontology';
-  $fields{trp}{person}{label}                        = 'Person';
-  $fields{trp}{person}{tab}                          = 'tab3';
-  $fields{trp}{person}{ontology_type}                = 'WBPerson';
   $fields{trp}{marker_for}{type}                     = 'text';
   $fields{trp}{marker_for}{label}                    = 'Marker for';
   $fields{trp}{marker_for}{tab}                      = 'tab3';
@@ -1062,17 +2165,29 @@ sub initWormTrpFields {
   $fields{trp}{species}{type}                        = 'text';
   $fields{trp}{species}{label}                       = 'Species';
   $fields{trp}{species}{tab}                         = 'tab3';
-  $fields{trp}{driven_by_construct}{type}            = 'text';
-  $fields{trp}{driven_by_construct}{label}           = 'Driven by Construct';
-  $fields{trp}{driven_by_construct}{tab}             = 'tab3';
-  $fields{trp}{searchnew}{type}                      = 'queryonly';
-  $fields{trp}{searchnew}{label}                     = 'Search new';
-  $fields{trp}{searchnew}{tab}                       = 'tab3';
-  $fields{trp}{searchnew}{queryonlySub}              = \&checkTrpQueryonly;
+#   $fields{trp}{searchnew}{type}                      = 'queryonly';		# leave this here as sample of how to use queryonly fields
+#   $fields{trp}{searchnew}{label}                     = 'Search new';
+#   $fields{trp}{searchnew}{tab}                       = 'tab3';
+#   $fields{trp}{searchnew}{queryonlySub}              = \&checkTrpQueryonly;
   $fields{trp}{objpap_falsepos}{type}                = 'toggle';
   $fields{trp}{objpap_falsepos}{label}               = 'Fail';
   $fields{trp}{objpap_falsepos}{tab}                 = 'tab3';
+  $fields{trp}{remark}{type}                         = 'bigtext';
+  $fields{trp}{remark}{label}                        = 'Remark';
+  $fields{trp}{remark}{tab}                          = 'tab3';
+  $fields{trp}{cgcremark}{type}                      = 'bigtext';
+  $fields{trp}{cgcremark}{label}                     = 'CGC Remark';
+  $fields{trp}{cgcremark}{tab}                       = 'tab3';
+  $fields{trp}{person}{type}                         = 'multiontology';
+  $fields{trp}{person}{label}                        = 'Person';
+  $fields{trp}{person}{tab}                          = 'tab3';
+  $fields{trp}{person}{ontology_type}                = 'WBPerson';
+  $fields{trp}{paper}{type}                          = 'multiontology';
+  $fields{trp}{paper}{label}                         = 'Paper';
+  $fields{trp}{paper}{tab}                           = 'tab3';
+  $fields{trp}{paper}{ontology_type}                 = 'WBPaper';
   $datatypes{trp}{newRowSub}                         = \&newRowTrp;
+  $datatypes{trp}{label}                             = 'transgene';
   @{ $datatypes{trp}{highestPgidTables} }            = qw( name curator );
   return( \%fields, \%datatypes);
 } # sub initWormTrpFields
@@ -1098,6 +2213,24 @@ sub getHighestExprId {		# look at all exp_name, get the highest number and retur
   my $result = $dbh->prepare( "SELECT exp_name FROM exp_name WHERE exp_name ~ '^Expr'" ); $result->execute(); 
   while (my @row = $result->fetchrow()) { if ($row[0]) { $row[0] =~ s/Expr//; if ($row[0] > $highest) { $highest = $row[0]; } } }
   return $highest; }
+sub getHighestPrtId {		# look at all prt_name, get the highest number and return
+  my $highest = 0;
+  my $result = $dbh->prepare( "SELECT prt_processid FROM prt_processid WHERE prt_processid ~ '^WBbiopr:'" ); $result->execute(); 
+  while (my @row = $result->fetchrow()) { if ($row[0]) { $row[0] =~ s/WBbiopr://; if ($row[0] > $highest) { $highest = $row[0]; } } }
+  return $highest; }
+sub getHighestRnaiId {		# look at all exp_name, get the highest number and return
+  my $highest = 0;
+  my $result = $dbh->prepare( "SELECT rna_name FROM rna_name WHERE rna_name ~ '^WBRNAi'" ); $result->execute(); 
+  while (my @row = $result->fetchrow()) { if ($row[0]) { $row[0] =~ s/WBRNAi//; if ($row[0] > $highest) { $highest = $row[0]; } } }
+  return $highest; }
+sub getNewIntId {		# make sure to change the interaction ticket form if we change the format of the interaction IDs 
+  my ($curator) = @_;
+  my $result = $dbh->prepare( "SELECT * FROM int_index ORDER BY int_index::INTEGER DESC;" ); $result->execute(); 
+  my @row = $result->fetchrow(); my $highest = $row[1]; my $newNumber = $highest + 1; my $intId = &pad9Zeros($newNumber); my $returnValue = '';
+  $result = $dbh->prepare( "INSERT INTO int_index VALUES ('$intId', '$newNumber', '$curator')" );
+  $result->execute() or $returnValue .= "ERROR, failed to insert to int_index &getNewIntId\n";
+  unless ($returnValue) { $returnValue = $intId; }
+  return $returnValue; }
 
 sub newRowAbp {
   my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
@@ -1109,12 +2242,61 @@ sub newRowApp {
   my ($returnValue) = &insertToPostgresTableAndHistory('app_curator', $newPgid, $curator);
   if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
   return $returnValue; }
+sub newRowCns {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('cns_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my $cnsId = &pad8Zeros($newPgid);
+    ($returnValue)  = &insertToPostgresTableAndHistory('cns_name', $newPgid, "WBCnstr$cnsId"); }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; }
+  return $returnValue; }
+sub newRowCon {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('con_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my $date = &getPgDate(); my $notOk = '';
+    ($returnValue)  = &insertToPostgresTableAndHistory('con_lastupdate', $newPgid, $date); 
+    unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+    ($returnValue)  = &insertToPostgresTableAndHistory('con_curhistory', $newPgid, $newPgid); 
+    unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+    if ($notOk) { $returnValue = $notOk; } }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
+  return $returnValue; }
+sub newRowDis {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('dis_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my $date = &getPgDate(); my $notOk = '';
+    ($returnValue)  = &insertToPostgresTableAndHistory('dis_lastupdateexpmod', $newPgid, $date); 
+    unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+    ($returnValue)  = &insertToPostgresTableAndHistory('dis_lastupdatedisrel', $newPgid, $date); 
+    unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+    ($returnValue)  = &insertToPostgresTableAndHistory('dis_curhistory', $newPgid, $newPgid); 
+    unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+    if ($notOk) { $returnValue = $notOk; } }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
+  return $returnValue; }
+sub newRowDit {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('dit_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my $date = &getPgDate(); my $notOk = '';
+    ($returnValue)  = &insertToPostgresTableAndHistory('dit_lastupdate', $newPgid, $date); 
+    unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+    ($returnValue)  = &insertToPostgresTableAndHistory('dit_curhistory', $newPgid, $newPgid); 
+    unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+    if ($notOk) { $returnValue = $notOk; } }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
+  return $returnValue; }
 sub newRowExp {
   my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
   my ($returnValue) = &insertToPostgresTableAndHistory('exp_curator', $newPgid, $curator);
   if ($returnValue eq 'OK') {
     my ($newExprId) = &getHighestExprId(); $newExprId++;
     ($returnValue)  = &insertToPostgresTableAndHistory('exp_name', $newPgid, "Expr$newExprId"); }
+  if ($returnValue eq 'OK') {
+    my $endogenous = 'Endogenous';
+    ($returnValue)  = &insertToPostgresTableAndHistory('exp_endogenous', $newPgid, $endogenous); }
   if ($returnValue eq 'OK') { $returnValue = $newPgid; }
   return $returnValue; }
 sub newRowGcl {
@@ -1131,21 +2313,41 @@ sub newRowGop {
   if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
   return $returnValue; }
 sub newRowGrg {
-  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/; my $notOk = '';
   my ($returnValue) = &insertToPostgresTableAndHistory('grg_curator', $newPgid, $curator);
+  unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+  my ($newIntId) = &getNewIntId($curator_two);							# get new intId 
+  unless ($newIntId =~ m/^\d+$/) { $notOk .= $newIntId; }					# if not an int_index joinkey it's an error
+  ($returnValue)  = &insertToPostgresTableAndHistory('grg_intid', $newPgid, "WBInteraction$newIntId");	# add to interaction id
+  unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+  if ($notOk) { $returnValue = $notOk; }							# if error, return error message
   if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
   return $returnValue; }
 sub newRowInt {
-  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
-  my ($returnValue) = &insertToPostgresTableAndHistory('int_curator', $newPgid, $curator);
-  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/; my $notOk = '';
+  my ($returnValue) = &insertToPostgresTableAndHistory('int_curator', $newPgid, $curator);	# add curator
+  unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+  my ($newIntId) = &getNewIntId($curator_two);							# get new intId 
+  unless ($newIntId =~ m/^\d+$/) { $notOk .= $newIntId; }					# if not an int_index joinkey it's an error
+  ($returnValue)  = &insertToPostgresTableAndHistory('int_name', $newPgid, "WBInteraction$newIntId");	# add to interaction name
+  unless ($returnValue eq 'OK') { $notOk .= $returnValue; }
+  if ($notOk) { $returnValue = $notOk; }							# if error, return error message
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 					# if it's ok, return newPgid
   return $returnValue; }
 sub newRowMop {
   my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
   my ($returnValue) = &insertToPostgresTableAndHistory('mop_curator', $newPgid, $curator);
   if ($returnValue eq 'OK') {
     my $molId = &pad8Zeros($newPgid); 
-    ($returnValue)  = &insertToPostgresTableAndHistory('mop_molecule', $newPgid, "WBMol:$molId"); }
+    ($returnValue)  = &insertToPostgresTableAndHistory('mop_name', $newPgid, "WBMol:$molId"); }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
+  return $returnValue; }
+sub newRowMov {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('mov_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my $movId = &pad10Zeros($newPgid);
+    ($returnValue)  = &insertToPostgresTableAndHistory('mov_name', $newPgid, "WBMovie$movId"); }
   if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
   return $returnValue; }
 sub newRowPic {
@@ -1156,15 +2358,52 @@ sub newRowPic {
     ($returnValue)  = &insertToPostgresTableAndHistory('pic_name', $newPgid, "WBPicture$picId"); }
   if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
   return $returnValue; }
+sub newRowPro {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('pro_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my $topicpaperstatus = 'relevant';
+    ($returnValue)  = &insertToPostgresTableAndHistory('pro_topicpaperstatus', $newPgid, $topicpaperstatus); }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
+  return $returnValue; }
+sub newRowPrt {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('prt_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my ($newPrtId) = &getHighestPrtId(); $newPrtId++;
+    my $prtId = &pad8Zeros($newPrtId); 
+    ($returnValue)  = &insertToPostgresTableAndHistory('prt_processid', $newPgid, "WBbiopr:$prtId"); }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; }
+  return $returnValue; }
 sub newRowPtg {
   my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
   my ($returnValue) = &insertToPostgresTableAndHistory('ptg_curator', $newPgid, $curator);
   if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
   return $returnValue; }
+sub newRowRna {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('rna_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my ($newRnaiId) = &getHighestRnaiId(); $newRnaiId++;
+    my $rnaiId = &pad8Zeros($newRnaiId); 
+    ($returnValue)  = &insertToPostgresTableAndHistory('rna_name', $newPgid, "WBRNAi$rnaiId"); }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; }
+  return $returnValue; }
+sub newRowSqf {
+  my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
+  my ($returnValue) = &insertToPostgresTableAndHistory('sqf_curator', $newPgid, $curator);
+  if ($returnValue eq 'OK') {
+    my $sqfId = &pad8Zeros($newPgid);
+    ($returnValue)  = &insertToPostgresTableAndHistory('sqf_name', $newPgid, "WBsf$sqfId"); }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; }
+  return $returnValue; }
 sub newRowTrp {
   my ($newPgid, $curator_two) = @_; my $curator = $curator_two; $curator =~ s/two/WBPerson/;
   my ($returnValue) = &insertToPostgresTableAndHistory('trp_curator', $newPgid, $curator);
-  if ($returnValue eq 'OK') { $returnValue = $newPgid; } 
+  if ($returnValue eq 'OK') {
+    my $trpId = &pad8Zeros($newPgid);
+    ($returnValue)  = &insertToPostgresTableAndHistory('trp_name', $newPgid, "WBTransgene$trpId"); }
+  if ($returnValue eq 'OK') { $returnValue = $newPgid; }
   return $returnValue; }
 
 ### END NEW ROW ###
@@ -1225,10 +2464,11 @@ sub checkAppConstraints {
 
 ### QUERY ONLY ###
 
-sub checkTrpQueryonly {		# sample query only field with a made-up query.  should filter out joinkeys, and probably order by desc timestamp.
-  my ($joinkeys) = @_;							# joinkeys already in dataTable to exclude from query
-  return "SELECT joinkey FROM trp_name WHERE joinkey NOT IN ('$joinkeys') AND trp_name ~ 'arIs' ORDER BY trp_timestamp DESC";
-} # sub checkTrpQueryonly
+# leaving this here as a sample if needed in the future
+# sub checkTrpQueryonly {		# sample query only field with a made-up query.  should filter out joinkeys, and probably order by desc timestamp.
+#   my ($joinkeys) = @_;							# joinkeys already in dataTable to exclude from query
+#   return "SELECT joinkey FROM trp_name WHERE joinkey NOT IN ('$joinkeys') AND trp_name ~ 'arIs' ORDER BY trp_timestamp DESC";
+# } # sub checkTrpQueryonly
 
 ### END QUERY ONLY ###
 
@@ -1243,72 +2483,92 @@ sub setAnySimpleAutocompleteValues {
   my %data;
   if ($ontology_type eq 'curator') {
     tie %{ $data{$ontology_type}{name} }, "Tie::IxHash";
-    $data{$ontology_type}{name}{"Juancarlos Chan"} = "Juancarlos Chan ( WBPerson1823 ) ";
-    $data{$ontology_type}{name}{"Wen Chen"} = "Wen Chen ( WBPerson101 ) ";
-    $data{$ontology_type}{name}{"Jolene Fernandes"} = "Jolene Fernandes ( WBPerson2021 ) ";
-    $data{$ontology_type}{name}{"Chris"} = "Chris ( WBPerson2987 ) ";
-    $data{$ontology_type}{name}{"Snehalata Kadam"} = "Snehalata Kadam ( WBPerson12884 ) ";
-    $data{$ontology_type}{name}{"Ranjana Kishore"} = "Ranjana Kishore ( WBPerson324 ) ";
-    $data{$ontology_type}{name}{"Daniela Raciti"} = "Daniela Raciti ( WBPerson12028 ) ";
-    $data{$ontology_type}{name}{"Arun Rangarajan"} = "Arun Rangarajan ( WBPerson4793 ) ";
-    $data{$ontology_type}{name}{"Gary Schindelman"} = "Gary Schindelman ( WBPerson557 ) ";
+    $data{$ontology_type}{name}{"Juancarlos Chan"}    = "Juancarlos Chan ( WBPerson1823 ) ";
+    $data{$ontology_type}{name}{"Wen Chen"}           = "Wen Chen ( WBPerson101 ) ";
+    $data{$ontology_type}{name}{"Chris"}              = "Chris ( WBPerson2987 ) ";
+    $data{$ontology_type}{name}{"Snehalata Kadam"}    = "Snehalata Kadam ( WBPerson12884 ) ";
+    $data{$ontology_type}{name}{"Ranjana Kishore"}    = "Ranjana Kishore ( WBPerson324 ) ";
+    $data{$ontology_type}{name}{"Raymond Lee"}        = "Raymond Lee ( WBPerson363 ) ";
+    $data{$ontology_type}{name}{"Yuling Li"}          = "Yuling Li ( WBPerson11187 ) ";
+    $data{$ontology_type}{name}{"Daniela Raciti"}     = "Daniela Raciti ( WBPerson12028 ) ";
+    $data{$ontology_type}{name}{"Arun Rangarajan"}    = "Arun Rangarajan ( WBPerson4793 ) ";
+    $data{$ontology_type}{name}{"Gary Schindelman"}   = "Gary Schindelman ( WBPerson557 ) ";
     $data{$ontology_type}{name}{"Kimberly Van Auken"} = "Kimberly Van Auken ( WBPerson1843 ) ";
-    $data{$ontology_type}{name}{"Xiaodong Wang"} = "Xiaodong Wang ( WBPerson1760 ) ";
-    $data{$ontology_type}{name}{"Karen Yook"} = "Karen Yook ( WBPerson712 ) ";
-    $data{$ontology_type}{name}{"Carol Bastiani"} = "Carol Bastiani ( WBPerson48 ) ";
-    $data{$ontology_type}{name}{"Keith Bradnam"} = "Keith Bradnam ( WBPerson1971 ) ";
-    $data{$ontology_type}{name}{"Chao-Kung Chen"} = "Chao-Kung Chen ( WBPerson1845 ) ";
-    $data{$ontology_type}{name}{"Uhma Ganesan"} = "Uhma Ganesan ( WBPerson13088 ) ";
-    $data{$ontology_type}{name}{"Josh Jaffery"} = "Josh Jaffery ( WBPerson5196 ) ";
-    $data{$ontology_type}{name}{"Sylvia Martinelli"} = "Sylvia Martinelli ( WBPerson1250 ) ";
-    $data{$ontology_type}{name}{"Tuco"} = "Tuco ( WBPerson480 ) ";
-    $data{$ontology_type}{name}{"Mary Ann Tuli"} = "Mary Ann Tuli ( WBPerson2970 ) "; }
+    $data{$ontology_type}{name}{"Xiaodong Wang"}      = "Xiaodong Wang ( WBPerson1760 ) ";
+    $data{$ontology_type}{name}{"Karen Yook"}         = "Karen Yook ( WBPerson712 ) ";
+    $data{$ontology_type}{name}{"Unknown Curator"}    = "Unknown Curator ( WBPerson13481 ) ";
+    $data{$ontology_type}{name}{"Igor Antoshechkin"}  = "Igor Antoshechkin ( WBPerson22 ) ";
+    $data{$ontology_type}{name}{"Carol Bastiani"}     = "Carol Bastiani ( WBPerson48 ) ";
+    $data{$ontology_type}{name}{"Keith Bradnam"}      = "Keith Bradnam ( WBPerson1971 ) ";
+    $data{$ontology_type}{name}{"Chao-Kung Chen"}     = "Chao-Kung Chen ( WBPerson1845 ) ";
+    $data{$ontology_type}{name}{"Paul Davis"}         = "Paul Davis ( WBPerson1983 ) ";
+    $data{$ontology_type}{name}{"Jolene Fernandes"}   = "Jolene Fernandes ( WBPerson2021 ) ";
+    $data{$ontology_type}{name}{"Uhma Ganesan"}       = "Uhma Ganesan ( WBPerson13088 ) ";
+    $data{$ontology_type}{name}{"Josh Jaffery"}       = "Josh Jaffery ( WBPerson5196 ) ";
+    $data{$ontology_type}{name}{"Sylvia Martinelli"}  = "Sylvia Martinelli ( WBPerson1250 ) ";
+    $data{$ontology_type}{name}{"Tuco"}               = "Tuco ( WBPerson480 ) ";
+    $data{$ontology_type}{name}{"Erich Schwarz"}      = "Erich Schwarz ( WBPerson567 ) ";
+    $data{$ontology_type}{name}{"Mary Ann Tuli"}      = "Mary Ann Tuli ( WBPerson2970 ) "; }
   elsif ($ontology_type eq 'clonality') {
     $data{$ontology_type}{name}{"Polyclonal"} = "Polyclonal";
     $data{$ontology_type}{name}{"Monoclonal"} = "Monoclonal"; }
   elsif ($ontology_type eq 'animal') {
-    $data{$ontology_type}{name}{"Rabbit"} = "Rabbit";
-    $data{$ontology_type}{name}{"Mouse"} = "Mouse";
-    $data{$ontology_type}{name}{"Rat"} = "Rat";
-    $data{$ontology_type}{name}{"Guinea_pig"} = "Guinea_pig";
-    $data{$ontology_type}{name}{"Chicken"} = "Chicken";
-    $data{$ontology_type}{name}{"Goat"} = "Goat";
+    $data{$ontology_type}{name}{"Rabbit"}       = "Rabbit";
+    $data{$ontology_type}{name}{"Mouse"}        = "Mouse";
+    $data{$ontology_type}{name}{"Rat"}          = "Rat";
+    $data{$ontology_type}{name}{"Guinea_pig"}   = "Guinea_pig";
+    $data{$ontology_type}{name}{"Chicken"}      = "Chicken";
+    $data{$ontology_type}{name}{"Goat"}         = "Goat";
     $data{$ontology_type}{name}{"Other_animal"} = "Other_animal"; }
   elsif ($ontology_type eq 'antigen') {
-    $data{$ontology_type}{name}{"Peptide"} = "Peptide";
-    $data{$ontology_type}{name}{"Protein"} = "Protein";
+    $data{$ontology_type}{name}{"Peptide"}       = "Peptide";
+    $data{$ontology_type}{name}{"Protein"}       = "Protein";
     $data{$ontology_type}{name}{"Other_antigen"} = "Other_antigen"; }
   elsif ($ontology_type eq 'abpsource') {
-    $data{$ontology_type}{name}{"Original_publication"} = "Original_publication";
+    $data{$ontology_type}{name}{"Original_publication"}  = "Original_publication";
     $data{$ontology_type}{name}{"No_original_reference"} = "No_original_reference"; }
+  elsif ($ontology_type eq 'condescription') {
+    tie %{ $data{$ontology_type}{name} }, "Tie::IxHash";
+    $data{$ontology_type}{name}{"Concise_description"}             = "Concise_description";
+    $data{$ontology_type}{name}{"Automated_description"}           = "Automated_description";
+#     $data{$ontology_type}{name}{"Human_disease_relevance"}         = "Human_disease_relevance";	# moved to disease OA  2013 01 25
+    $data{$ontology_type}{name}{"Provisional_description"}         = "Provisional_description";
+    $data{$ontology_type}{name}{"Sequence_features"}               = "Sequence_features";
+    $data{$ontology_type}{name}{"Functional_pathway"}              = "Functional_pathway";
+    $data{$ontology_type}{name}{"Functional_physical_interaction"} = "Functional_physical_interaction";
+    $data{$ontology_type}{name}{"Biological_process"}              = "Biological_process";
+    $data{$ontology_type}{name}{"Molecular_function"}              = "Molecular_function";
+    $data{$ontology_type}{name}{"Expression"}                      = "Expression";
+    $data{$ontology_type}{name}{"Other_description"}               = "Other_description"; }
   elsif ($ontology_type eq 'exprqualifier') {
-    $data{$ontology_type}{name}{"Certain"} = "Certain";
-    $data{$ontology_type}{name}{"Partial"} = "Partial";
+    $data{$ontology_type}{name}{"Certain"}   = "Certain";
+    $data{$ontology_type}{name}{"Partial"}   = "Partial";
     $data{$ontology_type}{name}{"Uncertain"} = "Uncertain"; }
   elsif ($ontology_type eq 'exprtype') {
-    $data{$ontology_type}{name}{"Antibody"} = "Antibody";
+    $data{$ontology_type}{name}{"Antibody"}      = "Antibody";
     $data{$ontology_type}{name}{"Reporter_gene"} = "Reporter_gene";
-    $data{$ontology_type}{name}{"In_Situ"} = "In_Situ";
-    $data{$ontology_type}{name}{"RT_PCR"} = "RT_PCR";
-    $data{$ontology_type}{name}{"Northern"} = "Northern";
-    $data{$ontology_type}{name}{"Western"} = "Western"; }
+    $data{$ontology_type}{name}{"In_Situ"}       = "In_Situ";
+    $data{$ontology_type}{name}{"RT_PCR"}        = "RT_PCR";
+    $data{$ontology_type}{name}{"EPIC"}          = "EPIC";
+    $data{$ontology_type}{name}{"Northern"}      = "Northern";
+    $data{$ontology_type}{name}{"Western"}       = "Western"; }
   elsif ($ontology_type eq 'gclstatus') {
     $data{$ontology_type}{name}{"done"} = "done";
     $data{$ontology_type}{name}{"incomplete"} = "incomplete";
     $data{$ontology_type}{name}{"recheck"} = "recheck"; }
   elsif ($ontology_type eq 'gcltype') {
-    $data{$ontology_type}{name}{"molecular"} = "molecular";
-    $data{$ontology_type}{name}{"phenotype"} = "phenotype";
+    $data{$ontology_type}{name}{"molecular"}          = "molecular";
+    $data{$ontology_type}{name}{"phenotype"}          = "phenotype";
     $data{$ontology_type}{name}{"phenotype-function"} = "phenotype-function";
-    $data{$ontology_type}{name}{"other"} = "other"; }
+    $data{$ontology_type}{name}{"other"}              = "other"; }
   elsif ($ontology_type eq 'goontology') {
     $data{$ontology_type}{name}{"F"} = "F ( mol ) ";
     $data{$ontology_type}{name}{"P"} = "P ( bio ) ";
     $data{$ontology_type}{name}{"C"} = "C ( cell ) "; }
   elsif ($ontology_type eq 'goproject') {
-    $data{$ontology_type}{name}{"Reference Genomes"} = "Reference Genomes";
-    $data{$ontology_type}{name}{"PAINT"} = "PAINT";
-    $data{$ontology_type}{name}{"Variation phenotype2GO"} = "Variation phenotype2GO";
+    $data{$ontology_type}{name}{"Reference Genomes"}           = "Reference Genomes";
+    $data{$ontology_type}{name}{"PAINT"}                       = "PAINT";
+    $data{$ontology_type}{name}{"Variation phenotype2GO"}      = "Variation phenotype2GO";
     $data{$ontology_type}{name}{"Human Disease Gene Ortholog"} = "Human Disease Gene Ortholog"; }
   elsif ($ontology_type eq 'goinference') {
     $data{$ontology_type}{name}{"IDA"} = "IDA";
@@ -1319,8 +2579,8 @@ sub setAnySimpleAutocompleteValues {
     $data{$ontology_type}{name}{"IPI"} = "IPI";
     $data{$ontology_type}{name}{"ISS"} = "ISS";
     $data{$ontology_type}{name}{"NAS"} = "NAS";
-    $data{$ontology_type}{name}{"ND"} = "ND";
-    $data{$ontology_type}{name}{"IC"} = "IC";
+    $data{$ontology_type}{name}{"ND"}  = "ND";
+    $data{$ontology_type}{name}{"IC"}  = "IC";
     $data{$ontology_type}{name}{"TAS"} = "TAS";
     $data{$ontology_type}{name}{"RCA"} = "RCA";
     $data{$ontology_type}{name}{"EXP"} = "EXP";
@@ -1335,87 +2595,260 @@ sub setAnySimpleAutocompleteValues {
     $data{$ontology_type}{name}{"GO_REF:0000033"} = "Annotation inferences using phylogenetic trees ( GO_REF:0000033 ) ";
     $data{$ontology_type}{name}{"GO_REF:0000024"} = "Curator sequence analysis for ISS ( GO_REF:0000024 ) "; }
   elsif ($ontology_type eq 'goqualifier') {
-    $data{$ontology_type}{name}{"NOT"} = "NOT";
-    $data{$ontology_type}{name}{"contributes_to"} = "contributes_to";
+    $data{$ontology_type}{name}{"NOT"}              = "NOT";
+    $data{$ontology_type}{name}{"contributes_to"}   = "contributes_to";
     $data{$ontology_type}{name}{"colocalizes_with"} = "colocalizes_with"; }
   elsif ($ontology_type eq 'godbtype') {
-    $data{$ontology_type}{name}{"protein"} = "protein";
-    $data{$ontology_type}{name}{"gene"} = "gene";
-    $data{$ontology_type}{name}{"transcript"} = "transcript";
-    $data{$ontology_type}{name}{"complex"} = "complex";
+    $data{$ontology_type}{name}{"protein"}           = "protein";
+    $data{$ontology_type}{name}{"gene"}              = "gene";
+    $data{$ontology_type}{name}{"transcript"}        = "transcript";
+    $data{$ontology_type}{name}{"complex"}           = "complex";
     $data{$ontology_type}{name}{"protein_structure"} = "protein_structure"; }
   elsif ($ontology_type eq 'grgtype') {
-    $data{$ontology_type}{name}{"Change_of_localization"} = "Change_of_localization";
+    $data{$ontology_type}{name}{"Change_of_localization"}     = "Change_of_localization";
     $data{$ontology_type}{name}{"Change_of_expression_level"} = "Change_of_expression_level"; }
+  elsif ($ontology_type eq 'grgresult') {
+    $data{$ontology_type}{name}{"Positive_regulate"}     = "Positive_regulate";
+    $data{$ontology_type}{name}{"Negative_regulate"}     = "Negative_regulate";
+    $data{$ontology_type}{name}{"Does_not_regulate"}     = "Does_not_regulate"; }
   elsif ($ontology_type eq 'regulationlevel') {
-    $data{$ontology_type}{name}{"Transcriptional"} = "Transcriptional";
+    $data{$ontology_type}{name}{"Transcriptional"}      = "Transcriptional";
     $data{$ontology_type}{name}{"Post_transcriptional"} = "Post_transcriptional";
-    $data{$ontology_type}{name}{"Post_translational"} = "Post_translational"; }
+    $data{$ontology_type}{name}{"Post_translational"}   = "Post_translational"; }
   elsif ($ontology_type eq 'regulates') {
     $data{$ontology_type}{name}{"Positive_regulate"} = "Positive_regulate";
     $data{$ontology_type}{name}{"Negative_regulate"} = "Negative_regulate";
     $data{$ontology_type}{name}{"Does_not_regulate"} = "Does_not_regulate"; }
   elsif ($ontology_type eq 'inttype') {
-    $data{$ontology_type}{name}{"Regulatory"} = "Regulatory";
-    $data{$ontology_type}{name}{"Suppression"} = "Suppression";
-    $data{$ontology_type}{name}{"Enhancement"} = "Enhancement";
-    $data{$ontology_type}{name}{"Epistasis"} = "Epistasis";
-    $data{$ontology_type}{name}{"Genetic"} = "Genetic";
-    $data{$ontology_type}{name}{"No_interaction"} = "No_interaction";
-    $data{$ontology_type}{name}{"Predicted_interaction"} = "Predicted_interaction";
-    $data{$ontology_type}{name}{"Physical_interaction"} = "Physical_interaction";
-    $data{$ontology_type}{name}{"Synthetic"} = "Synthetic";
-    $data{$ontology_type}{name}{"Mutual_enhancement"} = "Mutual_enhancement";
-    $data{$ontology_type}{name}{"Mutual_suppression"} = "Mutual_suppression"; }
+    tie %{ $data{$ontology_type}{name} }, "Tie::IxHash";
+    $data{$ontology_type}{name}{"Physical"}                                      = "Physical ( Physical ) ";
+    $data{$ontology_type}{name}{"Predicted"}                                     = "Predicted ( Predicted ) ";
+    $data{$ontology_type}{name}{"Genetic - Genetic Interaction"}                 = "Genetic - Genetic Interaction ( Genetic_interaction ) ";
+    $data{$ontology_type}{name}{"Genetic - Negative genetic"}                    = "Genetic - Negative genetic ( Negative_genetic ) ";
+    $data{$ontology_type}{name}{"Genetic - Synthetic"}                           = "Genetic - Synthetic ( Synthetic ) ";
+    $data{$ontology_type}{name}{"Genetic - Enhancement"}                         = "Genetic - Enhancement ( Enhancement ) ";
+    $data{$ontology_type}{name}{"Genetic - Unilateral enhancement"}              = "Genetic - Unilateral enhancement ( Unilateral_enhancement ) ";
+    $data{$ontology_type}{name}{"Genetic - Mutual enhancement"}                  = "Genetic - Mutual enhancement ( Mutual_enhancement ) ";
+    $data{$ontology_type}{name}{"Genetic - Positive genetic"}                    = "Genetic - Positive genetic ( Positive_genetic ) ";
+    $data{$ontology_type}{name}{"Genetic - Suppression"}                         = "Genetic - Suppression ( Suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Complete suppression"}                = "Genetic - Complete suppression ( Complete_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Partial suppression"}                 = "Genetic - Partial suppression ( Partial_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Unilateral suppression"}              = "Genetic - Unilateral suppression ( Unilateral_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Complete unilateral suppression"}     = "Genetic - Complete unilateral suppression ( Complete_unilateral_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Partial unilateral suppression"}      = "Genetic - Partial unilateral suppression ( Partial_unilateral_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Mutual suppression"}                  = "Genetic - Mutual suppression ( Mutual_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Complete mutual suppression"}         = "Genetic - Complete mutual suppression ( Complete_mutual_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Partial mutual suppression"}          = "Genetic - Partial mutual suppression ( Partial_mutual_suppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Asynthetic"}                          = "Genetic - Asynthetic ( Asynthetic ) ";
+    $data{$ontology_type}{name}{"Genetic - Suppression/Enhancement"}             = "Genetic - Suppression/Enhancement ( Suppression_enhancement ) ";
+    $data{$ontology_type}{name}{"Genetic - Epistasis"}                           = "Genetic - Epistasis ( Epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Positive epistasis"}                  = "Genetic - Positive epistasis ( Positive_epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Maximal epistasis"}                   = "Genetic - Maximal epistasis ( Maximal_epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Minimal epistasis"}                   = "Genetic - Minimal epistasis ( Minimal_epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Neutral epistasis"}                   = "Genetic - Neutral epistasis ( Neutral_epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Qualitative epistasis"}               = "Genetic - Qualitative epistasis ( Qualitative_epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Opposing epistasis"}                  = "Genetic - Opposing epistasis ( Opposing_epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Quantitative epistasis"}              = "Genetic - Quantitative epistasis ( Quantitative_epistasis ) ";
+#     $data{$ontology_type}{name}{"Genetic - Suppression/Epistasis"}               = "Genetic - Suppression/Epistasis ( Suppression_epistasis ) ";
+#     $data{$ontology_type}{name}{"Genetic - Agonistic/Epistasis"}                 = "Genetic - Agonistic/Epistasis ( Agonistic_epistasis ) ";
+#     $data{$ontology_type}{name}{"Genetic - Antagonistic/Epistasis"}              = "Genetic - Antagonistic/Epistasis ( Antagonistic_epistasis ) ";
+    $data{$ontology_type}{name}{"Genetic - Neutral genetic"}                     = "Genetic - Neutral genetic ( Neutral_genetic ) ";
+    $data{$ontology_type}{name}{"Genetic - Oversuppression"}                     = "Genetic - Oversuppression ( Oversuppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Unilateral oversuppression"}          = "Genetic - Unilateral oversuppression ( Unilateral_oversuppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Mutual oversuppression"}              = "Genetic - Mutual oversuppression ( Mutual_oversuppression ) ";
+#     $data{$ontology_type}{name}{"Genetic - Complex oversuppression"}             = "Genetic - Complex oversuppression ( Complex_oversuppression ) ";
+    $data{$ontology_type}{name}{"Genetic - Oversuppression/Enhancement"}         = "Genetic - Oversuppression/Enhancement ( Oversuppression_enhancement ) ";
+    $data{$ontology_type}{name}{"Genetic - Phenotype bias"}                      = "Genetic - Phenotype bias ( Phenotype_bias ) ";
+#     $data{$ontology_type}{name}{"Genetic - Biased suppression"}                  = "Genetic - Biased suppression ( Biased_suppression ) ";
+#     $data{$ontology_type}{name}{"Genetic - Biased enhancement"}                  = "Genetic - Biased enhancement ( Biased_enhancement ) ";
+#     $data{$ontology_type}{name}{"Genetic - Complex phenotype bias"}              = "Genetic - Complex phenotype bias ( Complex_phenotype_bias ) ";
+    $data{$ontology_type}{name}{"Genetic - No_interaction"}                      = "Genetic - No_interaction ( No_interaction ) "; }
+#     $data{$ontology_type}{name}{"Physical"}                    = "Physical";
+#     $data{$ontology_type}{name}{"Predicted"}                   = "Predicted";
+#     $data{$ontology_type}{name}{"Genetic_interaction"}         = "Genetic - Genetic Interaction";
+#     $data{$ontology_type}{name}{"Negative_genetic"}            = "Genetic - Negative genetic";
+#     $data{$ontology_type}{name}{"Synthetic"}                   = "Genetic - Synthetic";
+#     $data{$ontology_type}{name}{"Enhancement"}                 = "Genetic - Enhancement";
+#     $data{$ontology_type}{name}{"Unilateral_enhancement"}      = "Genetic - Unilateral enhancement";
+#     $data{$ontology_type}{name}{"Mutual_enhancement"}          = "Genetic - Mutual enhancement";
+#     $data{$ontology_type}{name}{"Suppression"}                 = "Genetic - Suppression";
+#     $data{$ontology_type}{name}{"Unilateral_suppression"}      = "Genetic - Unilateral suppression";
+#     $data{$ontology_type}{name}{"Mutual_suppression"}          = "Genetic - Mutual suppression";
+#     $data{$ontology_type}{name}{"Asynthetic"}                  = "Genetic - Asynthetic";
+#     $data{$ontology_type}{name}{"Suppression_enhancement"}     = "Genetic - Suppression/Enhancement";
+#     $data{$ontology_type}{name}{"Epistasis"}                   = "Genetic - Epistasis";
+#     $data{$ontology_type}{name}{"Maximal_epistasis"}           = "Genetic - Maximal epistasis";
+#     $data{$ontology_type}{name}{"Minimal_epistasis"}           = "Genetic - Minimal epistasis";
+#     $data{$ontology_type}{name}{"Suppression_epistasis"}       = "Genetic - Suppression/Epistasis";
+#     $data{$ontology_type}{name}{"Agonistic_epistasis"}         = "Genetic - Agonistic/Epistasis";
+#     $data{$ontology_type}{name}{"Antagonistic_epistasis"}      = "Genetic - Antagonistic/Epistasis";
+#     $data{$ontology_type}{name}{"Oversuppression"}             = "Genetic - Oversuppression";
+#     $data{$ontology_type}{name}{"Unilateral_oversuppression"}  = "Genetic - Unilateral oversuppression";
+#     $data{$ontology_type}{name}{"Mutual_oversuppression"}      = "Genetic - Mutual oversuppression";
+#     $data{$ontology_type}{name}{"Complex_oversuppression"}     = "Genetic - Complex oversuppression";
+#     $data{$ontology_type}{name}{"Oversuppression_enhancement"} = "Genetic - Mutual Oversuppression/Enhancement";
+#     $data{$ontology_type}{name}{"Phenotype_bias"}              = "Genetic - Phenotype bias";
+#     $data{$ontology_type}{name}{"Biased_suppression"}          = "Genetic - Biased suppression";
+#     $data{$ontology_type}{name}{"Biased_enhancement"}          = "Genetic - Biased enhancement";
+#     $data{$ontology_type}{name}{"Complex_phenotype_bias"}      = "Genetic - Complex phenotype bias";
+#     $data{$ontology_type}{name}{"No_interaction"}              = "Genetic - No_interaction";
+  elsif ($ontology_type eq 'intphysdetmethod') {
+    $data{$ontology_type}{name}{"Affinity_capture_luminescence"}          = "Affinity_capture_luminescence";
+    $data{$ontology_type}{name}{"Affinity_capture_MS"}                    = "Affinity_capture_MS";
+    $data{$ontology_type}{name}{"Affinity_capture_RNA"}                   = "Affinity_capture_RNA";
+    $data{$ontology_type}{name}{"Affinity_capture_Western"}               = "Affinity_capture_Western";
+    $data{$ontology_type}{name}{"Cofractionation"}                        = "Cofractionation";
+    $data{$ontology_type}{name}{"Colocalization"}                         = "Colocalization";
+    $data{$ontology_type}{name}{"Copurification"}                         = "Copurification";
+    $data{$ontology_type}{name}{"DNase_I_footprinting"}                   = "DNase_I_footprinting";
+    $data{$ontology_type}{name}{"Fluorescence_resonance_energy_transfer"} = "Fluorescence_resonance_energy_transfer";
+    $data{$ontology_type}{name}{"Protein_fragment_complementation_assay"} = "Protein_fragment_complementation_assay";
+    $data{$ontology_type}{name}{"Yeast_two_hybrid"}                       = "Yeast_two_hybrid";
+    $data{$ontology_type}{name}{"Biochemical_activity"}                   = "Biochemical_activity";
+    $data{$ontology_type}{name}{"Cocrystal_structure"}                    = "Cocrystal_structure";
+    $data{$ontology_type}{name}{"Far_western"}                            = "Far_western";
+    $data{$ontology_type}{name}{"Protein_peptide"}                        = "Protein_peptide";
+    $data{$ontology_type}{name}{"Protein_RNA"}                            = "Protein_RNA";
+    $data{$ontology_type}{name}{"Reconstituted_complex"}                  = "Reconstituted_complex";
+    $data{$ontology_type}{name}{"Yeast_one_hybrid"}                       = "Yeast_one_hybrid";
+    $data{$ontology_type}{name}{"Directed_yeast_one_hybrid"}              = "Directed_yeast_one_hybrid";
+    $data{$ontology_type}{name}{"Chromatin_immunoprecipitation"}          = "Chromatin_immunoprecipitation";
+    $data{$ontology_type}{name}{"Electrophoretic_mobility_shift_assay"}   = "Electrophoretic_mobility_shift_assay"; }
   elsif ($ontology_type eq 'intothertype') {
-    $data{$ontology_type}{name}{"Transgene"} = "Transgene";
-    $data{$ontology_type}{name}{"Chemical"} = "Chemical"; }
+    $data{$ontology_type}{name}{"Transgene"}       = "Transgene";
+    $data{$ontology_type}{name}{"Chemical"}        = "Chemical"; }
+  elsif ($ontology_type eq 'intneutralityfxn') {
+    $data{$ontology_type}{name}{"Multiplicative"}  = "Multiplicative";
+    $data{$ontology_type}{name}{"Additive"}        = "Additive";
+    $data{$ontology_type}{name}{"Minimal"}         = "Minimal"; }
   elsif ($ontology_type eq 'trpreportertype') {
     $data{$ontology_type}{name}{"Transcriptional fusion"} = "Transcriptional fusion";
-    $data{$ontology_type}{name}{"Translational fusion"} = "Translational fusion"; }
+    $data{$ontology_type}{name}{"Translational fusion"}   = "Translational fusion"; }
+  elsif ($ontology_type eq 'cnsconstructtype') {
+    $data{$ontology_type}{name}{"Chimera"}                             = "Chimera";
+    $data{$ontology_type}{name}{"Domain_swap"}                         = "Domain_swap";
+    $data{$ontology_type}{name}{"Engineered mutation"}                 = "Engineered mutation";
+    $data{$ontology_type}{name}{"Fusion"}                              = "Fusion";
+    $data{$ontology_type}{name}{"Complex"}                             = "Complex";
+    $data{$ontology_type}{name}{"Transcriptional_fusion"}              = "Transcriptional_fusion";
+    $data{$ontology_type}{name}{"Translational_fusion"}                = "Translational_fusion ";
+    $data{$ontology_type}{name}{"Nterminal_translational_fusion"}      = "Nterminal_translational_fusion";
+    $data{$ontology_type}{name}{"Cterminal_translational_fusion"}      = "Cterminal_translational_fusion";
+    $data{$ontology_type}{name}{"Internal_coding_fusion"}              = "Internal_coding_fusion"; }
+  elsif ($ontology_type eq 'recombination') {
+    $data{$ontology_type}{name}{"LoxP"}                      = "LoxP";
+    $data{$ontology_type}{name}{"FRT"}   		     = "FRT"; }
+  elsif ($ontology_type eq 'purification') {
+    $data{$ontology_type}{name}{"Histone H2B"}               = "Histone H2B";
+    $data{$ontology_type}{name}{"FLAG"}                      = "FLAG";
+    $data{$ontology_type}{name}{"HA-tag"}                    = "HA-tag";
+    $data{$ontology_type}{name}{"MYC/c-myc"}                 = "MYC/c-myc";
+    $data{$ontology_type}{name}{"Stag"}                      = "Stag"; 
+    $data{$ontology_type}{name}{"TAP"}   		     = "TAP"; }
   elsif ($ontology_type eq 'reporterproduct') {
     tie %{ $data{$ontology_type}{name} }, "Tie::IxHash";
-    $data{$ontology_type}{name}{"GFP"} = "GFP";
-    $data{$ontology_type}{name}{"YFP"} = "YFP";
-    $data{$ontology_type}{name}{"CFP"} = "CFP";
-    $data{$ontology_type}{name}{"LacZ"} = "LacZ";
-    $data{$ontology_type}{name}{"mCherry"} = "mCherry";
-    $data{$ontology_type}{name}{"DsRed"} = "DsRed";
-    $data{$ontology_type}{name}{"DsRed2"} = "DsRed2";
-    $data{$ontology_type}{name}{"Venus"} = "Venus";
-    $data{$ontology_type}{name}{"tdimer2(12)"} = "tdimer2(12)";
-    $data{$ontology_type}{name}{"RFP"} = "RFP"; }
+    $data{$ontology_type}{name}{"GFP"}                       = "GFP";
+    $data{$ontology_type}{name}{"GFP(S65C)"}                 = "GFP(S65C)";
+    $data{$ontology_type}{name}{"dGFP(destabilized GFP)"}    = "dGFP(destabilized GFP)";
+    $data{$ontology_type}{name}{"EGFP"}                      = "EGFP";
+    $data{$ontology_type}{name}{"pGFP(photoactivated GFP)"}  = "pGFP(photoactivated GFP)";
+    $data{$ontology_type}{name}{"YFP"}                       = "YFP";
+    $data{$ontology_type}{name}{"EYFP"}                      = "EYFP";
+    $data{$ontology_type}{name}{"BFP"}                       = "BFP";
+    $data{$ontology_type}{name}{"CFP"}                       = "CFP";
+    $data{$ontology_type}{name}{"Cerulian"}                  = "Cerulian";
+    $data{$ontology_type}{name}{"RFP"}                       = "RFP";
+    $data{$ontology_type}{name}{"mRFP"}                      = "mRFP";
+    $data{$ontology_type}{name}{"tagRFP"}                    = "tagRFP";
+    $data{$ontology_type}{name}{"mCherry"}                   = "mCherry";
+    $data{$ontology_type}{name}{"wCherry"}                   = "wCherry";
+    $data{$ontology_type}{name}{"tdTomato"}                  = "tdTomato";
+    $data{$ontology_type}{name}{"mStrawberry"}               = "mStrawberry";
+    $data{$ontology_type}{name}{"DsRed"}                     = "DsRed";
+    $data{$ontology_type}{name}{"DsRed2"}                    = "DsRed2";
+    $data{$ontology_type}{name}{"Venus"}                     = "Venus";
+    $data{$ontology_type}{name}{"YC2.1 (yellow cameleon)"}   = "YC2.1 (yellow cameleon)";
+    $data{$ontology_type}{name}{"YC12.12 (yellow cameleon)"} = "YC12.12 (yellow cameleon)";
+    $data{$ontology_type}{name}{"YC3.60 (yellow cameleon)"}  = "YC3.60 (yellow cameleon)";
+    $data{$ontology_type}{name}{"Yellow cameleon"}           = "Yellow cameleon";
+    $data{$ontology_type}{name}{"Dendra"}                    = "Dendra";
+    $data{$ontology_type}{name}{"Dendra2"}                   = "Dendra2";
+    $data{$ontology_type}{name}{"tdimer2(12)/dimer2"}        = "tdimer2(12)/dimer2";
+    $data{$ontology_type}{name}{"GCaMP"}                     = "GCaMP";
+    $data{$ontology_type}{name}{"mkate2"}                    = "mkate2";
+    $data{$ontology_type}{name}{"Luciferase"}                = "Luciferase";
+    $data{$ontology_type}{name}{"LacI"}                      = "LacI";
+    $data{$ontology_type}{name}{"LacO"}                      = "LacO";
+    $data{$ontology_type}{name}{"LacZ"}                      = "LacZ";
+#     $data{$ontology_type}{name}{"Histone H2B"}               = "Histone H2B";
+#     $data{$ontology_type}{name}{"His-tag"}                   = "His-tag";
+#     $data{$ontology_type}{name}{"FLAG"}                      = "FLAG";
+#     $data{$ontology_type}{name}{"HA-tag"}                    = "HA-tag";
+#     $data{$ontology_type}{name}{"MYC/c-myc"}                 = "MYC/c-myc";
+#     $data{$ontology_type}{name}{"Stag"}                      = "Stag"; 
+  }
   elsif ($ontology_type eq 'integrationmethod') {
-    $data{$ontology_type}{name}{"Gamma_ray"} = "Gamma_ray";
-    $data{$ontology_type}{name}{"X_ray"} = "X_ray";
-    $data{$ontology_type}{name}{"Spontaneous"} = "Spontaneous";
-    $data{$ontology_type}{name}{"UV"} = "UV";
-    $data{$ontology_type}{name}{"UV"} = "UV";
-    $data{$ontology_type}{name}{"MMS mutagenesis"} = "MMS mutagenesis";
-    $data{$ontology_type}{name}{"Single copy insertion"} = "Single copy insertion";
-    $data{$ontology_type}{name}{"Particle_bombardment"} = "Particle_bombardment"; }
+#     $data{$ontology_type}{name}{"Gamma_ray"}                      = "Gamma_ray";
+#     $data{$ontology_type}{name}{"X_ray"}                          = "X_ray";
+#     $data{$ontology_type}{name}{"Spontaneous"}                    = "Spontaneous";
+#     $data{$ontology_type}{name}{"UV"}                             = "UV";
+#     $data{$ontology_type}{name}{"4,5',8-trimethylpsoralen (TMP)"} = "4,5',8-trimethylpsoralen (TMP)";
+#     $data{$ontology_type}{name}{"MMS mutagenesis"}                = "MMS mutagenesis";
+#     $data{$ontology_type}{name}{"Single copy insertion"}          = "Single copy insertion";
+#     $data{$ontology_type}{name}{"Particle_bombardment"}           = "Particle_bombardment";
+    $data{$ontology_type}{name}{"Gamma_irradiation"}            = "Gamma_irradiation";
+    $data{$ontology_type}{name}{"X-ray"}                        = "X-ray";
+    $data{$ontology_type}{name}{"Spontaneous"}                  = "Spontaneous";
+    $data{$ontology_type}{name}{"UV"}                           = "UV";
+    $data{$ontology_type}{name}{"UV_TMP"}                       = "UV_TMP";
+    $data{$ontology_type}{name}{"MMS_mutagenesis"}              = "MMS_mutagenesis";
+    $data{$ontology_type}{name}{"Single_copy_insertion"}        = "Single_copy_insertion";
+    $data{$ontology_type}{name}{"Particle_bombardment"}         = "Particle_bombardment";
+    $data{$ontology_type}{name}{"EMS_mutagenesis"}              = "EMS_mutagenesis"; }
   elsif ($ontology_type eq 'chromosome') {
-    $data{$ontology_type}{name}{"I"} = "I";
-    $data{$ontology_type}{name}{"II"} = "II";
+    $data{$ontology_type}{name}{"I"}   = "I";
+    $data{$ontology_type}{name}{"II"}  = "II";
     $data{$ontology_type}{name}{"III"} = "III";
-    $data{$ontology_type}{name}{"IV"} = "IV";
-    $data{$ontology_type}{name}{"V"} = "V";
-    $data{$ontology_type}{name}{"X"} = "X"; }
+    $data{$ontology_type}{name}{"IV"}  = "IV";
+    $data{$ontology_type}{name}{"V"}   = "V";
+    $data{$ontology_type}{name}{"X"}   = "X"; }
+  elsif ($ontology_type eq 'topicpaperstatus') {
+    $data{$ontology_type}{name}{"unchecked"}            = "unchecked";
+    $data{$ontology_type}{name}{"relevant"}             = "relevant";
+    $data{$ontology_type}{name}{"irrelevant"}           = "irrelevant"; }
   elsif ($ontology_type eq 'curationstatus') {
-    $data{$ontology_type}{name}{"happy"} = "happy";
-    $data{$ontology_type}{name}{"not_happy"} = "not_happy";
+    $data{$ontology_type}{name}{"happy"}                = "happy";
+    $data{$ontology_type}{name}{"not_happy"}            = "not_happy";
     $data{$ontology_type}{name}{"down_right_disgusted"} = "down_right_disgusted"; }
   elsif ($ontology_type eq 'allelestatus') {
-    $data{$ontology_type}{name}{"other"} = "other";
-    $data{$ontology_type}{name}{"lost"} = "lost";
-    $data{$ontology_type}{name}{"new_gene_assignment"} = "new_gene_assignment"; }
+    $data{$ontology_type}{name}{"other"}                = "other";
+    $data{$ontology_type}{name}{"lost"}                 = "lost";
+    $data{$ontology_type}{name}{"new_gene_assignment"}  = "new_gene_assignment"; }
+  elsif ($ontology_type eq 'easescore') {
+    tie %{ $data{$ontology_type}{name} }, "Tie::IxHash";
+    $data{$ontology_type}{name}{"ES0_Impossible_to_score"}        = "ES0_Impossible_to_score";
+    $data{$ontology_type}{name}{"ES1_Very_hard_to_score"}         = "ES1_Very_hard_to_score";
+    $data{$ontology_type}{name}{"ES2_Difficult_to_score"}         = "ES2_Difficult_to_score";
+    $data{$ontology_type}{name}{"ES3_Easy_to_score"}              = "ES3_Easy_to_score"; }
+  elsif ($ontology_type eq 'mmateff') {
+    tie %{ $data{$ontology_type}{name} }, "Tie::IxHash";
+    $data{$ontology_type}{name}{"ME0_Mating_not_successful"}      = "ME0_Mating_not_successful";
+    $data{$ontology_type}{name}{"ME1_Mating_rarely_successful"}   = "ME1_Mating_rarely_successful";
+    $data{$ontology_type}{name}{"ME2_Mating_usually_successful"}  = "ME2_Mating_usually_successful";
+    $data{$ontology_type}{name}{"ME3_Mating_always_successful"}   = "ME3_Mating_always_successful"; }
+  elsif ($ontology_type eq 'hmateff') {
+    tie %{ $data{$ontology_type}{name} }, "Tie::IxHash";
+    $data{$ontology_type}{name}{"HME0_Mating_not_successful"}     = "HME0_Mating_not_successful";
+    $data{$ontology_type}{name}{"HME1_Mating_rarely_successful"}  = "HME1_Mating_rarely_successful";
+    $data{$ontology_type}{name}{"HME2_Mating_usually_successful"} = "HME2_Mating_usually_successful";
+    $data{$ontology_type}{name}{"HME3_Mating_always_successful"}  = "HME3_Mating_always_successful"; }
   elsif ($ontology_type eq 'nature') {
 #     $data{$ontology_type}{name}{"Recessive"} = "Recessive ( WBnature000001 ) ";
 #     $data{$ontology_type}{name}{"Semi_dominant"} = "Semi_dominant ( WBnature000002 ) ";
 #     $data{$ontology_type}{name}{"Dominant"} = "Dominant ( WBnature000003 ) ";
-    $data{$ontology_type}{name}{"Recessive"} = "Recessive";
+    $data{$ontology_type}{name}{"Recessive"}     = "Recessive";
     $data{$ontology_type}{name}{"Semi_dominant"} = "Semi_dominant";
-    $data{$ontology_type}{name}{"Dominant"} = "Dominant"; }
+    $data{$ontology_type}{name}{"Dominant"}      = "Dominant"; }
   elsif ($ontology_type eq 'func') {
 #     $data{$ontology_type}{name}{"Amorph"} = "Amorph ( WBfunc000001 ) ";
 #     $data{$ontology_type}{name}{"Hypomorph"} = "Hypomorph ( WBfunc000002 ) ";
@@ -1429,41 +2862,54 @@ sub setAnySimpleAutocompleteValues {
 #     $data{$ontology_type}{name}{"Mixed"} = "Mixed ( WBfunc000010 ) ";
 #     $data{$ontology_type}{name}{"Gain_of_function"} = "Gain_of_function ( WBfunc000011 ) ";
 #     $data{$ontology_type}{name}{"Loss_of_function"} = "Loss_of_function ( WBfunc000012 ) ";
-    $data{$ontology_type}{name}{"Amorph"} = "Amorph";
-    $data{$ontology_type}{name}{"Hypomorph"} = "Hypomorph";
-    $data{$ontology_type}{name}{"Isoallele"} = "Isoallele";
+    $data{$ontology_type}{name}{"Amorph"}                           = "Amorph";
+    $data{$ontology_type}{name}{"Hypomorph"}                        = "Hypomorph";
+    $data{$ontology_type}{name}{"Isoallele"}                        = "Isoallele";
     $data{$ontology_type}{name}{"Uncharacterised_loss_of_function"} = "Uncharacterised_loss_of_function";
-    $data{$ontology_type}{name}{"Wild_type"} = "Wild_type";
-    $data{$ontology_type}{name}{"Hypermorph"} = "Hypermorph";
+    $data{$ontology_type}{name}{"Wild_type"}                        = "Wild_type";
+    $data{$ontology_type}{name}{"Hypermorph"}                       = "Hypermorph";
     $data{$ontology_type}{name}{"Uncharacterised_gain_of_function"} = "Uncharacterised_gain_of_function";
-    $data{$ontology_type}{name}{"Neomorph"} = "Neomorph";
-    $data{$ontology_type}{name}{"Dominant_negative"} = "Dominant_negative";
-    $data{$ontology_type}{name}{"Mixed"} = "Mixed";
-    $data{$ontology_type}{name}{"Gain_of_function"} = "Gain_of_function";
-    $data{$ontology_type}{name}{"Loss_of_function"} = "Loss_of_function"; }
+    $data{$ontology_type}{name}{"Neomorph"}                         = "Neomorph";
+    $data{$ontology_type}{name}{"Dominant_negative"}                = "Dominant_negative";
+    $data{$ontology_type}{name}{"Mixed"}                            = "Mixed";
+    $data{$ontology_type}{name}{"Gain_of_function"}                 = "Gain_of_function";
+    $data{$ontology_type}{name}{"Loss_of_function"}                 = "Loss_of_function"; }
   elsif ($ontology_type eq 'penetrance') {
-# FIX : DELETE THESE OLD STYLE when verified by Karen  2011 05 27
-#     $data{$ontology_type}{name}{"Incomplete"} = "Incomplete ( WBpenetrance000001 ) ";
-#     $data{$ontology_type}{name}{"Low"} = "Low ( WBpenetrance000002 ) ";
-#     $data{$ontology_type}{name}{"High"} = "High ( WBpenetrance000003 ) ";
-#     $data{$ontology_type}{name}{"Complete"} = "Complete ( WBpenetrance000004 ) ";
     $data{$ontology_type}{name}{"Incomplete"} = "Incomplete";
-    $data{$ontology_type}{name}{"Low"} = "Low";
-    $data{$ontology_type}{name}{"High"} = "High";
-    $data{$ontology_type}{name}{"Complete"} = "Complete"; }
+    $data{$ontology_type}{name}{"Low"}        = "Low";
+    $data{$ontology_type}{name}{"High"}       = "High";
+    $data{$ontology_type}{name}{"Complete"}   = "Complete"; }
   elsif ($ontology_type eq 'mateffect') {
-    $data{$ontology_type}{name}{"Maternal"} = "Maternal";
-    $data{$ontology_type}{name}{"Strictly_maternal"} = "Strictly_maternal";
+    $data{$ontology_type}{name}{"Maternal"}             = "Maternal";
+    $data{$ontology_type}{name}{"Strictly_maternal"}    = "Strictly_maternal";
     $data{$ontology_type}{name}{"With_maternal_effect"} = "With_maternal_effect"; }
   elsif ($ontology_type eq 'species') {
-    $data{$ontology_type}{name}{"Caenorhabditis_sp._3"} = "Caenorhabditis_sp._3";
-    $data{$ontology_type}{name}{"Panagrellus_redivivus"} = "Panagrellus_redivivus";
-    $data{$ontology_type}{name}{"Cruznema_tripartitum"} = "Cruznema_tripartitum";
-    $data{$ontology_type}{name}{"Caenorhabditis_brenneri"} = "Caenorhabditis_brenneri";
-    $data{$ontology_type}{name}{"Caenorhabditis_japonica"} = "Caenorhabditis_japonica";
-    $data{$ontology_type}{name}{"Caenorhabditis_briggsae"} = "Caenorhabditis_briggsae";
-    $data{$ontology_type}{name}{"Caenorhabditis_remanei"} = "Caenorhabditis_remanei";
-    $data{$ontology_type}{name}{"Pristionchus_pacificus"} = "Pristionchus_pacificus"; }
+    $data{$ontology_type}{name}{"Caenorhabditis elegans"}     = "Caenorhabditis elegans";
+    $data{$ontology_type}{name}{"Caenorhabditis sp. 3"}       = "Caenorhabditis sp. 3";
+    $data{$ontology_type}{name}{"Panagrellus redivivus"}      = "Panagrellus redivivus";
+    $data{$ontology_type}{name}{"Cruznema tripartitum"}       = "Cruznema tripartitum";
+    $data{$ontology_type}{name}{"Caenorhabditis brenneri"}    = "Caenorhabditis brenneri";
+    $data{$ontology_type}{name}{"Caenorhabditis japonica"}    = "Caenorhabditis japonica";
+    $data{$ontology_type}{name}{"Caenorhabditis briggsae"}    = "Caenorhabditis briggsae";
+    $data{$ontology_type}{name}{"Caenorhabditis remanei"}     = "Caenorhabditis remanei";
+    $data{$ontology_type}{name}{"Pristionchus pacificus"}     = "Pristionchus pacificus";
+    $data{$ontology_type}{name}{"Brugia malayi"}              = "Brugia malayi";
+    $data{$ontology_type}{name}{"Strongyloides stercoralis"}  = "Strongyloides stercoralis";
+    $data{$ontology_type}{name}{"Homo sapiens"}               = "Homo sapiens"; }
+  elsif ($ontology_type eq 'deliverymethod') {
+    $data{$ontology_type}{name}{"Bacterial_feeding"}          = "Bacterial_feeding";
+    $data{$ontology_type}{name}{"Injection"}                  = "Injection";
+    $data{$ontology_type}{name}{"Soaking"}                    = "Soaking";
+    $data{$ontology_type}{name}{"Transgene_expression"}       = "Transgene_expression"; }
+  elsif ($ontology_type eq 'seqfeatmethod') {
+    $data{$ontology_type}{name}{"binding_site"}               = "binding_site";
+    $data{$ontology_type}{name}{"binding_site_region"}        = "binding_site_region";
+    $data{$ontology_type}{name}{"enhancer"}                   = "enhancer";
+    $data{$ontology_type}{name}{"regulatory_region"}          = "regulatory_region"; 
+    $data{$ontology_type}{name}{"TF_binding_site"}            = "TF_binding_site";
+    $data{$ontology_type}{name}{"TF_binding_site_region"}     = "TF_binding_site_region"; 
+    $data{$ontology_type}{name}{"silencer"}                   = "silencer";
+    $data{$ontology_type}{name}{"NC_conserved_region"}        = "NC_conserved_region"; }
   return \%data;
 } # sub setAnySimpleAutocompleteValues
 
@@ -1471,13 +2917,21 @@ sub setAnySimpleAutocompleteValues {
 sub getAnySpecificAutocomplete {
   my ($ontology_type, $words) = @_; my $matches = '';
   if ($ontology_type eq 'Antibody') {           ($matches) = &getAnyAntibodyAutocomplete($words); }
+  elsif ($ontology_type eq 'Concurhst') {       ($matches) = &getAnyConcurhstAutocomplete($words); }
+  elsif ($ontology_type eq 'Discurhst') {       ($matches) = &getAnyDiscurhstAutocomplete($words); }
+  elsif ($ontology_type eq 'Ditcurhst') {       ($matches) = &getAnyDitcurhstAutocomplete($words); }
+  elsif ($ontology_type eq 'Expr') {            ($matches) = &getAnyExprAutocomplete($words); }
   elsif ($ontology_type eq 'Molecule') {        ($matches) = &getAnyMoleculeAutocomplete($words); }
   elsif ($ontology_type eq 'Transgene') {       ($matches) = &getAnyTransgeneAutocomplete($words); }
+  elsif ($ontology_type eq 'WBConstruct') {     ($matches) = &getAnyWBConstructAutocomplete($words); }
   elsif ($ontology_type eq 'WBGene') {          ($matches) = &getAnyWBGeneAutocomplete($words); }
   elsif ($ontology_type eq 'WBInteraction') {   ($matches) = &getAnyWBInteractionAutocomplete($words); }
   elsif ($ontology_type eq 'WBPaper') {         ($matches) = &getAnyWBPaperAutocomplete($words); }
   elsif ($ontology_type eq 'WBPerson') {        ($matches) = &getAnyWBPersonAutocomplete($words); }
   elsif ($ontology_type eq 'WBPicture') {       ($matches) = &getAnyWBPictureAutocomplete($words); }
+  elsif ($ontology_type eq 'WBProcess') {       ($matches) = &getAnyWBProcessAutocomplete($words); }
+  elsif ($ontology_type eq 'WBRnai') {          ($matches) = &getAnyWBRnaiAutocomplete($words); }
+  elsif ($ontology_type eq 'WBSequence') {      ($matches) = &getAnyWBSequenceAutocomplete($words); }
   return $matches;
 } # sub getAnySpecificAutocomplete
 
@@ -1503,36 +2957,120 @@ sub getAnyAntibodyAutocomplete {
   my $matches = join"\n", keys %matches; return $matches;
 } # sub getAnyAntibodyAutocomplete
 
-sub getAnyMoleculeAutocomplete {
+sub getAnyConcurhstAutocomplete {
   my ($words) = @_;
   my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
   my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
-  my @tables = qw( mop_publicname mop_molecule mop_synonym );
+  my @tables = qw( con_curator );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT joinkey FROM $table WHERE LOWER(joinkey) ~ '^$words' ORDER BY joinkey;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[0]"}++; }
+    last if (scalar keys %matches >= $max_results);
+  } # foreach my $table (@tables)
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyConcurhstAutocomplete
+
+sub getAnyDiscurhstAutocomplete {
+  my ($words) = @_;
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my @tables = qw( dis_curator );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT joinkey FROM $table WHERE LOWER(joinkey) ~ '^$words' ORDER BY joinkey;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[0]"}++; }
+    last if (scalar keys %matches >= $max_results);
+  } # foreach my $table (@tables)
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyDiscurhstAutocomplete
+
+sub getAnyDitcurhstAutocomplete {
+  my ($words) = @_;
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my @tables = qw( dit_curator );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT joinkey FROM $table WHERE LOWER(joinkey) ~ '^$words' ORDER BY joinkey;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[0]"}++; }
+    last if (scalar keys %matches >= $max_results);
+  } # foreach my $table (@tables)
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyDitcurhstAutocomplete
+
+sub getAnyExprAutocomplete {
+  my ($words) = @_;
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my @tables = qw( exp_name );
   foreach my $table (@tables) {
     my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
     $result->execute();
     while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
       my $id = $row[0];
-      if ($table eq 'mop_molecule') { $matches{"$row[1] ( $id ) "}++; }
-        else {
-          my $result2 = $dbh->prepare( "SELECT * FROM mop_molecule WHERE joinkey = '$row[0]';" ); $result2->execute();
-          my @row2 = $result2->fetchrow(); my $name = $row2[1]; unless ($name) { $name = $row[1]; }
-          if ($table eq 'mop_molecule') { $matches{"$name ( $id ) "}++; }
-            else { $matches{"$row[1] ( $id ) \[$name\]"}++; } }
-    }
+      $matches{"$row[1]"}++; }
     $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
     $result->execute();
     while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
       my $id = $row[0];
-      if ($table eq 'mop_molecule') { $matches{"$row[1] ( $id ) "}++; }
-        else {
-          my $result2 = $dbh->prepare( "SELECT * FROM mop_molecule WHERE joinkey = '$row[0]';" ); $result2->execute();
-          my @row2 = $result2->fetchrow(); my $name = $row2[1]; unless ($name) { $name = $row[1]; }
-          if ($table eq 'mop_molecule') { $matches{"$name ( $id ) "}++; }
-            else { $matches{"$row[1] ( $id ) \[$name\]"}++; } }
-    }
+      $matches{"$row[1]"}++; }
     last if (scalar keys %matches >= $max_results);
   } # foreach my $table (@tables)
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyExprAutocomplete
+
+sub getAnyMoleculeAutocomplete {
+  my ($words) = @_;
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my $table = 'mop_name';				# can't name mop_name twice, so can't add that to generic @tables below
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[1] ) "}++; }
+  $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[1] ) "}++; }
+
+  my @tables = qw( mop_publicname mop_molecule mop_synonym );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT mop_name.mop_name, ${table}.$table FROM mop_name, $table WHERE mop_name.joinkey = ${table}.joinkey AND LOWER(${table}.$table) ~ '^$words' ORDER BY ${table}.$table;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[0] ) "}++; }
+    $result = $dbh->prepare( "SELECT mop_name.mop_name, ${table}.$table FROM mop_name, $table WHERE mop_name.joinkey = ${table}.joinkey AND LOWER(${table}.$table) ~ '$words' AND LOWER(${table}.$table) !~ '^$words' ORDER BY ${table}.$table;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[0] ) "}++; }
+    last if (scalar keys %matches >= $max_results);
+  } # foreach my $table (@tables)
+#   foreach my $table (@tables) {
+#     my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
+#     $result->execute();
+#     while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
+#       my $id = $row[0];
+#       if ($table eq 'mop_molecule') { $matches{"$row[1] ( $id ) "}++; }
+#         else {
+#           my $result2 = $dbh->prepare( "SELECT * FROM mop_molecule WHERE joinkey = '$row[0]';" ); $result2->execute();
+#           my @row2 = $result2->fetchrow(); my $name = $row2[1]; unless ($name) { $name = $row[1]; }
+#           if ($table eq 'mop_molecule') { $matches{"$name ( $id ) "}++; }
+#             else { $matches{"$row[1] ( $id ) \[$name\]"}++; } }
+#     }
+#     $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
+#     $result->execute();
+#     while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
+#       my $id = $row[0];
+#       if ($table eq 'mop_molecule') { $matches{"$row[1] ( $id ) "}++; }
+#         else {
+#           my $result2 = $dbh->prepare( "SELECT * FROM mop_molecule WHERE joinkey = '$row[0]';" ); $result2->execute();
+#           my @row2 = $result2->fetchrow(); my $name = $row2[1]; unless ($name) { $name = $row[1]; }
+#           if ($table eq 'mop_molecule') { $matches{"$name ( $id ) "}++; }
+#             else { $matches{"$row[1] ( $id ) \[$name\]"}++; } }
+#     }
+#     last if (scalar keys %matches >= $max_results);
+#   } # foreach my $table (@tables)
   if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
   my $matches = join"\n", keys %matches; return $matches;
 } # sub getAnyMoleculeAutocomplete
@@ -1549,7 +3087,7 @@ sub getAnyTransgeneAutocomplete {			# autocomplete on OA config that has multipl
   $result->execute();
   while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[1] ) "}++; }
 
-  my @tables = qw( trp_synonym );			# used to have trp_paper, but would get lots of "WBPaperNNN","WBPaperNNN" in the dataTable, which looked misleading.  2010 09 28
+  my @tables = qw( trp_publicname trp_synonym );			# used to have trp_paper, but would get lots of "WBPaperNNN","WBPaperNNN" in the dataTable, which looked misleading.  2010 09 28
   foreach my $table (@tables) {
     my $result = $dbh->prepare( "SELECT trp_name.trp_name, ${table}.$table FROM trp_name, $table WHERE trp_name.joinkey = ${table}.joinkey AND LOWER(${table}.$table) ~ '^$words' ORDER BY ${table}.$table;" );
     $result->execute();
@@ -1562,6 +3100,32 @@ sub getAnyTransgeneAutocomplete {			# autocomplete on OA config that has multipl
   if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
   my $matches = join"\n", keys %matches; return $matches;
 } # sub sub getAnyTransgeneAutocomplete
+
+sub getAnyWBConstructAutocomplete {
+  my ($words) = @_;
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my $table = 'cns_name';				# can't name cns_name twice, so can't add that to generic @tables below
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[1] ) "}++; }
+  $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[1] ) "}++; }
+
+  my @tables = qw( cns_publicname cns_othername cns_summary );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT cns_name.cns_name, ${table}.$table FROM cns_name, $table WHERE cns_name.joinkey = ${table}.joinkey AND LOWER(${table}.$table) ~ '^$words' ORDER BY ${table}.$table;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[0] ) "}++; }
+    $result = $dbh->prepare( "SELECT cns_name.cns_name, ${table}.$table FROM cns_name, $table WHERE cns_name.joinkey = ${table}.joinkey AND LOWER(${table}.$table) ~ '$words' AND LOWER(${table}.$table) !~ '^$words' ORDER BY ${table}.$table;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[0] ) "}++; }
+    last if (scalar keys %matches >= $max_results);
+  } # foreach my $table (@tables)
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyWBConstructAutocomplete
 
 sub getAnyWBGeneAutocomplete {
   my ($words) = @_;
@@ -1599,21 +3163,17 @@ sub getAnyWBGeneAutocomplete {
 
 sub getAnyWBInteractionAutocomplete {
   my ($words) = @_;
-  if ($words =~ m/^wbinteraction/) { $words =~ s/^wbinteraction//; } 	# strip out the leading wbinteraction so autocomplete works when editing an entry
+  if ($words =~ m/^wbinteraction/i) { $words =~ s/^wbinteraction//i; } 	# strip out the leading wbinteraction so autocomplete works when editing an entry
+#   my $result = $dbh->prepare( "SELECT * FROM int_index ORDER BY int_index::INTEGER DESC;" ); $result->execute(); 
+
   my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
   my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
-  my @tables = qw( int_name );
+  my @tables = qw( int_index );						# master record of interactions in int_index not int_name nor grg_intid
   foreach my $table (@tables) {
-    my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table ~ '^$words' ORDER BY joinkey;" );
-    $result->execute();
-    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
-      my $id = $row[1];
-      $matches{"$id"}++; }
-    $result = $dbh->prepare( "SELECT * FROM $table WHERE $table ~ '$words' ORDER BY joinkey;" );
-    $result->execute();
-    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
-      my $id = $row[1];
-      $matches{"$id"}++; }
+    my $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey ~ '^$words' ORDER BY joinkey;" ); $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"WBInteraction$row[0]"}++; }
+    $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey ~ '$words' ORDER BY joinkey;" ); $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"WBInteraction$row[0]"}++; }
     last if (scalar keys %matches >= $max_results);
   }
   if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
@@ -1647,23 +3207,29 @@ sub getAnyWBPersonAutocomplete {
   my ($words) = @_;
   my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
   my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my %invalidPersons;
+  my $result = $dbh->prepare( "SELECT * FROM two_status WHERE two_status = 'Invalid'" ); $result->execute();
+  while (my @row = $result->fetchrow()) { $invalidPersons{$row[0]}++; }
   my @tables = qw( two_standardname );
   foreach my $table (@tables) {
     my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );	# match by start of name
     $result->execute();
     while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
       my $id = $row[0]; $id =~ s/two/WBPerson/;
-      $matches{"$row[2] ( $id ) "}++; }
+      my $invalid = ''; if ($invalidPersons{$row[0]}) { $invalid = ' INVALID'; }
+      $matches{"$row[2]$invalid ( $id ) "}++; }
     $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' ORDER BY $table;" );		# then match anywhere in the name
     $result->execute();
     while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
       my $id = $row[0]; $id =~ s/two/WBPerson/;
-      $matches{"$row[2] ( $id ) "}++; }
+      my $invalid = ''; if ($invalidPersons{$row[0]}) { $invalid = ' INVALID'; }
+      $matches{"$row[2]$invalid ( $id ) "}++; }
     $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey ~ '$words' ORDER BY joinkey;" );		# then match by WBPerson number
     $result->execute();
     while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
       my $id = $row[0]; $id =~ s/two/WBPerson/;
-      $matches{"$row[2] ( $id ) "}++; }
+      my $invalid = ''; if ($invalidPersons{$row[0]}) { $invalid = ' INVALID'; }
+      $matches{"$row[2]$invalid ( $id ) "}++; }
     last if (scalar keys %matches >= $max_results);
   }
   if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
@@ -1699,6 +3265,66 @@ sub getAnyWBPictureAutocomplete {			# autocomplete on OA config that has multipl
   my $matches = join"\n", keys %matches; return $matches;
 } # sub sub getAnyWBPictureAutocomplete
 
+sub getAnyWBProcessAutocomplete {
+  my ($words) = @_;
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my $table = 'prt_processid';				# can't name prt_processid twice, so can't add that to generic @tables below
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[1] ) "}++; }
+  $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[1] ) "}++; }
+
+  my @tables = qw( prt_processname prt_othername );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT prt_processid.prt_processid, ${table}.${table} FROM prt_processid, $table WHERE ${table}.joinkey IN (SELECT joinkey FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table) AND prt_processid.joinkey = ${table}.joinkey;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[0] ) "}++; }
+    $result = $dbh->prepare( "SELECT prt_processid.prt_processid, ${table}.${table} FROM prt_processid, $table WHERE ${table}.joinkey IN (SELECT joinkey FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table) AND prt_processid.joinkey = ${table}.joinkey;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] ( $row[0] ) "}++; }
+    last if (scalar keys %matches >= $max_results);
+  } # foreach my $table (@tables)
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyWBProcessAutocomplete
+
+sub getAnyWBRnaiAutocomplete {
+  my ($words) = @_;
+  if ($words =~ m/^wbrnai/i) { $words =~ s/^wbrnai//i; } 	# strip out the leading wbrnai so autocomplete works when editing an entry
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my @tables = qw( rna_name );						# master record of rnais in rna_name
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table ~ '^$words' ORDER BY joinkey;" ); $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1]"}++; }
+    $result = $dbh->prepare( "SELECT * FROM $table WHERE $table ~ '$words' ORDER BY joinkey;" ); $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1]"}++; }
+    last if (scalar keys %matches >= $max_results);
+  }
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyWBRnaiAutocomplete
+
+sub getAnyWBSequenceAutocomplete {
+  my ($words) = @_;
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";	# sorted hash to filter results
+  my @tables = qw( gin_sequence );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY joinkey;" ); $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1]"}++; }
+    $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' ORDER BY joinkey;" ); $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1]"}++; }
+    last if (scalar keys %matches >= $max_results);
+  }
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; return $matches;
+} # sub getAnyWBSequenceAutocomplete
+
+
 ### END AUTOCOMPLETE ###
 
 
@@ -1707,13 +3333,21 @@ sub getAnyWBPictureAutocomplete {			# autocomplete on OA config that has multipl
 sub getAnySpecificValidValue {
   my ($ontology_type, $userValue) = @_; my $matches = '';
   if ($ontology_type eq 'Antibody') {           ($matches) = &getAnyAntibodyValidValue($userValue); }
+  elsif ($ontology_type eq 'Concurhst') {       ($matches) = &getAnyConcurhstValidValue($userValue); }
+  elsif ($ontology_type eq 'Discurhst') {       ($matches) = &getAnyDiscurhstValidValue($userValue); }
+  elsif ($ontology_type eq 'Ditcurhst') {       ($matches) = &getAnyDitcurhstValidValue($userValue); }
+  elsif ($ontology_type eq 'Expr') {            ($matches) = &getAnyExprValidValue($userValue); }
   elsif ($ontology_type eq 'Molecule') {        ($matches) = &getAnyMoleculeValidValue($userValue); }
   elsif ($ontology_type eq 'Transgene') {       ($matches) = &getAnyTransgeneValidValue($userValue); }
+  elsif ($ontology_type eq 'WBConstruct') {     ($matches) = &getAnyWBConstructValidValue($userValue); }
   elsif ($ontology_type eq 'WBGene') {          ($matches) = &getAnyWBGeneValidValue($userValue); }
   elsif ($ontology_type eq 'WBInteraction') {   ($matches) = &getAnyWBInteractionValidValue($userValue); }
   elsif ($ontology_type eq 'WBPaper') {         ($matches) = &getAnyWBPaperValidValue($userValue); }
   elsif ($ontology_type eq 'WBPerson') {        ($matches) = &getAnyWBPersonValidValue($userValue); }
   elsif ($ontology_type eq 'WBPicture') {       ($matches) = &getAnyWBPictureValidValue($userValue); }
+  elsif ($ontology_type eq 'WBProcess') {       ($matches) = &getAnyWBProcessValidValue($userValue); }
+  elsif ($ontology_type eq 'WBRnai') {          ($matches) = &getAnyWBRnaiValidValue($userValue); }
+  elsif ($ontology_type eq 'WBSequence') {      ($matches) = &getAnyWBSequenceValidValue($userValue); }
   return $matches;
 } # sub getAnySpecificValidValue
 
@@ -1729,13 +3363,65 @@ sub getAnyAntibodyValidValue {
   return "false";
 } # sub getAnyAntibodyValidValue
 
+sub getAnyConcurhstValidValue {
+  my ($userValue) = @_;
+  my ($value, $joinkey) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?)$/ ) { $value = $1; }
+  my $table =  'con_curator';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey = '$value';" );
+  $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; } 
+  return "false";
+} # sub getAnyConcurhstValidValue
+
+sub getAnyDiscurhstValidValue {
+  my ($userValue) = @_;
+  my ($value, $joinkey) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?)$/ ) { $value = $1; }
+  my $table =  'dis_curator';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey = '$value';" );
+  $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; } 
+  return "false";
+} # sub getAnyDiscurhstValidValue
+
+sub getAnyDitcurhstValidValue {
+  my ($userValue) = @_;
+  my ($value, $joinkey) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?)$/ ) { $value = $1; }
+  my $table =  'dit_curator';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey = '$value';" );
+  $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; } 
+  return "false";
+} # sub getAnyDitcurhstValidValue
+
+sub getAnyExprValidValue {
+  my ($userValue) = @_;
+  my ($value, $joinkey) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?)$/ ) { $value = $1; }
+  my $table =  'exp_name';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$value';" );
+  $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; } 
+  return "false";
+} # sub getAnyExprValidValue
+
 sub getAnyMoleculeValidValue {
   my ($userValue) = @_;
-  my ($value, $joinkey, $syn) = ('bad', 'bad', 'bad');
-  if ( $userValue =~ m/^(.*?) \( (\d+) \) $/ ) { ($value, $joinkey) = $userValue =~ m/^(.*?) \( (\d+) \) $/; }
-  elsif ( $userValue =~ m/^(.*?) \( (\d+) \) \[(\w+)\]$/ ) { ($syn, $joinkey, $value) = $userValue =~ m/^(.*?) \( (\d+) \) \[(\w+)\]$/; }
-  my $table =  'mop_molecule';
-  my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$value' AND joinkey = '$joinkey';" );
+#   my ($value, $joinkey, $syn) = ('bad', 'bad', 'bad');
+#   if ( $userValue =~ m/^(.*?) \( (\d+) \) $/ ) { ($value, $joinkey) = $userValue =~ m/^(.*?) \( (\d+) \) $/; }
+#   elsif ( $userValue =~ m/^(.*?) \( (\d+) \) \[([\w:]+)\]$/ ) { ($syn, $joinkey, $value) = $userValue =~ m/^(.*?) \( (\d+) \) \[([\w:]+)\]$/; }
+#   my $table =  'mop_molecule';
+#   my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$value' AND joinkey = '$joinkey';" );
+  my ($typed_term, $value) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?) \( (.*) \) $/ ) { ($typed_term, $value) = $userValue =~ m/^(.*?) \( (.*) \) $/; }
+  my $table = 'mop_name';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$value';" );	# no joinkey here, not using IDs
   $result->execute();
   my @row = $result->fetchrow();
   if ($row[0]) { return "true"; } 
@@ -1754,12 +3440,24 @@ sub getAnyTransgeneValidValue {
   return "false";
 } # sub getAnyTransgeneValidValue
 
+sub getAnyWBConstructValidValue {
+  my ($userValue) = @_;
+  my ($typed_term, $value) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?) \( (.*) \) $/ ) { ($typed_term, $value) = $userValue =~ m/^(.*?) \( (.*) \) $/; }
+  my $table =  'cns_name';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$value';" );
+  $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; } 
+  return "false";
+} # sub getAnyConstructValidValue
+
 sub getAnyWBGeneValidValue {
   my ($userValue) = @_;
   my ($value, $joinkey, $syn) = ('bad', 'bad', 'bad');
   if ( $userValue =~ m/^(.*?) \( (.*?) \) $/ ) { ($value, $joinkey) = $userValue =~ m/^(.*?) \( WBGene(.*?) \) $/; }
   elsif ( $userValue =~ m/^(.*?) \( WBGene(\d+) \) \[(.*?)\]$/ ) { ($syn, $joinkey, $value) = $userValue =~ m/^(.*?) \( WBGene(\d+) \) \[(.*?)\]$/; }
-  my @tables = qw( gin_locus gin_seqname gin_wbgene );
+  my @tables = qw( gin_locus gin_seqname gin_wbgene gin_synonyms );
   foreach my $table (@tables) {
     my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$value' AND joinkey = '$joinkey';" );
     $result->execute(); my @row = $result->fetchrow();
@@ -1769,10 +3467,10 @@ sub getAnyWBGeneValidValue {
 
 sub getAnyWBInteractionValidValue {
   my ($userValue) = @_;
+  $userValue =~ s/^WBInteraction//; 	# strip out the leading wbinteraction because int_index only holds the numbers but the IDs have the whole term
   my $joinkey = 'bad';
-  my $result = $dbh->prepare( "SELECT * FROM int_name WHERE int_name = '$userValue';" );
-  $result->execute();
-  my @row = $result->fetchrow();
+  my $result = $dbh->prepare( "SELECT * FROM int_index WHERE joinkey = '$userValue';" ); $result->execute();
+  my @row = $result->fetchrow();	# master record of interactions in int_index not int_name nor grg_intid
   if ($row[0]) { return "true"; }
   return "false";
 } # sub getAnyWBInteractionValidValue
@@ -1812,6 +3510,37 @@ sub getAnyWBPictureValidValue {
   return "false";
 } # sub getAnyWBPictureValidValue
 
+sub getAnyWBProcessValidValue {
+  my ($userValue) = @_;
+  my ($typed_term, $value) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?) \( (.*) \) $/ ) { ($typed_term, $value) = $userValue =~ m/^(.*?) \( (.*) \) $/; }
+  my $table = 'prt_processid';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$value';" );	# no joinkey here, not using IDs
+  $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; } 
+  return "false";
+} # sub getAnyWBProcessValidValue
+
+sub getAnyWBRnaiValidValue {
+  my ($userValue) = @_;
+  my $joinkey = 'bad';
+  my $result = $dbh->prepare( "SELECT * FROM rna_name WHERE rna_name = '$userValue';" ); $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; }
+  return "false";
+} # sub getAnyWBRnaiValidValue
+
+sub getAnyWBSequenceValidValue {
+  my ($userValue) = @_;
+  my $table = 'gin_sequence';
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE $table = '$userValue';" );	# no joinkey here, not using IDs
+  $result->execute();
+  my @row = $result->fetchrow();
+  if ($row[0]) { return "true"; } 
+  return "false";
+} # sub getAnyWBSequenceValidValue
+
 ### END VALID VALUE ###
 
 
@@ -1820,13 +3549,21 @@ sub getAnyWBPictureValidValue {
 sub getAnySpecificTermInfo {
   my ($ontology_type, $userValue) = @_; my $matches = '';
   if ($ontology_type eq 'Antibody') {           ($matches) = &getAnyAntibodyTermInfo($userValue); }
+  elsif ($ontology_type eq 'Concurhst') {       ($matches) = &getAnyConcurhstTermInfo($userValue); }
+  elsif ($ontology_type eq 'Discurhst') {       ($matches) = &getAnyDiscurhstTermInfo($userValue); }
+  elsif ($ontology_type eq 'Ditcurhst') {       ($matches) = &getAnyDitcurhstTermInfo($userValue); }
+  elsif ($ontology_type eq 'Expr') {            ($matches) = &getAnyExprTermInfo($userValue); }
   elsif ($ontology_type eq 'Molecule') {        ($matches) = &getAnyMoleculeTermInfo($userValue); }
   elsif ($ontology_type eq 'Transgene') {       ($matches) = &getAnyTransgeneTermInfo($userValue); }
+  elsif ($ontology_type eq 'WBConstruct') {     ($matches) = &getAnyWBConstructTermInfo($userValue); }
   elsif ($ontology_type eq 'WBGene') {          ($matches) = &getAnyWBGeneTermInfo($userValue); }
   elsif ($ontology_type eq 'WBInteraction') {   ($matches) = &getAnyWBInteractionTermInfo($userValue); }
   elsif ($ontology_type eq 'WBPaper') {         ($matches) = &getAnyWBPaperTermInfo($userValue); }
   elsif ($ontology_type eq 'WBPerson') {        ($matches) = &getAnyWBPersonTermInfo($userValue); }
   elsif ($ontology_type eq 'WBPicture') {       ($matches) = &getAnyWBPictureTermInfo($userValue); }
+  elsif ($ontology_type eq 'WBProcess') {       ($matches) = &getAnyWBProcessTermInfo($userValue); }
+  elsif ($ontology_type eq 'WBRnai') {          ($matches) = &getAnyWBRnaiTermInfo($userValue); }
+  elsif ($ontology_type eq 'WBSequence') {      ($matches) = &getAnyWBSequenceTermInfo($userValue); }
   return $matches;
 } # sub getAnySpecificTermInfo
 
@@ -1853,12 +3590,191 @@ sub getAnyAntibodyTermInfo {		# get term info for molecule objects from mop_ tab
   return $to_print;
 } # sub getAnyAntibodyTermInfo
 
+sub getAnyConcurhstTermInfo {		# get term info for molecule objects from mop_ tables
+  my ($userValue) = @_;
+  my $joinkey; my $to_print;
+  my $name; my %curators; my %twoToStdname;
+  my $result = $dbh->prepare( "SELECT * FROM con_curator_hst WHERE joinkey = '$userValue' ORDER BY con_timestamp;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { 
+    my $timestamp = $row[2]; $row[1] =~ s/WBPerson/two/;
+    if ($timestamp =~ m/^(\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2})/) { $curators{all}{$row[1]}++; $curators{time}{$1}{$row[1]}++; } } }
+  my $twos = join"','", keys %{ $curators{all} };
+  $result = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey IN ('$twos')" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $twoToStdname{$row[0]} = $row[2]; } }
+
+  $to_print .= "pgid: <span style=\"font-weight: bold\">$userValue</span><br />\n";
+  foreach my $timestamp (sort keys %{ $curators{time} }) {
+    foreach my $two (sort keys %{ $curators{time}{$timestamp} }) {
+      if ($twoToStdname{$two}) { $two = $twoToStdname{$two}; }
+      $to_print .= "curator : $two $timestamp<br />\n"; } }
+  $to_print .= "<hr>\n";
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getConcurhstTermInfo
+
+sub getAnyDiscurhstTermInfo {		# get term info for molecule objects from mop_ tables
+  my ($userValue) = @_;
+  my $joinkey; my $to_print;
+  my $name; my %curators; my %twoToStdname;
+  my $result = $dbh->prepare( "SELECT * FROM dis_curator_hst WHERE joinkey = '$userValue' ORDER BY dis_timestamp;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { 
+    my $timestamp = $row[2]; $row[1] =~ s/WBPerson/two/;
+    if ($timestamp =~ m/^(\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2})/) { $curators{all}{$row[1]}++; $curators{time}{$1}{$row[1]}++; } } }
+  my $twos = join"','", keys %{ $curators{all} };
+  $result = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey IN ('$twos')" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $twoToStdname{$row[0]} = $row[2]; } }
+
+  $to_print .= "pgid: <span style=\"font-weight: bold\">$userValue</span><br />\n";
+  foreach my $timestamp (sort keys %{ $curators{time} }) {
+    foreach my $two (sort keys %{ $curators{time}{$timestamp} }) {
+      if ($twoToStdname{$two}) { $two = $twoToStdname{$two}; }
+      $to_print .= "curator : $two $timestamp<br />\n"; } }
+  $to_print .= "<hr>\n";
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getDiscurhstodyTermInfo
+
+sub getAnyDitcurhstTermInfo {		# get term info for molecule objects from mop_ tables
+  my ($userValue) = @_;
+  my $joinkey; my $to_print;
+  my $name; my %curators; my %twoToStdname;
+  my $result = $dbh->prepare( "SELECT * FROM dit_curator_hst WHERE joinkey = '$userValue' ORDER BY dit_timestamp;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { 
+    my $timestamp = $row[2]; $row[1] =~ s/WBPerson/two/;
+    if ($timestamp =~ m/^(\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2})/) { $curators{all}{$row[1]}++; $curators{time}{$1}{$row[1]}++; } } }
+  my $twos = join"','", keys %{ $curators{all} };
+  $result = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey IN ('$twos')" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $twoToStdname{$row[0]} = $row[2]; } }
+
+  $to_print .= "pgid: <span style=\"font-weight: bold\">$userValue</span><br />\n";
+  foreach my $timestamp (sort keys %{ $curators{time} }) {
+    foreach my $two (sort keys %{ $curators{time}{$timestamp} }) {
+      if ($twoToStdname{$two}) { $two = $twoToStdname{$two}; }
+      $to_print .= "curator : $two $timestamp<br />\n"; } }
+  $to_print .= "<hr>\n";
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getDitcurhstodyTermInfo
+
+sub getAnyExprTermInfo {		# get term info for expr pattern objects from exp_ tables, while converting some IDs to names and others to IDs + names + synonyms
+  my ($userValue) = @_;
+  my $joinkeys; my $to_print; my %joinkeys;
+  my $name; my $subcellloc; my $reportergene; my $insitu; my $rtpcr; my $northern; my $western; my $antibody_text; my $antibody; my $pattern; my $transgene; my $paper; my $qualifier = ''; my $qualifiertext = '';
+  my $genes; my %genes; my $anats; my %anats; my $goids; my %goids; my $lifestages; my %lifestages;
+  my $result = $dbh->prepare( "SELECT * FROM exp_name WHERE exp_name = '$userValue' ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $joinkeys{$row[0]}++; } }
+  $joinkeys = join"','", keys %joinkeys;
+  $result = $dbh->prepare( "SELECT * FROM exp_subcellloc WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $subcellloc = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_reportergene WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $reportergene = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_insitu WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $insitu = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_rtpcr WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $rtpcr = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_northern WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $northern = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_western WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $western = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_antibodytext WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $antibody_text = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_antibody WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $antibody = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_pattern WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $pattern = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_transgene WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $transgene = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_paper WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $paper = $row[1]; } }
+#   $result = $dbh->prepare( "SELECT * FROM exp_qualifier WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+#   while (my @row = $result->fetchrow) { if ($row[0]) { $qualifier = $row[1]; } }
+#   $result = $dbh->prepare( "SELECT * FROM exp_qualifiertext WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+#   while (my @row = $result->fetchrow) { if ($row[0]) { $qualifiertext = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM exp_gene WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) {
+    my (@genes) = $row[1] =~ m/WBGene(\d+)/g;
+    foreach my $gene (@genes) {
+      my $gene_row = "Gene : WBGene$gene"; 
+      my @tables = qw( gin_locus gin_seqname gin_synonyms );
+      foreach my $table (@tables) {
+        my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey = '$gene';" ); $result2->execute(); 
+        while (my @row2 = $result2->fetchrow) { $gene_row .= ", $row2[1]"; } } 
+      $gene_row .= "<br />\n"; 
+      $genes{$gene_row}++; } } }
+  $genes = join"", sort keys %genes;
+  $result = $dbh->prepare( "SELECT * FROM exp_anatomy WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) {
+    my (@anats) = $row[1] =~ m/(WBbt:\d+)/g;
+    foreach my $anat (@anats) {
+      my $anat_name = ''; my $qualifier = ''; my $qualifiertext = '';
+      my $result2 = $dbh->prepare( "SELECT * FROM obo_name_anatomy WHERE joinkey = '$anat';" ); $result2->execute(); 
+      my @row2 = $result2->fetchrow(); if ($row2[1]) { $anat_name = $row2[1]; }
+      my $result3 = $dbh->prepare( "SELECT * FROM exp_qualifier WHERE joinkey = '$row[0]';" ); $result3->execute(); 
+      my @row3 = $result3->fetchrow(); if ($row3[1]) { $qualifier = $row3[1]; }
+      my $result4 = $dbh->prepare( "SELECT * FROM exp_qualifiertext WHERE joinkey = '$row[0]';" ); $result4->execute(); 
+      my @row4 = $result4->fetchrow(); if ($row4[1]) { $qualifiertext = $row4[1]; }
+      $anats{"Anatomy_term : \"$anat_name is $anat\" $qualifier $qualifiertext<br />\n"}++; } } }
+  $anats = join"", sort keys %anats;
+  $result = $dbh->prepare( "SELECT * FROM exp_goid WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) {
+    my (@goids) = $row[1] =~ m/(GO:\d+)/g;
+    foreach my $goid (@goids) {
+      my $goid_name = '';
+      my $result2 = $dbh->prepare( "SELECT * FROM obo_name_goid WHERE joinkey = '$goid';" ); $result2->execute(); 
+      my @row2 = $result2->fetchrow(); if ($row2[1]) { $goid_name = $row2[1]; }
+      $goids{"GO_term : \"$goid\" $goid_name<br />\n"}++;  } } }
+  $goids = join"", sort keys %goids;
+  $result = $dbh->prepare( "SELECT * FROM exp_lifestage WHERE joinkey IN ('$joinkeys') ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) {
+    my (@lifestages) = $row[1] =~ m/(WBls:\d+)/g;
+    foreach my $lifestage (@lifestages) {
+      my $lifestage_name = '';
+      my $result2 = $dbh->prepare( "SELECT * FROM obo_name_lifestage WHERE joinkey = '$lifestage';" ); $result2->execute(); 
+      my @row2 = $result2->fetchrow(); if ($row2[1]) { $lifestage_name = $row2[1]; }
+      $lifestages{"Life_stage : \"$lifestage_name\"<br />\n"}++;  } } }
+  $lifestages = join"", sort keys %lifestages;
+
+#   $to_print .= "pgid: <span style=\"font-weight: bold\">$joinkey</span><br />\n";
+  $to_print .= "Expr id: $userValue<br />\n";
+  if ($genes) { $to_print .= "$genes"; }
+  if ($anats) { $to_print .= "$anats"; }
+  if ($goids) { $to_print .= "$goids"; }
+  if ($subcellloc) { $to_print .= "Subcellular Localization : $subcellloc<br />\n"; }
+  if ($lifestages) { $to_print .= "$lifestages"; }
+  if ($antibody_text) { $to_print .= "Antibody_text : $antibody_text<br />\n"; }
+  if ($reportergene) { $to_print .= "Reporter Gene : $reportergene<br />\n"; }
+  if ($insitu) { $to_print .= "In_Situ : $insitu<br />\n"; }
+  if ($rtpcr) { $to_print .= "RT_PCR : $rtpcr<br />\n"; }
+  if ($northern) { $to_print .= "Northern : $northern<br />\n"; }
+  if ($western) { $to_print .= "Western : $western<br />\n"; }
+  if ($antibody) { $to_print .= "Antibody_info : $antibody<br />\n"; }
+  if ($pattern) { $to_print .= "Pattern : $pattern<br />\n"; }
+  if ($transgene) { $to_print .= "Trangene : $transgene<br />\n"; }
+  if ($paper) { $to_print .= "Reference : $paper<br />\n"; }
+  $to_print .= "<hr>\n";
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getAnyExprTermInfo
+
 sub getAnyMoleculeTermInfo {		# get term info for molecule objects from mop_ tables
-  my ($userValue) = @_; my $joinkey;
-  if ($userValue =~ m/\( (\d+) \)/) { $joinkey = $1; } else { $joinkey = $userValue; }
+  my ($userValue) = @_; my $objId; my $joinkey = '';
+#   if ($userValue =~ m/\( (\d+) \)/) { $joinkey = $1; } else { $joinkey = $userValue; }	# when autocomplete had the pgid for molecules
+  if ($userValue =~ m/\( (\d+) \)/) { $objId = $1; } else { $objId = $userValue; }
+  my $result = $dbh->prepare( "SELECT * FROM mop_name WHERE mop_name = '$objId' ORDER BY mop_timestamp DESC;" );
+  $result->execute(); my @row = $result->fetchrow(); $joinkey = $row[0];	# each wbmol objid can only have one pgid
   my $to_print;
-  my $molecule_name; my $publicname; my $synonyms; my $chemi; my $chebi; my $kegg; my $remark; my $paper; my $curator;
-  my $result = $dbh->prepare( "SELECT * FROM mop_molecule WHERE joinkey = '$joinkey' ;" ); $result->execute(); 
+  my $wbmolid; my $molecule_name; my $publicname; my $synonyms; my $chemi; my $chebi; my $kegg; my $remark; my $paper; my $curator;
+  $result = $dbh->prepare( "SELECT * FROM mop_name WHERE joinkey = '$joinkey' ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $wbmolid = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_molecule WHERE joinkey = '$joinkey' ;" ); $result->execute(); 
   while (my @row = $result->fetchrow) { if ($row[0]) { $molecule_name = $row[1]; } }
   $result = $dbh->prepare( "SELECT * FROM mop_publicname WHERE joinkey = '$joinkey' ;" ); $result->execute(); 
   while (my @row = $result->fetchrow) { if ($row[0]) { $publicname = $row[1]; } }
@@ -1875,14 +3791,16 @@ sub getAnyMoleculeTermInfo {		# get term info for molecule objects from mop_ tab
   $result = $dbh->prepare( "SELECT * FROM mop_paper WHERE joinkey = '$joinkey' ;" ); $result->execute(); 
   while (my @row = $result->fetchrow) { if ($row[0]) { $paper = $row[1]; } }
   $result = $dbh->prepare( "SELECT * FROM mop_curator WHERE joinkey = '$joinkey' ;" ); $result->execute(); 
-  my @row = $result->fetchrow(); { if ($row[0]) { my ($cur_id) = $row[1] =~ m/(\d+)/; 
+  @row = $result->fetchrow(); { if ($row[0]) { my ($cur_id) = $row[1] =~ m/(\d+)/; 
     my $result2 = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey = 'two$cur_id' ;" ); $result2->execute(); my @row2 = $result2->fetchrow(); $curator = $row2[2]; } }
 
-  $to_print .= "pgid: <span style=\"font-weight: bold\">$joinkey</span><br />\n";
+#   $to_print .= "pgid: <span style=\"font-weight: bold\">$joinkey</span><br />\n";
+  $to_print .= "wbmolid: <span style=\"font-weight: bold\">$wbmolid</span><br />\n";
   $to_print .= "molecule: $molecule_name<br />\n";
   $to_print .= "public name: $publicname<br />\n";
-  my @syns = split/ \| /, $synonyms;
-  foreach my $syn (@syns) { $to_print .= "synonym: \"$syn\"<br />\n"; }
+  if ($synonyms) {
+    my @syns = split/ \| /, $synonyms;
+    foreach my $syn (@syns) { $to_print .= "synonym: \"$syn\"<br />\n"; } }
   $to_print .= "CTD: <a href=\"http://ctd.mdibl.org/detail.go?type=chem&acc=$molecule_name\" target=\"new\">$molecule_name</a><br />\n";
   $to_print .= "NLM_MeSH: <a href=\"http://www.nlm.nih.gov/cgi/mesh/2010/MB_cgi?field=uid&term=$molecule_name\" target=\"new\">$molecule_name</a><br />\n";
   if ($chebi) { $to_print .= "ChEBI: <a href=\"http://www.ebi.ac.uk/chebi/advancedSearchFT.do?searchString=$chebi\" target=\"new\">$chebi</a><br />\n"; }
@@ -1906,7 +3824,7 @@ sub getAnyTransgeneTermInfo {
   my $result = $dbh->prepare( "SELECT * FROM trp_name WHERE trp_name = '$value' ORDER BY trp_timestamp DESC;" );
   $result->execute(); while ( my @row = $result->fetchrow() ) { $joinkeys{$row[0]}++; }
   my $joinkeys = join("','", keys %joinkeys);
-  my %info; my @tables = qw( trp_synonym trp_paper trp_summary );
+  my %info; my @tables = qw( trp_mergedinto trp_publicname trp_synonym trp_paper trp_summary trp_remark trp_reporter_type trp_driven_by_gene );
   foreach my $table (@tables) { 
     $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ('$joinkeys');" );
     $result->execute(); while (my @row = $result->fetchrow) { if ($row[1]) { $info{$table}{$row[1]}++; } } }
@@ -1915,12 +3833,46 @@ sub getAnyTransgeneTermInfo {
     if ($table eq 'trp_paper') { 
         my @papers = split/","/, $entry; foreach my $pap (@papers) { 
           my ($joinkey) = $pap =~ m/WBPaper(\d+)/; $to_print .= "Paper: <a href=\"/~azurebrd/cgi-bin/forms/paper_display.cgi?action=Search+!&data_number=$joinkey\" target=\"new\">WBPaper$joinkey</a><br />\n"; } }
+      elsif ($table eq 'trp_driven_by_gene') { 
+        my (@genes) = $entry =~ m/WBGene(\d+)/g;
+        foreach my $gene (@genes) {
+          my $gene_row = "trp_driven_by_gene: WBGene$gene"; 
+          my @tables = qw( gin_locus gin_seqname gin_synonyms );
+          foreach my $table (@tables) {
+            my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey = '$gene';" ); $result2->execute(); 
+            while (my @row2 = $result2->fetchrow) { $gene_row .= ", $row2[1]"; } } 
+          $gene_row .= "<br />\n"; 
+          $to_print .= "$gene_row"; } }
       else { $to_print .= "${table}: $entry<br />\n"; } } }
   my (@data) = split/\n/, $to_print;
   foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
   $to_print = join"\n", @data;
   return $to_print;
 } # sub getAnyTransgeneTermInfo
+
+sub getAnyWBConstructTermInfo {		# get term info for molecule objects from mop_ tables
+  my ($userValue) = @_; my %joinkeys;
+  my ($typed_term, $value) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?) \( (.*?) \) $/ ) { ($typed_term, $value) = $userValue =~ m/^(.*?) \( (.*?) \) $/; }
+    else { $value = $userValue; }
+  my $result = $dbh->prepare( "SELECT * FROM cns_name WHERE cns_name = '$value' ORDER BY cns_timestamp DESC;" );
+  $result->execute(); while ( my @row = $result->fetchrow() ) { $joinkeys{$row[0]}++; }
+  my $joinkeys = join("','", keys %joinkeys);
+  my %info; my @tables = qw( publicname othername summary constructtype remark constructionsummary );
+  foreach my $table (@tables) { 
+    $result = $dbh->prepare( "SELECT * FROM cns_$table WHERE joinkey IN ('$joinkeys');" );
+    $result->execute(); while (my @row = $result->fetchrow) { if ($row[1]) { $info{$table}{$row[1]}++; } } }
+  my $to_print = "name: $value<br />\n";
+  foreach my $table (@tables) {
+    foreach my $entry (sort keys %{ $info{$table} }) { 
+      $to_print .= "${table}: $entry<br />\n"; } }
+  $result = $dbh->prepare( "SELECT * FROM trp_publicname WHERE joinkey IN (SELECT joinkey FROM trp_construct WHERE trp_construct ~ '$value');" );
+  $result->execute(); while ( my @row = $result->fetchrow() ) { $to_print .= "transgene: $row[1]<br />\n"; }
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getAnyWBConstructTermInfo
 
 sub getAnyWBGeneTermInfo {
   my ($userValue) = @_;
@@ -1935,11 +3887,20 @@ sub getAnyWBGeneTermInfo {
   $result = $dbh->prepare( "SELECT * FROM gin_dead WHERE joinkey = '$joinkey';" ); $result->execute(); 
   @row = $result->fetchrow(); $dead = $row[1];
   if ($userValue) { $to_print .= "id: WBGene$joinkey<br />\n"; }
-  my $dev_link = "http://dev.wormbase.org/db/gene/gene?name=WBGene$joinkey;class=Gene";
-  if ($locus) { $to_print .= "locus: <a target=\"new\" href=\"$dev_link\">$locus</a><br />\n"; }
+#   my $dev_link = "http://dev.wormbase.org/db/gene/gene?name=WBGene$joinkey;class=Gene";
+#   if ($locus) { $to_print .= "locus: <a target=\"new\" href=\"$dev_link\">$locus</a><br />\n"; }
+  my $wormbase_link = "http://www.wormbase.org/species/c_elegans/gene/WBGene$joinkey;class=Gene";
+  if ($locus) { $to_print .= "locus: <a target=\"new\" href=\"$wormbase_link\">$locus</a><br />\n"; }
   if ($dead) { $to_print .= "DEAD: $dead<br />\n"; }
-  foreach my $syn (sort keys %syns) {
-    $to_print .= "synonym: $syn<br />\n"; }
+  foreach my $syn (sort keys %syns) { $to_print .= "synonym: $syn<br />\n"; }
+
+  $result = $dbh->prepare( "SELECT * FROM con_desctext WHERE joinkey IN (SELECT joinkey FROM con_wbgene WHERE con_wbgene ~ 'WBGene$joinkey') AND joinkey IN (SELECT joinkey FROM con_desctype WHERE con_desctype = 'Concise_description')" ); $result->execute(); @row = $result->fetchrow(); 
+  if ($row[1]) { $to_print .= "Concise description: $row[1]<br />\n"; }
+  $result = $dbh->prepare( "SELECT * FROM con_desctext WHERE joinkey IN (SELECT joinkey FROM con_wbgene WHERE con_wbgene ~ 'WBGene$joinkey') AND joinkey IN (SELECT joinkey FROM con_desctype WHERE con_desctype = 'Automated_concise_description')" ); $result->execute(); @row = $result->fetchrow(); 
+  if ($row[1]) { $to_print .= "Automated_concise description: $row[1]<br />\n"; }
+  $result = $dbh->prepare( "SELECT * FROM dis_diseaserelevance WHERE joinkey IN (SELECT joinkey FROM dis_wbgene WHERE dis_wbgene ~ 'WBGene$joinkey')" ); $result->execute(); @row = $result->fetchrow(); 
+  if ($row[1]) { $to_print .= "Disease relevance : $row[1]<br />\n"; }
+
   my (@data) = split/\n/, $to_print;
   foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
   $to_print = join"\n", @data;
@@ -1949,9 +3910,203 @@ sub getAnyWBGeneTermInfo {
 sub getAnyWBInteractionTermInfo {
   my ($userValue) = @_;
   my $to_print = "id: $userValue\n";
-  my $result = $dbh->prepare( "SELECT * FROM int_curator WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
-  my @row = $result->fetchrow(); { if ($row[0]) { my ($cur_id) = $row[1] =~ m/(\d+)/; 
-    my $result2 = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey = 'two$cur_id' ;" ); $result2->execute(); my @row2 = $result2->fetchrow(); my $curator = $row2[2]; $to_print .= "Curator: $curator<br />\n"; } }
+  my ($from_int_name, $from_grg_intid) = (0, 0);
+  my $result = $dbh->prepare( "SELECT joinkey FROM int_name WHERE int_name = '$userValue';" ); $result->execute(); 	# all interaction objects have a single pgid so this is overkill
+  my @row = $result->fetchrow(); { if ($row[0]) { $from_int_name++; } }
+  $result = $dbh->prepare( "SELECT joinkey FROM grg_intid WHERE grg_intid = '$userValue';" ); $result->execute(); 	# some gene regulation objects have multiple pgids, but this might switch to only one pgid
+  @row = $result->fetchrow(); { if ($row[0]) { $from_grg_intid++; } }
+
+  if ($from_grg_intid) {
+    $to_print .= "Source: Gene Regulation OA\n"; }
+
+  elsif ($from_int_name) {
+    $to_print .= "Source: Interaction OA\n";
+    my $result = $dbh->prepare( "SELECT int_paper FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 	# all interaction objects have a single pgid so this is overkill
+    my @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Paper: $row[0]\n"; } }
+    $result = $dbh->prepare( "SELECT int_type FROM int_type WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Interaction Type: $row[0]\n"; } }
+
+    $result = $dbh->prepare( "SELECT int_genenondir FROM int_genenondir WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); if ($row[0]) {
+      my %gene_to_locus; my (@genes) = $row[0] =~ m/WBGene(\d+)/g;
+      if (scalar(@genes)) {
+        my @tables = qw( gin_synonyms gin_seqname gin_locus ); my $genes = join"','", @genes;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$genes' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $gene_to_locus{$row2[0]} = $row2[1]; } }
+        my @genes_line;
+        foreach my $genejoinkey (@genes) { 
+          if ($gene_to_locus{$genejoinkey}) { push @genes_line, $gene_to_locus{$genejoinkey}; } 
+            else { push @genes_line, "WBGene$genejoinkey"; } }
+        my $genes_line = join", ", @genes_line;
+        $to_print .= "Non-directional Gene: $genes_line\n"; } }
+    $result = $dbh->prepare( "SELECT int_variationnondir FROM int_variationnondir WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) {
+      my %wbvar_to_name; my (@variations) = $row[0] =~ m/(WBVar\d+)/g;
+      if (scalar(@variations)) {
+        my @tables = qw( obo_name_variation ); my $variations = join"','", @variations;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$variations' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $wbvar_to_name{$row2[0]} = $row2[1]; } }
+        my @vars_line;
+        foreach my $varid (@variations) { 
+          if ($wbvar_to_name{$varid}) { push @vars_line, $wbvar_to_name{$varid}; } 
+            else { push @vars_line, "$varid"; } }
+        my $vars_line = join", ", @vars_line;
+        $to_print .= "Non-directional Variation: $vars_line\n"; } } }
+  
+    $result = $dbh->prepare( "SELECT int_geneone FROM int_geneone WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); if ($row[0]) {
+      my %gene_to_locus; my (@genes) = $row[0] =~ m/WBGene(\d+)/g;
+      if (scalar(@genes)) {
+        my @tables = qw( gin_synonyms gin_seqname gin_locus ); my $genes = join"','", @genes;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$genes' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $gene_to_locus{$row2[0]} = $row2[1]; } }
+        my @genes_line;
+        foreach my $genejoinkey (@genes) { 
+          if ($gene_to_locus{$genejoinkey}) { push @genes_line, $gene_to_locus{$genejoinkey}; } 
+            else { push @genes_line, "WBGene$genejoinkey"; } }
+        my $genes_line = join", ", @genes_line;
+        $to_print .= "Effector Gene: $genes_line\n"; } }
+    $result = $dbh->prepare( "SELECT int_variationone FROM int_variationone WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) {
+      my %wbvar_to_name; my (@variations) = $row[0] =~ m/(WBVar\d+)/g;
+      if (scalar(@variations)) {
+        my @tables = qw( obo_name_variation ); my $variations = join"','", @variations;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$variations' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $wbvar_to_name{$row2[0]} = $row2[1]; } }
+        my @vars_line;
+        foreach my $varid (@variations) { 
+          if ($wbvar_to_name{$varid}) { push @vars_line, $wbvar_to_name{$varid}; } 
+            else { push @vars_line, "$varid"; } }
+        my $vars_line = join", ", @vars_line;
+        $to_print .= "Effector Variation: $vars_line\n"; } } }
+    $result = $dbh->prepare( "SELECT int_intravariationone FROM int_intravariationone WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) {
+      my %wbvar_to_name; my (@variations) = $row[0] =~ m/(WBVar\d+)/g;
+      if (scalar(@variations)) {
+        my @tables = qw( obo_name_variation ); my $variations = join"','", @variations;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$variations' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $wbvar_to_name{$row2[0]} = $row2[1]; } }
+        my @vars_line;
+        foreach my $varid (@variations) { 
+          if ($wbvar_to_name{$varid}) { push @vars_line, $wbvar_to_name{$varid}; } 
+            else { push @vars_line, "$varid"; } }
+        my $vars_line = join", ", @vars_line;
+        $to_print .= "Effector Intragenic Variation: $vars_line\n"; } } }
+#     $result = $dbh->prepare( "SELECT int_transgeneone FROM int_transgeneone WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+#     @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Effector Transgene Name: $row[0]\n"; } }
+#     $result = $dbh->prepare( "SELECT int_transgeneonegene FROM int_transgeneonegene WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+#     @row = $result->fetchrow(); { if ($row[0]) { 
+#       my %gene_to_locus; my (@genes) = $row[0] =~ m/WBGene(\d+)/g;
+#       if (scalar(@genes)) {
+#         my @tables = qw( gin_synonyms gin_seqname gin_locus ); my $genes = join"','", @genes;
+#         foreach my $table (@tables) {
+#           my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$genes' );" ); $result2->execute();
+#           while (my @row2 = $result2->fetchrow) { $gene_to_locus{$row2[0]} = $row2[1]; } }
+#         my @genes_line;
+#         foreach my $genejoinkey (@genes) { 
+#           if ($gene_to_locus{$genejoinkey}) { push @genes_line, $gene_to_locus{$genejoinkey}; } 
+#             else { push @genes_line, "WBGene$genejoinkey"; } }
+#         my $genes_line = join", ", @genes_line;
+#         $to_print .= "Effector Transgene Gene: $genes_line\n"; } } }
+    $result = $dbh->prepare( "SELECT int_otheronetype FROM int_otheronetype WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Effector Other Type: $row[0]\n"; } }
+    $result = $dbh->prepare( "SELECT int_otherone FROM int_otherone WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Effector Other: $row[0]\n"; } }
+  
+    $result = $dbh->prepare( "SELECT int_genetwo FROM int_genetwo WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); if ($row[0]) {
+      my %gene_to_locus; my (@genes) = $row[0] =~ m/WBGene(\d+)/g;
+      if (scalar(@genes)) {
+        my @tables = qw( gin_synonyms gin_seqname gin_locus ); my $genes = join"','", @genes;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$genes' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $gene_to_locus{$row2[0]} = $row2[1]; } }
+        my @genes_line;
+        foreach my $genejoinkey (@genes) { 
+          if ($gene_to_locus{$genejoinkey}) { push @genes_line, $gene_to_locus{$genejoinkey}; } 
+            else { push @genes_line, "WBGene$genejoinkey"; } }
+        my $genes_line = join", ", @genes_line;
+        $to_print .= "Affected Gene: $genes_line\n"; } }
+    $result = $dbh->prepare( "SELECT int_variationtwo FROM int_variationtwo WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) {
+      my %wbvar_to_name; my (@variations) = $row[0] =~ m/(WBVar\d+)/g;
+      if (scalar(@variations)) {
+        my @tables = qw( obo_name_variation ); my $variations = join"','", @variations;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$variations' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $wbvar_to_name{$row2[0]} = $row2[1]; } }
+        my @vars_line;
+        foreach my $varid (@variations) { 
+          if ($wbvar_to_name{$varid}) { push @vars_line, $wbvar_to_name{$varid}; } 
+            else { push @vars_line, "$varid"; } }
+        my $vars_line = join", ", @vars_line;
+        $to_print .= "Affected Variation: $vars_line\n"; } } }
+    $result = $dbh->prepare( "SELECT int_intravariationtwo FROM int_intravariationtwo WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) {
+      my %wbvar_to_name; my (@variations) = $row[0] =~ m/(WBVar\d+)/g;
+      if (scalar(@variations)) {
+        my @tables = qw( obo_name_variation ); my $variations = join"','", @variations;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$variations' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $wbvar_to_name{$row2[0]} = $row2[1]; } }
+        my @vars_line;
+        foreach my $varid (@variations) { 
+          if ($wbvar_to_name{$varid}) { push @vars_line, $wbvar_to_name{$varid}; } 
+            else { push @vars_line, "$varid"; } }
+        my $vars_line = join", ", @vars_line;
+        $to_print .= "Affected Intragenic Variation: $vars_line\n"; } } }
+#     $result = $dbh->prepare( "SELECT int_transgenetwo FROM int_transgenetwo WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+#     @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Affected Transgene Name: $row[0]\n"; } }
+#     $result = $dbh->prepare( "SELECT int_transgenetwogene FROM int_transgenetwogene WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+#     @row = $result->fetchrow(); { if ($row[0]) { 
+#       my %gene_to_locus; my (@genes) = $row[0] =~ m/WBGene(\d+)/g;
+#       if (scalar(@genes)) {
+#         my @tables = qw( gin_synonyms gin_seqname gin_locus ); my $genes = join"','", @genes;
+#         foreach my $table (@tables) {
+#           my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$genes' );" ); $result2->execute();
+#           while (my @row2 = $result2->fetchrow) { $gene_to_locus{$row2[0]} = $row2[1]; } }
+#         my @genes_line;
+#         foreach my $genejoinkey (@genes) { 
+#           if ($gene_to_locus{$genejoinkey}) { push @genes_line, $gene_to_locus{$genejoinkey}; } 
+#             else { push @genes_line, "WBGene$genejoinkey"; } }
+#         my $genes_line = join", ", @genes_line;
+#         $to_print .= "Affected Transgene Gene: $genes_line\n"; } } }
+    $result = $dbh->prepare( "SELECT int_othertwotype FROM int_othertwotype WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Affected Other Type: $row[0]\n"; } }
+    $result = $dbh->prepare( "SELECT int_othertwo FROM int_othertwo WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Affected Other: $row[0]\n"; } }
+  
+    $result = $dbh->prepare( "SELECT int_transgene FROM int_transgene WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Transgene Names: $row[0]\n"; } }
+    $result = $dbh->prepare( "SELECT int_phenotype FROM int_phenotype WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { 
+      my %phenotype_to_name; my (@phenotypes) = $row[0] =~ m/(WBPhenotype:\d+)/g;
+      if (scalar(@phenotypes)) {
+        my @tables = qw( obo_name_phenotype ); my $phenotypes = join"','", @phenotypes;
+        foreach my $table (@tables) {
+          my $result2 = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ( '$phenotypes' );" ); $result2->execute();
+          while (my @row2 = $result2->fetchrow) { $phenotype_to_name{$row2[0]} = $row2[1]; } }
+        my @phenotype_line;
+        foreach my $varid (@phenotypes) { 
+          if ($phenotype_to_name{$varid}) { push @phenotype_line, "$varid $phenotype_to_name{$varid}"; } 
+            else { push @phenotype_line, "$varid"; } }
+        my $phenotype_line = join", ", @phenotype_line;
+        $to_print .= "Interaction Phenotype: $phenotype_line\n"; } } }
+    $result = $dbh->prepare( "SELECT int_remark FROM int_remark WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { $to_print .= "Interaction Remark: $row[0]\n"; } }
+    $result = $dbh->prepare( "SELECT * FROM int_curator WHERE joinkey IN (SELECT joinkey FROM int_name WHERE int_name = '$userValue');" ); $result->execute(); 
+    @row = $result->fetchrow(); { if ($row[0]) { my ($cur_id) = $row[1] =~ m/(\d+)/; 
+      my $result2 = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey = 'two$cur_id' ;" ); $result2->execute(); my @row2 = $result2->fetchrow(); my $curator = $row2[2]; $to_print .= "Curator: $curator\n"; } }
+  } # if ($from_int_name)
+
+  else {
+    $to_print .= "Source: Interaction exists, but neither in Interaction nor GeneRegulation OA\n"; }
+
   my (@data) = split/\n/, $to_print;
   foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
   $to_print = join"<br />\n", @data;
@@ -1961,8 +4116,18 @@ sub getAnyWBInteractionTermInfo {
 sub getAnyWBPaperTermInfo {
   my ($userValue) = @_;
   my ($joinkey) = $userValue =~ m/(\d+)/; my $to_print;
-  my %title; my %ids; my %pdfs; my %journal; my %year;
-  my $result = $dbh->prepare( "SELECT * FROM pap_title WHERE joinkey = '$joinkey' ;" );
+  my %title; my %ids; my %pdfs; my %journal; my %year; my %primary; my %type; my %type_index; my %non_nematode; my $status = ''; my %merged_into;
+  my $result = $dbh->prepare( "SELECT * FROM pap_status WHERE joinkey = '$joinkey' ;" );
+  $result->execute(); 
+  while (my @row = $result->fetchrow) {
+    if ($row[0]) { $status = $row[1]; } }
+  if ($status eq 'invalid') { 
+    $result = $dbh->prepare( "SELECT * FROM pap_identifier WHERE pap_identifier = '$joinkey' ;" );
+    $result->execute(); 
+    while (my @row = $result->fetchrow) { if ($row[0]) { $merged_into{$row[0]}++; } }
+    my @merged_into = sort keys %merged_into; my $merged_into = join", ", @merged_into;
+    $to_print .= "status: <span style=\"color:red\">Invalid paper, merged into $merged_into.</span><br />\n"; }
+  $result = $dbh->prepare( "SELECT * FROM pap_title WHERE joinkey = '$joinkey' ;" );
   $result->execute(); 
   while (my @row = $result->fetchrow) {
     if ($row[0]) {
@@ -1977,22 +4142,64 @@ sub getAnyWBPaperTermInfo {
   $result = $dbh->prepare( "SELECT * FROM pap_year WHERE joinkey = '$joinkey' ;" );
   $result->execute(); 
   while (my @row = $result->fetchrow) { if ($row[0]) { $year{$row[0]}{$row[1]}++; } }
+  $result = $dbh->prepare( "SELECT * FROM pap_primary_data WHERE joinkey = '$joinkey' ;" );
+  $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $primary{$row[0]}{$row[1]}++; } }
+  $result = $dbh->prepare( "SELECT * FROM pap_type_index ;" );
+  $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $type_index{$row[0]} = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM pap_type WHERE joinkey = '$joinkey' ;" );
+  $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { if ($type_index{$row[1]}) { $type{$row[0]}{$type_index{$row[1]}}++; } } }
   $result = $dbh->prepare( "SELECT * FROM pap_electronic_path WHERE joinkey = '$joinkey' ORDER BY pap_timestamp;" );
   $result->execute(); 
   while (my @row = $result->fetchrow) {
     if ($row[0]) { $pdfs{$row[0]}{$row[1]}++; } }
-  my %pap_transgene;
-  my $infile = '/home/acedb/karen/populate_gin_variation/transgene_summary_reference.txt';
-  open (IN, "$infile") or die "Cannot open $infile : $!";
-  my $junk = <IN>;
-  while (my $line = <IN>) {
-    chomp $line;
-    next unless ($line =~ m/WBPaper$joinkey/);
-    my ($transgene, $reference, $summary) = split/\t/, $line;
-    my $data = "$transgene\t$summary"; $data =~ s/\"//g; $pap_transgene{$joinkey}{$data}++; }
-  close (IN) or die "Cannot close $infile : $!";
+  $result = $dbh->prepare( "SELECT * FROM pap_curation_flags WHERE joinkey = '$joinkey' AND pap_curation_flags = 'non_nematode';" );
+  $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $non_nematode{$row[0]}{$row[1]}++; } }
+  my %pap_transgene; my %trp_temp;
+  $result = $dbh->prepare( "SELECT * FROM trp_name WHERE trp_name.joinkey IN (SELECT joinkey FROM trp_paper WHERE trp_paper ~ 'WBPaper$joinkey') ;" );	# query from trp_ tables instead of flatfiles
+#   $result = $dbh->prepare( " SELECT trp_name.trp_name, trp_publicname.trp_publicname, trp_synonym.trp_synonym, trp_summary.trp_summary FROM trp_name, trp_publicname, trp_synonym, trp_summary WHERE trp_name.joinkey = trp_publicname.joinkey AND trp_name.joinkey = trp_synonym.joinkey AND trp_name.joinkey = trp_summary.joinkey AND trp_name.joinkey IN (SELECT joinkey FROM trp_paper WHERE trp_paper ~ 'WBPaper$joinkey') ;" );	# this won't work if any of the fields are missing
+  $result->execute(); 
+  while (my @row = $result->fetchrow) { $trp_temp{trp_name}{$row[0]} = $row[1]; }
+  my $trp_keys = join"','", sort keys %{ $trp_temp{trp_name} }; my @trp_tables = qw( trp_publicname trp_synonym trp_summary trp_construct );
+  foreach my $trp_table (@trp_tables) { 
+    $result = $dbh->prepare( "SELECT * FROM $trp_table WHERE joinkey IN ('$trp_keys')" ); $result->execute(); 
+    while (my @row = $result->fetchrow) { $trp_temp{$trp_table}{$row[0]} = $row[1]; } }
+  foreach my $trp_key (sort keys %{ $trp_temp{trp_name} }) { 
+    my @data; push @data, $trp_temp{trp_name}{$trp_key};
+    foreach my $trp_table (@trp_tables) { if ($trp_temp{$trp_table}{$trp_key}) { push @data, $trp_temp{$trp_table}{$trp_key}; } }
+    my $trp_data = join"\t", @data; 
+    $pap_transgene{$joinkey}{$trp_data}++; }
+  my %pap_construct; my %cns_temp;
+  $result = $dbh->prepare( "SELECT * FROM cns_name WHERE cns_name.joinkey IN (SELECT joinkey FROM cns_paper WHERE cns_paper ~ 'WBPaper$joinkey') ;" );	# query from cns_ tables instead of flatfiles
+  $result->execute(); 
+  while (my @row = $result->fetchrow) { $cns_temp{cns_name}{$row[0]} = $row[1]; }
+  my $cns_keys = join"','", sort keys %{ $cns_temp{cns_name} }; my @cns_tables = qw( cns_publicname cns_summary cns_newtransgene );
+  foreach my $cns_table (@cns_tables) { 
+    $result = $dbh->prepare( "SELECT * FROM $cns_table WHERE joinkey IN ('$cns_keys')" ); $result->execute(); 
+    while (my @row = $result->fetchrow) { $cns_temp{$cns_table}{$row[0]} = $row[1]; } }
+  foreach my $cns_key (sort keys %{ $cns_temp{cns_name} }) { 
+    my @data; push @data, $cns_temp{cns_name}{$cns_key};
+    foreach my $cns_table (@cns_tables) { if ($cns_temp{$cns_table}{$cns_key}) { push @data, $cns_temp{$cns_table}{$cns_key}; } }
+    my $cns_data = join"\t", @data; 
+    $pap_construct{$joinkey}{$cns_data}++; }
+
+#       if ($row[1] =~ m/WBGene(\d+)/) { my $wbgene = $1; $expr{$joinkey}{$row[0]}{$wbgene}++; $expr_genes{$wbgene}++; }
+#         else { $expr{$joinkey}{$row[0]}{nomatch}++; } } }
+#   my $infile = '/home/acedb/karen/populate_gin_variation/transgene_summary_reference.txt';
+#   open (IN, "$infile") or die "Cannot open $infile : $!";
+#   my $junk = <IN>;
+#   while (my $line = <IN>) {
+#     chomp $line;
+#     next unless ($line =~ m/WBPaper$joinkey/);
+#     my ($transgene, $reference, $summary) = split/\t/, $line;
+#     my $data = "$transgene\t$summary"; $data =~ s/\"//g; $pap_transgene{$joinkey}{$data}++; }
+#   close (IN) or die "Cannot close $infile : $!";
   my %expr; my %expr_genes; my %gene_to_locus;
-  $result = $dbh->prepare( "SELECT * FROM obo_data_exprpattern WHERE obo_data_exprpattern ~ 'WBPaper$joinkey' ;" );
+#   $result = $dbh->prepare( "SELECT * FROM obo_data_exprpattern WHERE obo_data_exprpattern ~ 'WBPaper$joinkey' ;" );
+  $result = $dbh->prepare( " SELECT exp_name.exp_name, exp_gene.exp_gene FROM exp_name, exp_gene WHERE exp_name.joinkey = exp_gene.joinkey AND exp_name.joinkey IN (SELECT joinkey FROM exp_paper WHERE exp_paper ~ 'WBPaper$joinkey') ;" );	# query from exp_ tables instead of obo_
   $result->execute(); 
   while (my @row = $result->fetchrow) {
     if ($row[0]) {
@@ -2007,14 +4214,26 @@ sub getAnyWBPaperTermInfo {
     while (my @row = $result->fetchrow) { $gene_to_locus{$row[0]} = $row[1]; }
     $result = $dbh->prepare( "SELECT * FROM gin_locus WHERE joinkey IN ( '$expr_genes' );" ); $result->execute();
     while (my @row = $result->fetchrow) { $gene_to_locus{$row[0]} = $row[1]; } }
+  my %pap_genes; 
+  $result = $dbh->prepare( "SELECT pap_gene FROM pap_gene WHERE joinkey = '$joinkey'" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $pap_genes{$row[0]}++; } }
+  my @pap_genes = keys %pap_genes;
+  if (scalar(@pap_genes)) {
+    my $pap_genes = join"','", @pap_genes;
+    $result = $dbh->prepare( "SELECT * FROM gin_synonyms WHERE joinkey IN ( '$pap_genes' );" ); $result->execute();
+    while (my @row = $result->fetchrow) { $gene_to_locus{$row[0]} = $row[1]; }
+    $result = $dbh->prepare( "SELECT * FROM gin_seqname WHERE joinkey IN ( '$pap_genes' );" ); $result->execute();
+    while (my @row = $result->fetchrow) { $gene_to_locus{$row[0]} = $row[1]; }
+    $result = $dbh->prepare( "SELECT * FROM gin_locus WHERE joinkey IN ( '$pap_genes' );" ); $result->execute();
+    while (my @row = $result->fetchrow) { $gene_to_locus{$row[0]} = $row[1]; } }
 
   my %picturesource;
   $result = $dbh->prepare( "SELECT obo_data_picturesource FROM obo_data_picturesource WHERE joinkey = 'WBPaper$joinkey' ;" );
   $result->execute(); 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $picturesource{$joinkey}{$row[0]}++; } }
+  while (my @row = $result->fetchrow) { if ($row[0]) { $picturesource{$joinkey}{$row[0]}++; } }
 
-  $to_print .= "id: <span style=\"font-weight: bold\">WBPaper$joinkey</span><br />\n";
+  my $paper_url = "http://tazendra.caltech.edu/~azurebrd/cgi-bin/forms/paper_display.cgi?action=Search+!&data_number=$joinkey";
+  $to_print .= "id: <span style=\"font-weight: bold\"><a href=\"$paper_url\" target=\"new\">WBPaper$joinkey</a></span><br />\n";
   $to_print .= "name: WBPaper$joinkey<br />\n";
   if ($title{$joinkey}) {
       my (@title) = keys %{ $title{$joinkey} };
@@ -2027,8 +4246,20 @@ sub getAnyWBPaperTermInfo {
     ($pdf) = $pdf =~ m/\/([^\/]*)$/; my $pdf_link = '/~acedb/daniel/' . $pdf;
     $to_print .= "pdf: <a target=\"new\" href=\"$pdf_link\">$pdf</a><br />\n"; }
   foreach my $syn (sort keys %{ $ids{$joinkey} }) {
-    if ($syn =~ m/pmid/) { $syn =~ s/pmid/PMID:/g; }
+    if ($syn =~ m/^pmid(\d+)/) { my $url = 'http://www.ncbi.nlm.nih.gov/pubmed/' . $1; $syn =~ s/pmid/PMID:/g; $syn = qq(<a href="$url" target="new">$syn</a>); }
+      elsif ($syn =~ m/^doi(.*)/) { my $url = 'http://dx.doi.org/' . $1; $syn = qq(<a href="$url" target="new">$syn</a>); }
     $to_print .= "synonym: \"$syn\"<br />\n"; }
+  # to link to paper editor
+#   my $query = new CGI;
+#   (my $var, my $curator_two) = &getHtmlVar($query, 'curator_two');
+#   my $url = 'http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=' . $curator_two . '&action=Search&data_number=' . $joinkey;
+#   $to_print .= qq(paper_editor : <a href="$url" target="new">edit on tazendra</a><br />\n);
+  foreach my $type (sort keys %{ $type{$joinkey} }) {
+    $to_print .= "type: \"$type\"<br />\n"; }
+  foreach my $primary (sort keys %{ $primary{$joinkey} }) {
+    $to_print .= "primary: \"$primary\"<br />\n"; }
+  foreach my $non_nematode (sort keys %{ $non_nematode{$joinkey} }) {
+    $to_print .= "non_nematode: \"$non_nematode\"<br />\n"; }
   my (@year) = sort keys %{ $year{$joinkey} }; my (@journal) = sort keys %{ $journal{$joinkey} };
   if (scalar(@year) > 1) { $to_print .= "ERROR : multiple years @year<br />\n"; }
     elsif (scalar(@year) > 0) { $to_print .= "Year: $year[0]<br />\n"; }
@@ -2038,6 +4269,7 @@ sub getAnyWBPaperTermInfo {
     else { $to_print .= "Journal: BLANK<br />\n"; }
   $to_print .= "<hr>\n";
   foreach my $transgene (sort keys %{ $pap_transgene{$joinkey}}) { $to_print .= "transgene: $transgene<br />\n"; }
+  foreach my $construct (sort keys %{ $pap_construct{$joinkey}}) { $to_print .= "construct: $construct<br />\n"; }
   foreach my $expr (sort keys %{ $expr{$joinkey}}) {
     my $expr_line = "expr: $expr";
     foreach my $wbgene (sort keys %{ $expr{$joinkey}{$expr} }) {
@@ -2047,6 +4279,8 @@ sub getAnyWBPaperTermInfo {
     $to_print .= "$expr_line<br />\n"; }
   foreach my $picturesource (sort keys %{ $picturesource{$joinkey}}) { 	# all this obo data is in one entry, so split and print with <br /> 2010 12 06
     my (@lines) = split/\n/, $picturesource; foreach my $line (@lines) { $to_print .= "$line<br />\n"; } }
+  foreach my $wbgene (sort keys %pap_genes) { 
+    $to_print .= "gene: WBGene$wbgene"; if ($gene_to_locus{$wbgene}) { $to_print .= " $gene_to_locus{$wbgene}"; } $to_print .= "<br />\n"; }
   my (@data) = split/\n/, $to_print;
   foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
   $to_print = join"\n", @data;
@@ -2104,6 +4338,69 @@ sub getAnyWBPictureTermInfo {
   return $to_print;
 } # sub getAnyWBPictureTermInfo
 
+sub getAnyWBProcessTermInfo {
+  my ($userValue) = @_; my %joinkeys;
+  my ($typed_term, $value) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?) \( (.*?) \) $/ ) { ($typed_term, $value) = $userValue =~ m/^(.*?) \( (.*?) \) $/; }
+    else { $value = $userValue; }
+  my $result = $dbh->prepare( "SELECT * FROM prt_processid WHERE prt_processid = '$value' ORDER BY prt_timestamp DESC;" );
+  $result->execute(); while ( my @row = $result->fetchrow() ) { $joinkeys{$row[0]}++; }
+  my $joinkeys = join("','", keys %joinkeys);
+  my %info; my @tables = qw( prt_summary prt_paper );
+  foreach my $table (@tables) { 
+    $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ('$joinkeys');" );
+    $result->execute(); while (my @row = $result->fetchrow) { if ($row[1]) { $info{$table}{$row[1]}++; } } }
+  my $to_print = "name: $value<br />\n";
+  foreach my $table (@tables) { foreach my $entry (sort keys %{ $info{$table} }) { 
+    if ($table eq 'prt_paper') { 
+        my @papers = split/","/, $entry; foreach my $pap (@papers) { 
+          my ($joinkey) = $pap =~ m/WBPaper(\d+)/; $to_print .= "Paper: <a href=\"/~azurebrd/cgi-bin/forms/paper_display.cgi?action=Search+!&data_number=$joinkey\" target=\"new\">WBPaper$joinkey</a><br />\n"; } }
+      else { $to_print .= "${table}: $entry<br />\n"; } } }
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getAnyWBProcessTermInfo
+
+sub getAnyWBRnaiTermInfo {
+  my ($userValue) = @_; my %joinkeys;
+  my ($typed_term, $value) = ('bad', 'bad');
+  if ( $userValue =~ m/^(.*?) \( (.*?) \) $/ ) { ($typed_term, $value) = $userValue =~ m/^(.*?) \( (.*?) \) $/; }
+    else { $value = $userValue; }
+  my $result = $dbh->prepare( "SELECT * FROM rna_name WHERE rna_name = '$value' ORDER BY rna_timestamp DESC;" );
+  $result->execute(); while ( my @row = $result->fetchrow() ) { $joinkeys{$row[0]}++; }
+  my $joinkeys = join("','", keys %joinkeys);
+  my %info; my @tables = qw( rna_paper rna_curator rna_nodump );
+  foreach my $table (@tables) { 
+    $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey IN ('$joinkeys');" );
+    $result->execute(); while (my @row = $result->fetchrow) { if ($row[1]) { $info{$table}{$row[1]}++; } } }
+  my $to_print = "id: $value<br />\n";
+  foreach my $table (@tables) { foreach my $entry (sort keys %{ $info{$table} }) { 
+    if ($table eq 'rna_curator') {
+        my ($cur_id) = $entry =~ m/(\d+)/; 
+        my $result2 = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey = 'two$cur_id' ;" ); $result2->execute(); my @row2 = $result2->fetchrow(); $to_print .= "Curator : $row2[2]\n"; }
+      elsif ($table eq 'rna_paper') { 
+        my @papers = split/","/, $entry; foreach my $pap (@papers) { 
+          my ($joinkey) = $pap =~ m/WBPaper(\d+)/; $to_print .= "Paper: <a href=\"/~azurebrd/cgi-bin/forms/paper_display.cgi?action=Search+!&data_number=$joinkey\" target=\"new\">WBPaper$joinkey</a><br />\n"; } }
+      else { $to_print .= "${table}: $entry<br />\n"; } } }
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getAnyWBRnaiTermInfo
+
+sub getAnyWBSequenceTermInfo {
+  my ($userValue) = @_; my %genes;
+  my $result = $dbh->prepare( "SELECT * FROM gin_sequence WHERE gin_sequence = '$userValue' ORDER BY gin_timestamp DESC;" );
+  $result->execute(); while ( my @row = $result->fetchrow() ) { $genes{"WBGene$row[0]"}++; }
+  my $to_print = "id: $userValue<br />\nname: $userValue<br />\n";
+  foreach my $gene (sort keys %genes) { $to_print .= "gene: $gene<br />\n"; }
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getAnyWBSequenceTermInfo
+
 ### END TERM INFO ### 
 
 
@@ -2112,34 +4409,44 @@ sub getAnyWBPictureTermInfo {
 sub getAnySpecificIdToValue {			# convert values from postgres values (ids) to what someone types for dataTable display
   my ($ontology_type, $type, $fieldIdToValue_ref, $userValue) = @_; my $matches = '';
   if ($ontology_type eq 'Antibody') {            $matches = $userValue; }	# antibody name is the ID
-  elsif ($ontology_type eq 'Molecule') {        ($matches, $fieldIdToValue_ref) = &getAnyMoleculeIdToValue($ontology_type, $type, $fieldIdToValue_ref, $userValue); }
+  elsif ($ontology_type eq 'Concurhst') {        $matches = $userValue; }	# concise description curator history name is the ID
+  elsif ($ontology_type eq 'Discurhst') {        $matches = $userValue; }	# disease curator history name is the ID
+  elsif ($ontology_type eq 'Ditcurhst') {        $matches = $userValue; }	# disease term curator history name is the ID
+  elsif ($ontology_type eq 'Expr') {             $matches = $userValue; }	# expr name is the ID
+  elsif ($ontology_type eq 'Molecule') {         $matches = $userValue; }	# molecule wbid is the ID
+#   elsif ($ontology_type eq 'Molecule') {        ($matches, $fieldIdToValue_ref) = &getAnyMoleculeIdToValue($ontology_type, $type, $fieldIdToValue_ref, $userValue); }
   elsif ($ontology_type eq 'Transgene') {       ($matches, $fieldIdToValue_ref) = &getAnyTransgeneIdToValue($ontology_type, $type, $fieldIdToValue_ref, $userValue); }
+  elsif ($ontology_type eq 'WBConstruct') {      $matches = $userValue; }	# construct is the ID
   elsif ($ontology_type eq 'WBGene') {          ($matches, $fieldIdToValue_ref) = &getAnyWBGeneIdToValue($ontology_type, $type, $fieldIdToValue_ref, $userValue); }
   elsif ($ontology_type eq 'WBInteraction') {    $matches = $userValue; }	# interaction name is the ID
   elsif ($ontology_type eq 'WBPaper') {          $matches = $userValue; }	# paper name is the ID
   elsif ($ontology_type eq 'WBPerson') {        ($matches, $fieldIdToValue_ref) = &getAnyWBPersonIdToValue($ontology_type, $type, $fieldIdToValue_ref, $userValue); }
   elsif ($ontology_type eq 'WBPicture') {       ($matches, $fieldIdToValue_ref) = &getAnyWBPictureIdToValue($ontology_type, $type, $fieldIdToValue_ref, $userValue); }
+  elsif ($ontology_type eq 'WBProcess') {       ($matches, $fieldIdToValue_ref) = &getAnyWBProcessIdToValue($ontology_type, $type, $fieldIdToValue_ref, $userValue); }
+  elsif ($ontology_type eq 'WBRnai') {           $matches = $userValue; }	# rnai name is the ID
+  elsif ($ontology_type eq 'WBSequence') {       $matches = $userValue; }	# sequence name is the ID
   return ($matches, $fieldIdToValue_ref);
 } # sub getAnySpecificIdToValue
 
-sub getAnyMoleculeIdToValue {			# molecule object names (not publicname)
-  my ($ontology_type, $type, $fieldIdToValue_ref, $userValue) = @_;
-  my %fieldIdToValue = %$fieldIdToValue_ref;
-  $userValue =~ s/\"//g;			# strip doublequotes
-  my (@data) = split/,/, $userValue; my %results;
-  foreach my $id (@data) {
-    my $joinkey = $id;
-    if ($fieldIdToValue{$ontology_type}{$joinkey}) { $results{$joinkey} = $fieldIdToValue{$ontology_type}{$joinkey}; }
-    else {
-      my $table =  'mop_molecule';
-      my $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey = '$joinkey' ;" );
-      $result->execute(); my @row = $result->fetchrow();
-      if ($row[1]) { $fieldIdToValue{$ontology_type}{$joinkey} = "\"$row[1]<span style='display: none'>$id</span>\""; 
-                     $results{$joinkey} = "\"$row[1]<span style='display: none'>$id</span>\""; } } }
-  my $data = join",", sort values %results;
-  if ( $type eq 'ontology' ) { $data =~ s/^\"//; $data =~ s/\"$//; }	# strip quotes for ontology, keep for multiontology
-  return ($data, \%fieldIdToValue);
-} # sub getAnyMoleculeIdToValue
+# molecules are now stored as wbmolIDs instead of the previous pgids.
+# sub getAnyMoleculeIdToValue {			# molecule object names (not publicname)
+#   my ($ontology_type, $type, $fieldIdToValue_ref, $userValue) = @_;
+#   my %fieldIdToValue = %$fieldIdToValue_ref;
+#   $userValue =~ s/\"//g;			# strip doublequotes
+#   my (@data) = split/,/, $userValue; my %results;
+#   foreach my $id (@data) {
+#     my $joinkey = $id;
+#     if ($fieldIdToValue{$ontology_type}{$joinkey}) { $results{$joinkey} = $fieldIdToValue{$ontology_type}{$joinkey}; }
+#     else {
+#       my $table =  'mop_molecule';
+#       my $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey = '$joinkey' ;" );
+#       $result->execute(); my @row = $result->fetchrow();
+#       if ($row[1]) { $fieldIdToValue{$ontology_type}{$joinkey} = "\"$row[1]<span style='display: none'>$id</span>\""; 
+#                      $results{$joinkey} = "\"$row[1]<span style='display: none'>$id</span>\""; } } }
+#   my $data = join",", sort values %results;
+#   if ( $type eq 'ontology' ) { $data =~ s/^\"//; $data =~ s/\"$//; }	# strip quotes for ontology, keep for multiontology
+#   return ($data, \%fieldIdToValue);
+# } # sub getAnyMoleculeIdToValue
 sub getAnyTransgeneIdToValue {			# molecule object names (not publicname)
   my ($ontology_type, $type, $fieldIdToValue_ref, $userValue) = @_;
   my %fieldIdToValue = %$fieldIdToValue_ref;
@@ -2220,6 +4527,23 @@ sub getAnyWBPictureIdToValue {			# molecule object names (not publicname)
   if ( $type eq 'ontology' ) { $data =~ s/^\"//; $data =~ s/\"$//; }	# strip quotes for ontology, keep for multiontology
   return ($data, \%fieldIdToValue);
 } # sub getAnyWBPictureIdToValue
+sub getAnyWBProcessIdToValue {			# molecule object names (not publicname)
+  my ($ontology_type, $type, $fieldIdToValue_ref, $userValue) = @_;
+  my %fieldIdToValue = %$fieldIdToValue_ref;
+  $userValue =~ s/\"//g;			# strip doublequotes
+  my (@data) = split/,/, $userValue; my %results;
+  foreach my $name (@data) {
+    my $joinkey = $name;
+    if ($fieldIdToValue{$ontology_type}{$joinkey}) { $results{$joinkey} = $fieldIdToValue{$ontology_type}{$joinkey}; }
+    else {
+      my $result = $dbh->prepare( "SELECT * FROM prt_processname WHERE joinkey IN (SELECT joinkey FROM prt_processid WHERE prt_processid = '$name') ;" );
+      $result->execute(); my @row = $result->fetchrow();
+      if ($row[1]) { $fieldIdToValue{$ontology_type}{$joinkey} = "\"$row[1]<span style='display: none'>$name</span>\""; 
+                     $results{$joinkey} = "\"$row[1]<span style='display: none'>$name</span>\""; } } }
+  my $data = join",", sort values %results;	# this always joins even if there's only one value for ontology
+  if ( $type eq 'ontology' ) { $data =~ s/^\"//; $data =~ s/\"$//; }	# strip quotes for ontology, keep for multiontology
+  return ($data, \%fieldIdToValue);
+} # sub getAnyWBProcessIdToValue
 
 ### END ID TO VALUE ###
 
@@ -2244,30 +4568,32 @@ sub showWormLogin {					# show login curators, datatypes, and Login button
   my $result = $dbh->prepare( "SELECT * FROM two_curator_ip WHERE two_curator_ip = '$ip';" ); $result->execute; my @row = $result->fetchrow;
   if ($row[0]) { $curator_by_ip = $row[0]; }
   my %curator_list; tie %curator_list, "Tie::IxHash";
-  $curator_list{"two1823"} = 'Juancarlos Chan';
-  $curator_list{"two101"} = 'Wen Chen';
-  $curator_list{"two1983"} = 'Paul Davis';
-  $curator_list{"two9133"} = 'Margaret Duesbury';
-  $curator_list{"two8679"} = 'Ruihua Fang';
-  $curator_list{"two2021"} = 'Jolene S. Fernandes';
-  $curator_list{"two13088"} = 'Uhma Ganesan';
-  $curator_list{"two2987"} = 'Chris';
+#   $curator_list{"two22"}    = 'Igor Antoshechkin';
+  $curator_list{"two1823"}  = 'Juancarlos Chan';
+  $curator_list{"two101"}   = 'Wen Chen';
+  $curator_list{"two1983"}  = 'Paul Davis';
+  $curator_list{"two17622"} = 'James Done';
+#   $curator_list{"two9133"}  = 'Margaret Duesbury';	# Mary Ann said to remove her.  2012 03 26
+#   $curator_list{"two8679"}  = 'Ruihua Fang';
+  $curator_list{"two2021"}  = 'Jolene S. Fernandes';
+#   $curator_list{"two13088"} = 'Uhma Ganesan';
+  $curator_list{"two2987"}  = 'Chris';
   $curator_list{"two12884"} = 'Snehalata Kadam';
-  $curator_list{"two324"} = 'Ranjana Kishore';
-  $curator_list{"two363"} = 'Raymond Lee';
-  $curator_list{"two1"} = 'Cecilia Nakamura';
-  $curator_list{"two480"} = 'Tuco';
+  $curator_list{"two324"}   = 'Ranjana Kishore';
+  $curator_list{"two363"}   = 'Raymond Lee';
+  $curator_list{"two1"}     = 'Cecilia Nakamura';
+  $curator_list{"two480"}   = 'Tuco';
   $curator_list{"two12028"} = 'Daniela Raciti';
-  $curator_list{"two1847"} = 'Anthony Rogers';
-  $curator_list{"two557"} = 'Gary C. Schindelman';
-  $curator_list{"two567"} = 'Erich Schwarz';
-  $curator_list{"two625"} = 'Paul Sternberg';
-  $curator_list{"two627"} = 'Theresa Stiernagle';
-  $curator_list{"two2970"} = 'Mary Ann Tuli';
-  $curator_list{"two1843"} = 'Kimberly Van Auken';
-  $curator_list{"two736"} = 'Qinghua Wang';
-  $curator_list{"two1760"} = 'Xiaodong Wang';
-  $curator_list{"two712"} = 'Karen Yook'; 
+  $curator_list{"two1847"}  = 'Anthony Rogers';
+  $curator_list{"two557"}   = 'Gary C. Schindelman';
+  $curator_list{"two567"}   = 'Erich Schwarz';
+  $curator_list{"two625"}   = 'Paul Sternberg';
+#   $curator_list{"two627"}   = 'Theresa Stiernagle';
+  $curator_list{"two2970"}  = 'Mary Ann Tuli';
+  $curator_list{"two1843"}  = 'Kimberly Van Auken';
+  $curator_list{"two736"}   = 'Qinghua Wang';
+  $curator_list{"two1760"}  = 'Xiaodong Wang';
+  $curator_list{"two712"}   = 'Karen Yook'; 
 
   print "<table cellpadding=\"4\">\n";
   print "<tr>\n";
@@ -2276,19 +4602,32 @@ sub showWormLogin {					# show login curators, datatypes, and Login button
     if ($curator_by_ip eq $curator_two) { print "<option value=\"$curator_two\" selected=\"selected\">$curator_list{$curator_two}</option>\n"; }
     else { print "<option value=\"$curator_two\">$curator_list{$curator_two}</option>\n"; } }
   print "</select></td>\n";
-  print "<td valign=\"top\">Data Type<br /><select name=\"datatype\" size=\"10\">\n";
-  print "<option value=\"abp\">antibody</option>\n";
-  print "<option value=\"exp\">exprpat</option>\n";
-  print "<option value=\"gcl\">gene class</option>\n";
-  print "<option value=\"gop\">go</option>\n";
-  print "<option value=\"grg\">genereg</option>\n";
-  print "<option value=\"int\">interaction</option>\n";
-  print "<option value=\"mop\">molecule</option>\n";
-#   print "<option value=\"two\">people</option>\n";
-  print "<option value=\"app\">phenotype</option>\n";
-  print "<option value=\"pic\">picture</option>\n";
-  print "<option value=\"trp\">transgene</option>\n";
-  print "</select></td>\n";
+
+  my %datatype_list; tie %datatype_list, "Tie::IxHash";
+  $datatype_list{"abp"} = "antibody";
+  $datatype_list{"con"} = "concise";
+  $datatype_list{"cns"} = "construct";
+  $datatype_list{"dis"} = "disease";
+  $datatype_list{"dit"} = "disease term";
+  $datatype_list{"exp"} = "exprpat";
+  $datatype_list{"gcl"} = "gene class";
+  $datatype_list{"gop"} = "go";
+  $datatype_list{"grg"} = "genereg";
+  $datatype_list{"int"} = "interaction";
+  $datatype_list{"mop"} = "molecule";
+  $datatype_list{"mov"} = "movie";
+  $datatype_list{"app"} = "phenotype";
+  $datatype_list{"pic"} = "picture";
+  $datatype_list{"prt"} = "process term";
+  $datatype_list{"rna"} = "rnai";
+  $datatype_list{"pro"} = "topic";
+  $datatype_list{"sqf"} = "seq feature";
+  $datatype_list{"trp"} = "transgene";
+  my $datatype_list_size = scalar keys %datatype_list;
+
+  print qq(<td valign="top">Data Type<br /><select name="datatype" size="$datatype_list_size">\n);
+  foreach my $threecode (keys %datatype_list) { print qq(<option value="$threecode">$datatype_list{$threecode}</option>\n); }
+  print qq(</select></td>\n);
   print "<td valign=\"top\"><br /><input type=submit name=action value=\"Login !\"></td>\n";
   print "</tr>\n";
   print "</table>\n";
@@ -2398,6 +4737,8 @@ When creating a new ontology / multiontology, must set  &getAnySpecificAutocompl
 
 =item * highestPgidTables	REQUIRED	array of tables for this config that should have a value to determine the highest used pgid.  Also when doing a &jsonFieldQuery if querying by id use these tables instead.
 
+=item * label	REQUIRED	label to show in Editor frame which configuration has been selected.
+
 =item * newRowSub	REQUIRED	pointer to the config-specific sub to create a new row.  Most only insert to postgres table of _curator field, others also to other tables.
 
 =item * constraintSub	OPTIONAL	pointer to the config-specific sub for checks when checking data.  Called by ontology_annotator.cgi by  &checkDataByPgids .  Returns 'OK' or messages with specific problems for specific pgids.
@@ -2426,9 +4767,15 @@ When creating a new ontology / multiontology, must set  &getAnySpecificAutocompl
 
 =item * queryonlySub  DEPENDENT		required for fields of type queryonly.  Pointer to the datatype-field-specific sub to create a custom postgres query for queryonly fields that returns joinkeys.
 
-=item * noteditable	OPTIONAL	flag.  Field can't be edited (affects ontology_annotator.js only).  Values in bigtext field will toggle into the input field, so the editor will change, but values will not update in the datatable, nor change in postgres.
+=item * noteditable	OPTIONAL	flag.  Field can't be edited (affects ontology_annotator.js only).  Values in bigtext field will toggle into the input field, so the editor will change, but values will not update in the datatable, nor change in postgres.  A bit obsolete with 'disabled' option, but useful if need to copy-paste.
+
+=item * disabled   	OPTIONAL	flag.  Field can't be edited (prevents editing html with disabled flag).
 
 =item * input_size	OPTIONAL	integer.  Html input tag has this size on editor.
+
+=item * cols_size	OPTIONAL	integer.  Html textarea tag has this cols size on editor.
+
+=item * rows_size	OPTIONAL	integer.  Html textarea tag has this rows size on editor.
 
 =item * placeholder	OPTIONAL	fake field to set the order in the tied hash.  Fields on editor show in order they were entered in the tied %fields hash, this only serves to set the order.
 
@@ -2477,7 +4824,6 @@ When creating a new ontology / multiontology, must set  &getAnySpecificAutocompl
 &getAnySpecificIdToValue  is called by ontology_annotator.cgi  passing in the ontology_type, %fields's type, pointer to existing %fieldIdToValue, and IDs from postgres table data from which to get the id to value mappings ;  and returning a variable containing the display values of each of the ontology_type's passed IDs, and a pointer to the updated %fieldIdToValue .  Calls &getAny<ontology_type>IdToValue, passing in the ontology_type, %fields's type, pointer to %fieldIdToValue hash, IDs from postgres table data ;  and returning a variable with the display values of the corresponding IDs, and a pointer to the updated %fieldIdToValue .
 
 &getAny<ontology_type>IdToValue  exists for each specific ontology_type.  It splits the postgres data table's values into separate IDs, and for each ID, it checks against the %fieldIdToValue hash.  If it already exists, it adds it to the %results hash.  If it doesn't, it queries against the appropriate postgres tables and generates a new value to display, adding it to %results and to $fieldIdToValue{$ontology_type}.  %results values are joined by commas into a $data variable to return.  If the %fields's type is ontology, the leading and trailing doublequotes are stripped (doublequotes are necessary for multiontology).  $data and a pointer to the updated %fieldIdToValue are returned.  The format of %results is  ''$results{<joinkey>} = "<display_value><span style='display: none'><id></span>"''  where <span> tags are html tags, and <display_value> and <id> are real values.
-
 
 
 

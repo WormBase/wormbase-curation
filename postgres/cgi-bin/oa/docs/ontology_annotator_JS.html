@@ -18,6 +18,8 @@
 </ul>
 <li><a href="#_Term_Info_Frame"> Term Info Frame</a></li>
 <li><a href="#_Control_Frame"> Control Frame</a></li>
+<li><a href="#_changeNewRowAmountPromptListener(e)"> changeNewRowAmountPromptListener(e)</a></li>
+<li><a href="#_changeNewRowAmountPrompt()"> changeNewRowAmountPrompt()</a></li>
 <li><a href="#_Data_Table_Frame"> Data Table Frame</a></li>
 <ul>
 <li><a href="#__DataTable_Column">  DataTable Column</a></li>
@@ -63,14 +65,15 @@ For each field in myFields:<br />
 - for 'multiontology' and 'multidropdown'  fieldsData[&lt;field&gt;]["type"]  get editor frame element 'button_remove_&lt;field&gt;'  and add  'click' listener to  removeSelectFieldEntriesListener  to remove values from field's select html element and update postgres table ;  get editor frame element 'select_&lt;field&gt;' and add 'change' listener to load the value into the input field and for 'multiontology' call  asyncTermInfo(field, inputValue)  to change the term info in the obo frame.  multivalue fields load select element into input when changed, load term info into obo frame ;  have a remove button to remove values.<br />
 - for 'toggle' and 'toggletext'  fieldsData[&lt;field&gt;]["type"]  get editor frame element 'toggle_&lt;field&gt;'  and add  'click' listener to  toggle the value of the field on or off ;  'on' sets the background color 'red' and calls  editorFieldBlur(field, fieldsData[field]["label"])  setting the postgres value to be the label ;  'off' sets the background color 'white' and calls  editorFieldBlur(field, "")  setting the postgres value to be deleted.  toggle fields store the label in postgres and show red when on.<br />
 - for 'bigtext'  fieldsData[&lt;field&gt;]["type"]  get editor frame element 'input_&lt;field&gt;'  and add  'focus' listener to hide the element, show the corresponding 'textarea_bigtext_&lt;field&gt;', place the 'input_&lt;field&gt;' value into the 'textarea_bigtext_&lt;field&gt;' value, and focus on the 'textarea_bigtext_&lt;field&gt;' element ;  get editor frame element 'textarea_bigtext_&lt;field&gt;'  and add 'blur' listener to hide the element, show the corresponding 'input_&lt;field&gt;' element, place the 'textarea_bigtext_&lt;field&gt;' value into the 'input_&lt;field&gt;' value, and for all fields except for those with  fieldsData[&lt;field&gt;]["noteditable"]  call  editorFieldBlur(field, top.frames['editor'].document.getElementById("input_" + field).value)  to update dataTable and postgres table.  bigtext input fields switch to textareas when focused and back to input fields when blurred.<br />
-For each tab in  tabs  hash, get editor frame element with id '&lt;tab&gt;'  and add 'click' listener to call  showTab(this.id)  to only show html elements that have class '&lt;tab&gt;'.<br />
+For each tab in  tabs  hash, get editor frame element with id '&lt;tab&gt;'  and add 'click' listener to call  showTab(this.id)  to only show html elements that have class '&lt;tab&gt;' or 'all'.<br />
 If the datatype has a numeric tab (as opposed to all fields having value 'all'), by default call  showTab("tab" + firstTab);  to show the html elements in the lowest tab.<br />
-Get editor   frame element 'resetPage'     and add 'click'  listener to call  resetButtonListener          to reload the obo frame, clear the dataTable data, and all editor values.<br />
-Get controls frame element 'checkData'     and add 'click'  listener to call  checkDataButtonListener      to reload to check dataTable data against datatype constraints.<br />
-Get controls frame element 'deleteRow'     and add 'click'  listener to call  deleteRowButtonListener      to delete selected dataTable rows from dataTable and postgres tables.<br />
-Get controls frame element 'duplicateRow'  and add 'click'  listener to call  duplicateRowButtonListener   to duplicate selected dataTable rows into the dataTable and postgres tables.<br />
-Get controls frame element 'newRow'        and add 'click'  listener to call  newRowButtonListener         to create a new row in the dataTable and new datatype object in the postgres tables.<br />
-Get controls frame element 'filtersAmount' and add 'change' listener to call  updateFiltersAmountListener  to show that amount of filter pairs.<br />
+Get editor   frame element 'resetPage'     and add 'click'  listener to call  resetButtonListener               to reload the obo frame, clear the dataTable data, and all editor values.<br />
+Get controls frame element 'checkData'     and add 'click'  listener to call  checkDataButtonListener           to reload to check dataTable data against datatype constraints.<br />
+Get controls frame element 'deleteRow'     and add 'click'  listener to call  deleteRowButtonListener           to delete selected dataTable rows from dataTable and postgres tables.<br />
+Get controls frame element 'newRowAmount'  and add 'click'  listener to call  changeNewRowAmountPromptListener  to set the amount of rows to create when pressing the New button<br />
+Get controls frame element 'duplicateRow'  and add 'click'  listener to call  duplicateRowButtonListener        to duplicate selected dataTable rows into the dataTable and postgres tables.<br />
+Get controls frame element 'newRow'        and add 'click'  listener to call  newRowButtonListener              to create new rows in the dataTable and new datatype object in the postgres tables, the amount given by the 'newRowAmount' html element.<br />
+Get controls frame element 'filtersAmount' and add 'change' listener to call  updateFiltersAmountListener       to show that amount of filter pairs.<br />
 For each filter pair showing, get control frame element with id 'filterValue&lt;count&gt;'  and add 'keyup' listener to call  filterDataKeyUpListener  to hide dataTable rows that don't have data matching the filter pairs.<br />
 Get column definitions by looking at each field, setting the key to &lt;field&gt;, sortable to true, resizeable to true, and getting property values from  fieldsData[&lt;field&gt;][&lt;property&gt;] .  columns are entered in order of fields unless the 'columnOrder' property is set.<br />
 Get &lt;myColumnDefs&gt;, an array of hashes, by looping over all fields in &lt;myFields&gt;, adding for each field a (hash) object with pairs 'key' to field, 'sortable' to true, 'resizable' to true, and each pair from &lt;fieldsData[field]&gt;.  If there is an order property set it at that index in the array, otherwise enter them in order.<br />
@@ -154,7 +157,8 @@ Loop through all fields:<br />
 - Skip the &lt;fieldToKeep&gt; if it matches the &lt;field&gt; looping through.<br />
 - Skip if the field type is of type 'queryonly', there is no html element to clear.<br />
 - Fields of type 'toggle' or 'toggle_text' have toggle fields with an html element 'toggle_&lt;field&gt;' that has its backgroundColor set to 'white'.<br />
-- Fields not of type 'toggle' nor 'toggle_text' have an html input element 'input_&lt;field&gt;' that has its value set to blank ''.<br />
+- Fields of type 'textarea' have an html textarea element 'textarea_&lt;field&gt;' that has its value set to blank ''.<br />
+- Fields not of type 'toggle' nor 'toggle_text' nor 'textarea' have an html input element 'input_&lt;field&gt;' that has its value set to blank ''.<br />
 - Fields of type 'multiontology' or 'multidropdown' call  removeSelectAllOptions(&lt;elSel&gt;)  to remove all html option elements from the field's html select element.<br />
 </p>
 
@@ -331,6 +335,13 @@ All other fields update postgres and dataTable by calling  updateDataTableValues
 </p>
 
 <p>
+editorTextareaBlurListener(e)<br />
+Assigns a listener action for when a field's html textarea element is blurred for fields of type 'textarea' but not 'bigtext'.<br />
+Get the field from the event trigger id. <br />
+Call  editorFieldBlur(field, newValue)  to update postgres and dataTable.<br />
+</p>
+
+<p>
 checkValueIsValidAndUpdate(field, newValue, selectedRows)<br />
 Check whether a field's new user value is a proper autocomplete value with an AJAX call.  If it is update postgres tables and dataTable.  If it's not replaced the editor input with the last value selected in the dataTable or blank if there isn't one.<br />
 @param {String} field  is the field whose value should be updated.<br />
@@ -453,7 +464,8 @@ Disable the form if appropriate by calling  disableForm() .<br />
 Define callbacks action for AJAX return.<br />
 Call  convertDisplayToUrlFormat(newValue)  to replace any characters to escape with html URL escape characters.<br />
 Construct a URL for AJAX postgres update to the CGI with action 'updatePostgresTableField', passing the &lt;pgid&gt;, &lt;field&gt;, &lt;newValue&gt;, &lt;datatype&gt;, and &lt;curatorTwo&gt;.<br />
-Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.<br />
+If the value to update is 2000 characters or less, make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions, and store in the server log what the change was.<br />
+If the value to update is over 2000 characters, make a YAHOO.util.Connect.asyncRequest with method POST to avoid internet explorer 2048 character limit and apache default 8193 character limit.<br />
 </p>
 
 <p>
@@ -562,8 +574,25 @@ Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL wi
 <p>
 callbacks from newRowButtonListener(e)<br />
 Get back AJAX response of 'OK&lt;tab&gt; DIVIDER &lt;tab&gt;&lt;pgids of new row&gt;', or error message to alert.  Undisable form if appropriate.<br />
-On successful return undisable the form by calling  undisableForm() .  If the response message is 'OK', get pgid of duplicated rows, query pgid from postgres into the dataTable by calling  postgresQueryField('id', arrTextReturned[1], 1) , select the newly queried row, and give a message in the obo frame html div element with id 'myObo' about the pgid being created.  If the response message is not 'OK' make an alert window with the response message.  If the &lt;o.responseText&gt; is undefined make an alert window with the &lt;o.responseText&gt;.<br />
+On successful return undisable the form by calling  undisableForm() .  If the response message is 'OK', get pgid of duplicated rows, query pgid from postgres into the dataTable by calling  postgresQueryField('id', arrTextReturned[1], 1) , select the newly queried row, reset the newRowAmount back to 1, and give a message in the obo frame html div element with id 'myObo' about the pgid being created.  If the response message is not 'OK' make an alert window with the response message.  If the &lt;o.responseText&gt; is undefined make an alert window with the &lt;o.responseText&gt;.<br />
 On failure return undisable the form by calling  undisableForm()  and make an alert window with &lt;o.statusText&gt;.<br />
+</p>
+
+<hr>
+<h1><a name="_changeNewRowAmountPromptListener(e)"> changeNewRowAmountPromptListener(e)</a></h1><p>
+ Assigns a listener action for when the control frame's 'newRowAmount' html span element is clicked.<br />
+ Call  changeNewRowAmountPrompt()  to prompt the amount the 'newRowAmount' html span element should change to.<br />
+ <br />
+</p>
+
+<hr>
+<h1><a name="_changeNewRowAmountPrompt()"> changeNewRowAmountPrompt()</a></h1><p>
+ html prompt for the amount the 'newRowAmount' html span element should change to.<br />
+ Get the  newRowMaxAmountValue  from the html hidden input element 'newRowMaxAmountValue'.<br />
+ Give an html prompt requesting a number up to  newRowMaxAmountValue .<br />
+ If there is a value and it's parseInt value is less than  newRowMaxAmountValue  set the html span element to this new value.<br />
+ If there is a value and it's parseInt value is not less than  newRowMaxAmountValue  give an error alert message.<br />
+ <br />
 </p>
 
 <p>
@@ -657,6 +686,7 @@ Skip all fields that are 'queryonly', they have nothing to load.<br />
 Autocomplete fields (dropdown / ontology / multidropdown / multiontology) convert the html span element into parentheses.<br />
 MultiAutocomplete fields call  populateSelectFieldFromDatatable(&lt;field&gt;, &lt;value&gt;)  to populate the html select element.<br />
 Toggle-type fields set the 'toggle_&lt;field&gt;' element background color to 'red' for data and 'white' for no data.<br />
+Textarea fields sets the 'textarea_&lt;field&gt;' html textarea element to &lt;value&gt;3<br />
 Bigtext fields sets the 'textarea_bigtext_&lt;field&gt;' html textarea element to blank '', and 'input_&lt;field&gt;' html input element to &lt;value&gt;.<br />
 All fields get the value of 'input_&lt;field&gt;' html input element set to &lt;value&gt;.<br />
 </p>

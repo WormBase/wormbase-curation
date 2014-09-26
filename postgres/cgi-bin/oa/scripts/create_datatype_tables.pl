@@ -22,13 +22,22 @@ my $datatype = 'tst';
 # put tables here for each OA field.  Skip field 'id', fields of type 'queryonly', and any other fields that should not have a corresponding postgres table.
 my @tables = qw( name animals dataflag datatext curator remark nodump person otherpersons date );
 
-foreach my $table (@tables) { &createTable($table); }
+foreach my $table (@tables) {
+  &dropTable($table); 
+  &createTable($table); 
+}
 
+
+sub dropTable {
+  my $table = shift;
+  my $result;
+  $result = $dbh->do( "DROP TABLE IF EXISTS ${datatype}_${table}_hst;" );
+  $result = $dbh->do( "DROP TABLE IF EXISTS ${datatype}_$table;" );
+}
 
 sub createTable {
   my $table = shift;
   my $result;
-  $result = $dbh->do( "DROP TABLE ${datatype}_${table}_hst;" );
   $result = $dbh->do( "CREATE TABLE ${datatype}_${table}_hst (
                          joinkey text, 
                          ${datatype}_${table}_hst text,
@@ -40,7 +49,6 @@ sub createTable {
     $result = $dbh->do( "GRANT ALL ON TABLE ${datatype}_${table}_hst TO $user; "); }
   $result = $dbh->do( "CREATE INDEX ${datatype}_${table}_hst_idx ON ${datatype}_${table}_hst USING btree (joinkey); ");
 
-  $result = $dbh->do( "DROP TABLE ${datatype}_$table;" );
   $result = $dbh->do( "CREATE TABLE ${datatype}_$table (
                          joinkey text, 
                          ${datatype}_$table text,

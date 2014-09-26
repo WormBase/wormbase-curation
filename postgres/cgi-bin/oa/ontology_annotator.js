@@ -54,14 +54,15 @@ var loadingGifUrl = "images/loading.gif";
  * - for 'multiontology' and 'multidropdown'  fieldsData[<field>]["type"]  get editor frame element 'button_remove_<field>'  and add  'click' listener to  removeSelectFieldEntriesListener  to remove values from field's select html element and update postgres table ;  get editor frame element 'select_<field>' and add 'change' listener to load the value into the input field and for 'multiontology' call  asyncTermInfo(field, inputValue)  to change the term info in the obo frame.  multivalue fields load select element into input when changed, load term info into obo frame ;  have a remove button to remove values.
  * - for 'toggle' and 'toggletext'  fieldsData[<field>]["type"]  get editor frame element 'toggle_<field>'  and add  'click' listener to  toggle the value of the field on or off ;  'on' sets the background color 'red' and calls  editorFieldBlur(field, fieldsData[field]["label"])  setting the postgres value to be the label ;  'off' sets the background color 'white' and calls  editorFieldBlur(field, "")  setting the postgres value to be deleted.  toggle fields store the label in postgres and show red when on.
  * - for 'bigtext'  fieldsData[<field>]["type"]  get editor frame element 'input_<field>'  and add  'focus' listener to hide the element, show the corresponding 'textarea_bigtext_<field>', place the 'input_<field>' value into the 'textarea_bigtext_<field>' value, and focus on the 'textarea_bigtext_<field>' element ;  get editor frame element 'textarea_bigtext_<field>'  and add 'blur' listener to hide the element, show the corresponding 'input_<field>' element, place the 'textarea_bigtext_<field>' value into the 'input_<field>' value, and for all fields except for those with  fieldsData[<field>]["noteditable"]  call  editorFieldBlur(field, top.frames['editor'].document.getElementById("input_" + field).value)  to update dataTable and postgres table.  bigtext input fields switch to textareas when focused and back to input fields when blurred.
- * For each tab in  tabs  hash, get editor frame element with id '<tab>'  and add 'click' listener to call  showTab(this.id)  to only show html elements that have class '<tab>'.
+ * For each tab in  tabs  hash, get editor frame element with id '<tab>'  and add 'click' listener to call  showTab(this.id)  to only show html elements that have class '<tab>' or 'all'.
  * If the datatype has a numeric tab (as opposed to all fields having value 'all'), by default call  showTab("tab" + firstTab);  to show the html elements in the lowest tab.
- * Get editor   frame element 'resetPage'     and add 'click'  listener to call  resetButtonListener          to reload the obo frame, clear the dataTable data, and all editor values.
- * Get controls frame element 'checkData'     and add 'click'  listener to call  checkDataButtonListener      to reload to check dataTable data against datatype constraints.
- * Get controls frame element 'deleteRow'     and add 'click'  listener to call  deleteRowButtonListener      to delete selected dataTable rows from dataTable and postgres tables.
- * Get controls frame element 'duplicateRow'  and add 'click'  listener to call  duplicateRowButtonListener   to duplicate selected dataTable rows into the dataTable and postgres tables.
- * Get controls frame element 'newRow'        and add 'click'  listener to call  newRowButtonListener         to create a new row in the dataTable and new datatype object in the postgres tables.
- * Get controls frame element 'filtersAmount' and add 'change' listener to call  updateFiltersAmountListener  to show that amount of filter pairs.
+ * Get editor   frame element 'resetPage'     and add 'click'  listener to call  resetButtonListener               to reload the obo frame, clear the dataTable data, and all editor values.
+ * Get controls frame element 'checkData'     and add 'click'  listener to call  checkDataButtonListener           to reload to check dataTable data against datatype constraints.
+ * Get controls frame element 'deleteRow'     and add 'click'  listener to call  deleteRowButtonListener           to delete selected dataTable rows from dataTable and postgres tables.
+ * Get controls frame element 'newRowAmount'  and add 'click'  listener to call  changeNewRowAmountPromptListener  to set the amount of rows to create when pressing the New button
+ * Get controls frame element 'duplicateRow'  and add 'click'  listener to call  duplicateRowButtonListener        to duplicate selected dataTable rows into the dataTable and postgres tables.
+ * Get controls frame element 'newRow'        and add 'click'  listener to call  newRowButtonListener              to create new rows in the dataTable and new datatype object in the postgres tables, the amount given by the 'newRowAmount' html element.
+ * Get controls frame element 'filtersAmount' and add 'change' listener to call  updateFiltersAmountListener       to show that amount of filter pairs.
  * For each filter pair showing, get control frame element with id 'filterValue<count>'  and add 'keyup' listener to call  filterDataKeyUpListener  to hide dataTable rows that don't have data matching the filter pairs.
  * Get column definitions by looking at each field, setting the key to <field>, sortable to true, resizeable to true, and getting property values from  fieldsData[<field>][<property>] .  columns are entered in order of fields unless the 'columnOrder' property is set.
  * Get <myColumnDefs>, an array of hashes, by looping over all fields in <myFields>, adding for each field a (hash) object with pairs 'key' to field, 'sortable' to true, 'resizable' to true, and each pair from <fieldsData[field]>.  If there is an order property set it at that index in the array, otherwise enter them in order.
@@ -83,9 +84,13 @@ YAHOO.util.Event.addListener(window, "load", function() { 					// on load get fi
     var oElement = top.frames['editor'].document.getElementById("button_" + myFields[i]);	// get the button element to add the listener to
     YAHOO.util.Event.addListener(oElement, "click", assignQueryButtonListenerAjax ); 		// add the listener function
 
-    if ( fieldsData[myFields[i]]["type"] !== "bigtext" ) {					// input fields update postgres and datatable when blurred, except for bigtext fields 
+    if ( ( fieldsData[myFields[i]]["type"] !== "textarea" ) && 
+         ( fieldsData[myFields[i]]["type"] !== "bigtext"  ) ) {					// input fields update postgres and datatable when blurred, except for bigtext and textarea fields 
         oElement = top.frames['editor'].document.getElementById("input_" + myFields[i]);
         YAHOO.util.Event.addListener(oElement, "blur", editorInputBlurListener ); } 		// add the listener function
+    else if ( fieldsData[myFields[i]]["type"] === "textarea" ) {
+        oElement = top.frames['editor'].document.getElementById("textarea_" + myFields[i]);
+        YAHOO.util.Event.addListener(oElement, "blur", editorTextareaBlurListener ); } 		// add the listener function
 
     oElement = top.frames['editor'].document.getElementById("label_" + myFields[i]);		// if clicking td of field label, toggle showHide datatable column
     YAHOO.util.Event.addListener(oElement, "click", assignEditorLabelTdListener ); 		// add the listener function
@@ -162,6 +167,8 @@ YAHOO.util.Event.addListener(window, "load", function() { 					// on load get fi
   YAHOO.util.Event.addListener(oElement, "click", duplicateRowButtonListener );			// add the listener function
   oElement = top.frames['controls'].document.getElementById("newRow");
   YAHOO.util.Event.addListener(oElement, "click", newRowButtonListener );			// add the listener function
+  oElement = top.frames['controls'].document.getElementById("newRowAmount");
+  YAHOO.util.Event.addListener(oElement, "click", changeNewRowAmountPromptListener );		// add the listener function
   oElement = top.frames['controls'].document.getElementById("filtersAmount");
   YAHOO.util.Event.addListener(oElement, "change", updateFiltersAmountListener );		// add the listener function
 
@@ -258,6 +265,8 @@ function assignQueryButtonListenerAjax(e) {							// if query button was clicked
   if ( ( fieldsData[field]["type"] === "toggle" ) || ( fieldsData[field]["type"] === "toggle_text" ) ) {	// toggle fields
       if (top.frames['editor'].document.getElementById("toggle_" + field).style.backgroundColor === "red") { userValue = fieldsData[field]["label"]; } }	// if checked on the backgroundColor is red, and the value is the field's label
   else if ( fieldsData[field]["type"] === "queryonly" ) { userValue = "queryonly"; }		// if it's a queryonly field, assign a dummy value to make a query
+  else if ( fieldsData[field]["type"] === "textarea" ) { 					// if it's a textarea field there is no corresponding input field
+      userValue = top.frames['editor'].document.getElementById("textarea_" + field).value; }	// userValue is what they entered in matching textarea
   else {											// non toggle fields get their value from input_<field>
       userValue = top.frames['editor'].document.getElementById("input_" + field).value; }	// userValue is what they entered in matching input
   if (userValue === "") { return; }								// don't query if no input
@@ -369,7 +378,8 @@ function postgresQueryField(field, userValue, amountRowsToHighlight) {				// aja
  * - Skip the <fieldToKeep> if it matches the <field> looping through.
  * - Skip if the field type is of type 'queryonly', there is no html element to clear.
  * - Fields of type 'toggle' or 'toggle_text' have toggle fields with an html element 'toggle_<field>' that has its backgroundColor set to 'white'.
- * - Fields not of type 'toggle' nor 'toggle_text' have an html input element 'input_<field>' that has its value set to blank ''.
+ * - Fields of type 'textarea' have an html textarea element 'textarea_<field>' that has its value set to blank ''.
+ * - Fields not of type 'toggle' nor 'toggle_text' nor 'textarea' have an html input element 'input_<field>' that has its value set to blank ''.
  * - Fields of type 'multiontology' or 'multidropdown' call  removeSelectAllOptions(<elSel>)  to remove all html option elements from the field's html select element.
  * 
  */
@@ -380,6 +390,8 @@ function clearEditorFields(fieldToKeep) {
       if ( fieldsData[myFields[i]]["type"] === "queryonly" ) { continue; }			// skip queryonly fields
       if ( ( fieldsData[myFields[i]]["type"] === "toggle" ) || ( fieldsData[myFields[i]]["type"] === "toggle_text" ) ) {
           top.frames['editor'].document.getElementById("toggle_" + myFields[i]).style.backgroundColor = "white"; }	// set toggle_<field> tds white (blank)
+      else if ( fieldsData[myFields[i]]["type"] === "textarea" ) {
+          top.frames['editor'].document.getElementById("textarea_" + myFields[i]).value = ''; }	// blank input field
       else {
           top.frames['editor'].document.getElementById("input_" + myFields[i]).value = ''; }	// blank input field
       if ( ( fieldsData[myFields[i]]["type"] === "multiontology" ) || ( fieldsData[myFields[i]]["type"] === "multidropdown" ) ) {
@@ -527,7 +539,8 @@ function removeSelected(elSel) {	                        		// remove selected op
 function showTab(tabClass) {							// show only TRs in this tab
   arrTrs = top.frames['editor'].document.getElementsByTagName("tr");		// get all the trs
   for (var i = 0; i < arrTrs.length; i++) {					// for each of them
-    if (arrTrs[i].className === tabClass) { arrTrs[i].style.display = ""; }	// if it's the class to show, show it
+    if ( (arrTrs[i].className === tabClass) || 					// if it's the class to show 
+         (arrTrs[i].className === 'all') ) { arrTrs[i].style.display = ""; }	// or class has tab set to all, show it
       else { arrTrs[i].style.display = "none"; } }				// otherwise hide it
 } // function showTab(tabClass)
 
@@ -744,6 +757,7 @@ function editorFieldBlur(field, newValue) {
     } else if ( fieldsData[field]["noteditable"] === "noteditable" ) {	// do not allow editing of noteditable fields
     } else if ( ( fieldsData[field]["type"] === "multidropdown" ) || 	// if it's a multi-value dropdown field
                 ( fieldsData[field]["type"] === "multiontology" ) ) {	// or if it's a multi-value ontology field
+        if ( newValue === '' ) { return; }				// skip blank values to prevent adding blanks (which are valid from genericObo) 
         checkValueIsValidAndUpdate(field, newValue, selectedRows);	// check value before updating it
     } else if (newValue === "") {					// always update blank values (except for multivalue fields which have a remove button)
         updateDataTableValues(field, newValue, selectedRows);
@@ -752,6 +766,22 @@ function editorFieldBlur(field, newValue) {
         checkValueIsValidAndUpdate(field, newValue, selectedRows);	// check value before updating it
     } else { updateDataTableValues(field, newValue, selectedRows); }	// text fields always update
 } // function editorFieldBlur(field)
+
+/**
+ * editorTextareaBlurListener(e)
+ * Assigns a listener action for when a field's html textarea element is blurred for fields of type 'textarea' but not 'bigtext'.
+ * Get the field from the event trigger id. 
+ * Call  editorFieldBlur(field, newValue)  to update postgres and dataTable.
+ *
+ */
+
+function editorTextareaBlurListener(e) {			// editor input blurred, update corresponding values of selected rows
+    var fieldstuff = e.target.id.match(/textarea_(.*)/);	// this is event (button click)
+    var field = fieldstuff[1];					// get the field name from the event id
+    var newValue = e.target.value;				// the new value from the editor input field
+    editorFieldBlur(field, newValue);				// call editorFieldBlur to do all the actions
+} // function editorTextareaBlurListener(e)
+
 
 /**
  * checkValueIsValidAndUpdate(field, newValue, selectedRows)
@@ -1024,7 +1054,8 @@ function normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayV
  * Define callbacks action for AJAX return.
  * Call  convertDisplayToUrlFormat(newValue)  to replace any characters to escape with html URL escape characters.
  * Construct a URL for AJAX postgres update to the CGI with action 'updatePostgresTableField', passing the <pgid>, <field>, <newValue>, <datatype>, and <curatorTwo>.
- * Make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions.
+ * If the value to update is 2000 characters or less, make a YAHOO.util.Connect.asyncRequest with method GET to the constructed URL with callbacks actions, and store in the server log what the change was.
+ * If the value to update is over 2000 characters, make a YAHOO.util.Connect.asyncRequest with method POST to avoid internet explorer 2048 character limit and apache default 8193 character limit.
  *
  */
 
@@ -1050,8 +1081,13 @@ function updatePostgresTableField(pgid, field, newValue) {
         },
     }; 
     newValue = convertDisplayToUrlFormat(newValue); 		// convert <newValue> to URL format by escaping characters
-    var sUrl = cgiUrl + "?action=updatePostgresTableField&pgid="+pgid+"&field="+field+"&newValue="+escape(newValue)+"&datatype="+datatype+"&curator_two="+curatorTwo;
-    YAHOO.util.Connect.asyncRequest('GET', sUrl, callbacks);	// Make the call to the server to update postgres
+    if (newValue === undefined) { newValue = ''; }		// if there's no value set it to blank for length below to work
+    if (newValue.length > 2000) {				// if more than 2000 characters use post
+        var postData = "action=updatePostgresTableField&pgid="+pgid+"&field="+field+"&newValue="+escape(newValue)+"&datatype="+datatype+"&curator_two="+curatorTwo;
+        YAHOO.util.Connect.asyncRequest('POST', cgiUrl, callbacks, postData); }	// Make the call to the server to update postgres
+    else {							// if less than 2000 characters use get to track user actions in server log
+        var sUrl = cgiUrl + "?action=updatePostgresTableField&pgid="+pgid+"&field="+field+"&newValue="+escape(newValue)+"&datatype="+datatype+"&curator_two="+curatorTwo;
+        YAHOO.util.Connect.asyncRequest('GET', sUrl, callbacks); }	// Make the call to the server to update postgres
 } // function updatePostgresTableField(pgid, field, newValue)
 
 
@@ -1267,9 +1303,8 @@ function duplicateRowButtonListener(e) {					// if duplicate row button was clic
 
 /**
  * callbacks from newRowButtonListener(e)
-
  * Get back AJAX response of 'OK<tab> DIVIDER <tab><pgids of new row>', or error message to alert.  Undisable form if appropriate.
- * On successful return undisable the form by calling  undisableForm() .  If the response message is 'OK', get pgid of duplicated rows, query pgid from postgres into the dataTable by calling  postgresQueryField('id', arrTextReturned[1], 1) , select the newly queried row, and give a message in the obo frame html div element with id 'myObo' about the pgid being created.  If the response message is not 'OK' make an alert window with the response message.  If the <o.responseText> is undefined make an alert window with the <o.responseText>.
+ * On successful return undisable the form by calling  undisableForm() .  If the response message is 'OK', get pgid of duplicated rows, query pgid from postgres into the dataTable by calling  postgresQueryField('id', arrTextReturned[1], 1) , select the newly queried row, reset the newRowAmount back to 1, and give a message in the obo frame html div element with id 'myObo' about the pgid being created.  If the response message is not 'OK' make an alert window with the response message.  If the <o.responseText> is undefined make an alert window with the <o.responseText>.
  * On failure return undisable the form by calling  undisableForm()  and make an alert window with <o.statusText>.
  *
  */
@@ -1283,6 +1318,7 @@ function newRowButtonListener(e) {						// if new row button was clicked
                 if (arrTextReturned[0] === 'OK') {				// if the returnMessage is OK
                     postgresQueryField('id', arrTextReturned[1], 1); 		// ajax call to query postgres by field 'id' and pgid
                     myDataTable.selectRow(myDataTable.getTrEl(0)); 		// select new row
+                    top.frames['controls'].document.getElementById("newRowAmount").innerHTML = '1';	// when done creating reset newRowAmount to default 1
                     top.frames['obo'].document.getElementById('myObo').innerHTML += "OK created new row " + arrTextReturned[1] + "</br>"; }
                 else { alert("ERROR not OK response for newRow " + arrTextReturned[0]); } }
             else { alert("ERROR undefined response for newRow " + o.responseText); }
@@ -1293,9 +1329,39 @@ function newRowButtonListener(e) {						// if new row button was clicked
             undisableForm();
         },
     }; 
-    var sUrl = cgiUrl + "?action=newRow&datatype="+datatype+"&curator_two="+curatorTwo;
+    var newRowAmount = top.frames['controls'].document.getElementById("newRowAmount").innerHTML;
+    var sUrl = cgiUrl + "?action=newRow&newRowAmount="+newRowAmount+"&datatype="+datatype+"&curator_two="+curatorTwo;
     YAHOO.util.Connect.asyncRequest('GET', sUrl, callbacks);			// Make the call to the server to update postgres
 } // function newRowButtonListener(e) 
+
+/**
+ *  changeNewRowAmountPromptListener(e)
+ *  Assigns a listener action for when the control frame's 'newRowAmount' html span element is clicked.
+ *  Call  changeNewRowAmountPrompt()  to prompt the amount the 'newRowAmount' html span element should change to.
+ *  
+ */
+
+function changeNewRowAmountPromptListener(e) { changeNewRowAmountPrompt(); }
+
+/**
+ *  changeNewRowAmountPrompt()
+ *  html prompt for the amount the 'newRowAmount' html span element should change to.
+ *  Get the  newRowMaxAmountValue  from the html hidden input element 'newRowMaxAmountValue'.
+ *  Give an html prompt requesting a number up to  newRowMaxAmountValue .
+ *  If there is a value and it's parseInt value is less than  newRowMaxAmountValue  set the html span element to this new value.
+ *  If there is a value and it's parseInt value is not less than  newRowMaxAmountValue  give an error alert message.
+ *  
+ */
+
+function changeNewRowAmountPrompt() {
+    var newRowMaxAmountValue = top.frames['controls'].document.getElementById("newRowMaxAmountValue").value;
+    var promptText = "This will change the amount of rows you create with the New button, if you are sure you want to do it, enter a number up to " + newRowMaxAmountValue + " below";
+    var newRowAmountValue = prompt(promptText, "");
+    if (newRowAmountValue != null) {
+        var newRowAmountInteger = parseInt(newRowAmountValue);
+        if (newRowAmountInteger <= newRowMaxAmountValue) { top.frames['controls'].document.getElementById("newRowAmount").innerHTML = newRowAmountInteger; }
+            else { alert("ERROR : You need a value no higher than " + newRowMaxAmountValue); } }
+} // function changeNewRowAmountPrompt()
 
 
 /**
@@ -1370,7 +1436,8 @@ function filterData() {
         if (records[i].getData(filterTypes[j]) === null) { top.frames['obo'].document.getElementById('myObo').innerHTML += "ERROR null value in recordIndex : " + recordIndex + " " + i + " " + j + " " + filterTypes[j] + " <br/> "; }	
 										// give error message if a record value is null
         var recordCellData = records[i].getData(filterTypes[j]).toLowerCase();
-        if (recordCellData.indexOf(queryValue) !== -1) { show++; break; }	// found a match, this filter passes and should show, no need to look at all other data in record cells
+        if ((new RegExp(queryValue)).test(recordCellData)) { show++; break; }	// found a match, this filter passes and should show, no need to look at all other data in record cells.  this allows regular expressions to work for ^ and $
+//         if (recordCellData.indexOf(queryValue) !== -1) { show++; break; }	// found a match, this filter passes and should show, no need to look at all other data in record cells
       } // for (var j in filterTypes)
     } // for (var filterCount = 1; filterCount <= filtersAmount; filterCount++)
     if (show >= filtersAmount) { recordsShown++; myDataTable.getTrEl(recordIndex).style.display = ""; }
@@ -1535,14 +1602,19 @@ function colorMoreCells(divArray) {						// cells that have hidden data in overf
  * Autocomplete fields (dropdown / ontology / multidropdown / multiontology) convert the html span element into parentheses.
  * MultiAutocomplete fields call  populateSelectFieldFromDatatable(<field>, <value>)  to populate the html select element.
  * Toggle-type fields set the 'toggle_<field>' element background color to 'red' for data and 'white' for no data.
+ * Textarea fields sets the 'textarea_<field>' html textarea element to <value>3
  * Bigtext fields sets the 'textarea_bigtext_<field>' html textarea element to blank '', and 'input_<field>' html input element to <value>.
  * All fields get the value of 'input_<field>' html input element set to <value>.
  *
  */
 
 function rowSelectLoadToEditor(recordData) {					// load row data to editor
+//     var pgid = recordData.id;						// temp to debug some editor field values not getting replaced with blanks  2014 02 20
+//     top.frames['obo'].document.getElementById('termInfo').innerHTML = 'PGID to load : ' + pgid + ' END<br/>';
     for (var i = 0; i < myFields.length; i++ ) {				// for each field set the editor input to the row's cell's value
         var value = recordData[myFields[i]];
+        if (value === undefined) { value = ''; }				// if there is no value in the dataTable, set it to blank, otherwise sometimes deditor won't replace value with blank because it's undefined 
+//         top.frames['obo'].document.getElementById('termInfo').innerHTML += myFields[i] + ' value : ' + value + ' END<br/>';	// temp to debug some editor field values not getting replaced with blanks  2014 02 20
         if ( fieldsData[myFields[i]]["type"] === "queryonly" ) { continue; }	// skip queryonly fields
         if ( ( fieldsData[myFields[i]]["type"] === "dropdown" ) || 		// if it's a dropdown field
              ( fieldsData[myFields[i]]["type"] === "multidropdown" ) ||		// or if it's a multi-value dropdown field
@@ -1560,11 +1632,13 @@ function rowSelectLoadToEditor(recordData) {					// load row data to editor
                 top.frames['editor'].document.getElementById("toggle_" + myFields[i]).style.backgroundColor = "red"; }
             else {
                 top.frames['editor'].document.getElementById("toggle_" + myFields[i]).style.backgroundColor = "white"; } }
+        else if ( fieldsData[myFields[i]]["type"] === "textarea" ) {
+            top.frames['editor'].document.getElementById("textarea_" + myFields[i]).value = value; }	// load input
         else if ( fieldsData[myFields[i]]["type"] === "bigtext" ) {
             top.frames['editor'].document.getElementById("textarea_bigtext_" + myFields[i]).value = '';	// clear textarea
-            top.frames['editor'].document.getElementById('input_' + myFields[i]).value = value; }	// clear input
+            top.frames['editor'].document.getElementById('input_' + myFields[i]).value = value; }	// load input
         else {
-            top.frames['editor'].document.getElementById('input_' + myFields[i]).value = value; }	// clear input
+            top.frames['editor'].document.getElementById('input_' + myFields[i]).value = value; }	// load input
     } // for (var i = 0; i < myFields.length; i++ )
 } // function rowSelectLoadToEditor(recordData)
 

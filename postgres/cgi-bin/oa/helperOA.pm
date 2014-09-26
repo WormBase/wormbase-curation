@@ -2,7 +2,7 @@ package helperOA;
 require Exporter;
 
 our @ISA	= qw(Exporter);
-our @EXPORT	= qw( getPgDate getHtmlVar pad10Zeros pad8Zeros fromUrlToPostgres );
+our @EXPORT	= qw( getPgDate getHtmlVar pad10Zeros pad9Zeros pad8Zeros fromUrlToPostgres );
 our $VERSION	= 1.00;
 
 sub getPgDate {					# get the date in postgres format
@@ -65,6 +65,20 @@ sub pad10Zeros {		# take a number and pad to 10 digits
   return $number;
 } # sub pad10Zeros
 
+sub pad9Zeros {		# take a number and pad to 9 digits
+  my $number = shift;
+  if ($number =~ m/^0+/) { $number =~ s/^0+//g; }		# strip leading zeros
+  if ($number < 10) { $number = '00000000' . $number; }
+  elsif ($number < 100) { $number = '0000000' . $number; }
+  elsif ($number < 1000) { $number = '000000' . $number; }
+  elsif ($number < 10000) { $number = '00000' . $number; }
+  elsif ($number < 100000) { $number = '0000' . $number; }
+  elsif ($number < 1000000) { $number = '000' . $number; }
+  elsif ($number < 10000000) { $number = '00' . $number; }
+  elsif ($number < 100000000) { $number = '0' . $number; }
+  return $number;
+} # sub pad9Zeros
+
 sub pad8Zeros {		# take a number and pad to 8 digits
   my $number = shift;
   if ($number =~ m/^0+/) { $number =~ s/^0+//g; }		# strip leading zeros
@@ -111,6 +125,8 @@ Some subroutines are commonly used by ontology_annotator.cgi and config-specific
 &getPgDate  gets the current timestamp in postgreSQL format.
 
 &pad10Zeros  takes a number, pads to 10 digits, and returns it.
+
+&pad9Zeros  takes a number, pads to 9 digits, and returns it.
 
 &pad8Zeros  takes a number, pads to 8 digits, and returns it.
 

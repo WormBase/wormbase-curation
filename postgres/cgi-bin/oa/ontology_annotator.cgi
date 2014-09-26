@@ -30,7 +30,9 @@ my $query = new CGI;
 my %fieldIdToValue;			# field_type ; id => "display_value<span style='display: none'>id</span>"
 					# field_type can be  $dropdown_type for dropdown / multidropdown  OR  for ontology / multiontology  it can be  $obotable = 'obo_name_' . $ontology_table  for generic obo fields  OR  $ontology_type for specific fields
 
-my $filtersMaxAmount = 5;		# maximum amount of filters
+my $filtersMaxAmount = 5;			# maximum amount of filters
+my $newRowMaxAmountNormalOa = 100;		# maximum amount of row that can be created with the New button in normal OA mode
+my $newRowMaxAmountBatchUnsafeOa = 1000;	# maximum amount of row that can be created with the New button in batch unsafe OA mode
 
 my $var;
 
@@ -108,9 +110,9 @@ sub deleteByPgids {					# if updating postgres table values, update postgres and
       next if ($field eq 'id');				# all datatypes have an 'id' field, but it's not a table
       next if ($fields{$datatype}{$field}{type} eq 'queryonly');	# queryonly fields don't have tables
       my $table = $datatype . '_' . $field;
-      my $result = $dbh->prepare( "SELECT $table FROM $table WHERE joinkey = '$origPgid'" ); 	
+      my $result = $dbh->prepare( "SELECT joinkey, $table FROM $table WHERE joinkey = '$origPgid'" ); 	
       $result->execute(); my @row = $result->fetchrow(); 
-      if ($row[0]) { 
+      if ($row[0]) {					# if there is a row for this pgid, as opposed to there being a value, because we want to delete blank '' entries too.  2011 08 31
         my ($isOk) = &updatePostgresByTableJoinkeyNewvalue($table, $origPgid, ''); 
         if ($isOk ne 'OK') { $returnMessage .= $isOk; } } }
   } # foreach my $origPgid (@idsToDuplicate)
@@ -135,7 +137,7 @@ sub duplicateByPgids {					# if updating postgres table values, update postgres 
       my $table = $datatype . '_' . $field;
       my $result = $dbh->prepare( "SELECT $table FROM $table WHERE joinkey = '$origPgid'" ); 	
       $result->execute(); my @row = $result->fetchrow(); 
-      if ($row[0]) {
+      if ($row[0]) {					# duplicate if there is data, do not duplicate blank '' entries.  2011 08 31
         my ($isOk) = &updatePostgresByTableJoinkeyNewvalue($table, $dupPgid, $row[0]);
         if ($isOk ne 'OK') { $returnMessage .= $isOk; } } }		# add error messages to returnMessage if not 'OK'
     push @dupPgids, $dupPgid;				# add to list created
@@ -147,19 +149,43 @@ sub duplicateByPgids {					# if updating postgres table values, update postgres 
 
 sub newRow {						# if updating postgres table values, update postgres and return OK if ok
   print "Content-type: text/plain\n\n";
-  ($var, my $datatype) = &getHtmlVar($query, 'datatype');
-  ($var, my $curator_two) = &getHtmlVar($query, 'curator_two');
+  ($var, my $newRowAmount) = &getHtmlVar($query, 'newRowAmount');
+  ($var, my $datatype)     = &getHtmlVar($query, 'datatype');
+  ($var, my $curator_two)  = &getHtmlVar($query, 'curator_two');
   my ($newPgid) = &getHighestPgid();			# current highest pgid (joinkey)
   if ($newPgid =~ m/\D/) { print "ERROR: &newRow &getHighestPgid returned non-integer $newPgid\n"; return; }
-  $newPgid++;
-  my $returnMessage = "ERROR, not a valid datatype\n"; my $newPgid_or_returnMessage = '';
-  if ($datatypes{$datatype}{newRowSub}) { 
-    my $subref = $datatypes{$datatype}{newRowSub}; ($newPgid_or_returnMessage) = &$subref($newPgid, $curator_two); }
-  if ($newPgid_or_returnMessage) { 
-    if ($newPgid_or_returnMessage =~ m/^\d+$/) { $returnMessage = 'OK'; } 
-      else { $returnMessage = $newPgid_or_returnMessage; } }
-  print "$returnMessage\t DIVIDER \t$newPgid";		# print to result with distinct divider for javascript to split on (in case there's ever a tab in the returnMessage)
+  if ($newRowAmount < 2) { $newRowAmount = 1; }		# if there are less than 2 new rows to make, always make at least 1
+  my @newPgids = ();					# which pgids will have been created
+  my $returnMessage = '';
+  for (1 .. $newRowAmount) {				# for each new row to create
+    $newPgid++;						# get the next highest pgid
+    if ($datatypes{$datatype}{newRowSub}) {		# if there's a subroutine to create a new row for the datatype
+      my $subref = $datatypes{$datatype}{newRowSub};
+      my ($newPgid_or_returnMessage) = &$subref($newPgid, $curator_two);	# use the subroutine and get a return message
+      if ($newPgid_or_returnMessage) {			# if there is a return message and it doesn't contain only digits add to error messages
+        if ($newPgid_or_returnMessage !~ m/^\d+$/) { $returnMessage .= $newPgid_or_returnMessage; } } }
+    push @newPgids, $newPgid;				# add to list created
+  } # for (1 .. $newRowAmount)
+  unless ($returnMessage) { $returnMessage = 'OK'; }	# if there are no errors, it's 'OK'
+  my $newPgids = join",", @newPgids;			# join with ,
+  print "$returnMessage\t DIVIDER \t$newPgids";		# print to result with distinct divider for javascript to split on (in case there's ever a tab in the returnMessage)
 } # sub newRow 
+
+# sub newRow {						# if updating postgres table values, update postgres and return OK if ok
+#   print "Content-type: text/plain\n\n";
+#   ($var, my $datatype) = &getHtmlVar($query, 'datatype');
+#   ($var, my $curator_two) = &getHtmlVar($query, 'curator_two');
+#   my ($newPgid) = &getHighestPgid();			# current highest pgid (joinkey)
+#   if ($newPgid =~ m/\D/) { print "ERROR: &newRow &getHighestPgid returned non-integer $newPgid\n"; return; }
+#   $newPgid++;
+#   my $returnMessage = "ERROR, not a valid datatype\n"; my $newPgid_or_returnMessage = '';
+#   if ($datatypes{$datatype}{newRowSub}) { 
+#     my $subref = $datatypes{$datatype}{newRowSub}; ($newPgid_or_returnMessage) = &$subref($newPgid, $curator_two); }
+#   if ($newPgid_or_returnMessage) { 
+#     if ($newPgid_or_returnMessage =~ m/^\d+$/) { $returnMessage = 'OK'; } 
+#       else { $returnMessage = $newPgid_or_returnMessage; } }
+#   print "$returnMessage\t DIVIDER \t$newPgid";		# print to result with distinct divider for javascript to split on (in case there's ever a tab in the returnMessage)
+# } # sub newRow 
 
 sub getHighestPgid {					# get the highest joinkey from the primary tables
   ($var, my $datatype) = &getHtmlVar($query, 'datatype');
@@ -363,7 +389,7 @@ sub autocompleteXHR {						# when typing in an autocomplete field xhr call to th
 sub getGenericOboAutocomplete {
   my ($datatype, $field, $words) = @_;
   my $ontology_table = $fields{$datatype}{$field}{ontology_table};
-  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my $max_results = 30; if ($words =~ m/^.{5,}/) { $max_results = 500; }
   if ($words =~ m/\'/) { $words =~ s/\'/''/g; }
   my @tabletypes = qw( name syn data );
   my %matches; tie %matches, "Tie::IxHash";			# sorted hash to filter results
@@ -402,7 +428,7 @@ sub getGenericOboAutocomplete {
 
 sub getAnySimpleAutocomplete {
   my ($datatype, $field, $words) = @_;
-  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my $max_results = 40; if ($words =~ m/^.{5,}/) { $max_results = 500; }
   my @matches;
   my $dropdown_type = $fields{$datatype}{$field}{dropdown_type};
   my %data;
@@ -507,16 +533,29 @@ sub jsonFieldQuery {					# json query to make it easier to append values (instea
       $data = &getTableDisplayData($datatype, $field, $row[1]);
       $hash{$row[0]}{$field} = $data; } 
   } # foreach my $field (keys %{ $fields{$datatype} } )
-  print "[\n";
-  print "{ \"returnMessage\" : \"$returnMessage\" },\n";
+  my @jsonRows;
+  push @jsonRows, qq({ "returnMessage" : "$returnMessage" });
   foreach my $joinkey (sort {$a<=>$b} keys %hash) {
-    print "{ ";
+    my @dataRow;
     foreach my $field (keys %{ $fields{$datatype} }) {
       my $value = ''; if ($hash{$joinkey}{$field}) { $value = $hash{$joinkey}{$field}; }
-      print "\"$field\" : \"$value\", "; }
-    print "},\n";
+      push @dataRow, qq("$field" : "$value"); }
+    my $dataRow = join", ", @dataRow;
+    push @jsonRows, qq({ $dataRow });
   } # foreach my $joinkey (sort keys %hash)
-  print "]\n";
+  my $jsonRows = join",\n", @jsonRows;
+  print qq([\n$jsonRows\n]\n);
+# the following code has extra commas after the final entry in a set, which javascript can parse but perl cannot.  2014 03 28
+#   print "[\n";
+#   print "{ \"returnMessage\" : \"$returnMessage\" },\n";
+#   foreach my $joinkey (sort {$a<=>$b} keys %hash) {
+#     print "{ ";
+#     foreach my $field (keys %{ $fields{$datatype} }) {
+#       my $value = ''; if ($hash{$joinkey}{$field}) { $value = $hash{$joinkey}{$field}; }
+#       print "\"$field\" : \"$value\", "; }
+#     print "},\n";
+#   } # foreach my $joinkey (sort keys %hash)
+#   print "]\n";
 } # sub jsonFieldQuery 
 
 sub getTableDisplayData {			# given a pg data entry, get back the names insted of the stored IDs
@@ -597,14 +636,16 @@ sub showMain {
   my $ip = $query->remote_host();
   if ($configLoaded) { &loginMod('updateModCurator', $ip, $curator_two); }
   print "Content-type: text/html\n\n";
-  print "<html>\n";
+  my $datatypeLabel = $datatype; 		# put the datatype Label on the html title
+  if ($datatypes{$datatype}{label}) { $datatypeLabel = uc($datatypes{$datatype}{label}); }
+  print "<html>\n<head><title>$datatypeLabel Ontology Annotator</title></head>\n";
   print "<frameset id=\"frameset1\" rows=\"50%,50%\">\n";
   print "  <frameset cols=\"55%,45%\">\n";
   print "    <frame name=\"editor\" src=\"ontology_annotator.cgi?action=editorFrame&datatype=$datatype&curator_two=$curator_two&max_per_query=$max_per_query&batch_unsafe_flag=$batch_unsafe_flag\">\n";
   print "    <frame name=\"obo\" src=\"ontology_annotator.cgi?action=oboFrame\">\n";
   print "  </frameset>\n";
   print "  <frameset rows=\"40px,*\" frameborder=\"no\">\n";
-  print "  <frame name=\"controls\" src=\"ontology_annotator.cgi?action=controlsFrame&datatype=$datatype&curator_two=$curator_two\">\n";
+  print "  <frame name=\"controls\" src=\"ontology_annotator.cgi?action=controlsFrame&datatype=$datatype&curator_two=$curator_two&batch_unsafe_flag=$batch_unsafe_flag\">\n";
   print "  <frame name=\"table\" src=\"ontology_annotator.cgi?action=tableFrame&datatype=$datatype&curator_two=$curator_two\">\n";
   print "  </frameset>\n";
   print "</frameset>\n";
@@ -640,11 +681,14 @@ EndOfText
   $table_to_print .= "<table>\n";
 
   foreach my $field (keys %{ $fields{$datatype} }) {
-    my $freeForced = 'forced'; my $span_type = ""; my $field_type = ""; my $border_style = "none"; my $tab = ""; my $inline_field = ""; my $input_size = $default_input_size; my $colspan = 3;
-    if ($fields{$datatype}{$field}{'input_size'}) { $input_size = $fields{$datatype}{$field}{'input_size'}; }
-    if ($fields{$datatype}{$field}{'type'}) { $field_type = $fields{$datatype}{$field}{'type'}; }
-    if ($fields{$datatype}{$field}{'tab'}) { $tab = $fields{$datatype}{$field}{'tab'}; $tabs{$tab}++; }
-    if ($fields{$datatype}{$field}{'inline'}) { $inline_field = $fields{$datatype}{$field}{'inline'}; $input_size = $inline_input_size; $colspan = 1; }	# inline fields have extra tds, so need smaller input size and only one colspan to allow more tds.
+    my $freeForced = 'forced'; my $span_type = ""; my $field_type = ""; my $border_style = "none"; my $tab = ""; my $disabled = ""; my $inline_field = ""; my $input_size = $default_input_size; my $colspan = 3; my $cols_size = ""; my $rows_size = "";
+    if ($fields{$datatype}{$field}{'input_size'}) { $input_size   = $fields{$datatype}{$field}{'input_size'}; }
+    if ($fields{$datatype}{$field}{'rows_size'})  { $rows_size    = $fields{$datatype}{$field}{'rows_size'};  }
+    if ($fields{$datatype}{$field}{'cols_size'})  { $cols_size    = $fields{$datatype}{$field}{'cols_size'};  }
+    if ($fields{$datatype}{$field}{'type'})       { $field_type   = $fields{$datatype}{$field}{'type'};       }
+    if ($fields{$datatype}{$field}{'tab'})        { $tab          = $fields{$datatype}{$field}{'tab'}; $tabs{$tab}++; }
+    if ($fields{$datatype}{$field}{'disabled'})   { $disabled     = qq(disabled = "disabled" );   }		# some fields can be disabled
+    if ($fields{$datatype}{$field}{'inline'})     { $inline_field = $fields{$datatype}{$field}{'inline'}; $input_size = $inline_input_size; $colspan = 1; }	# inline fields have extra tds, so need smaller input size and only one colspan to allow more tds.
 
     next if ($inline_field =~ m/^INSIDE_/);			# these are printed when the field they're INSIDE of are printed
 
@@ -652,10 +696,13 @@ EndOfText
     $table_to_print .= &generateEditorLabelTd($field, $datatype);
     if ($field_type eq 'text') {  
       $span_type = ''; $border_style = "none"; 
-      $table_to_print .= &showEditorText($field, $datatype, $input_size, $colspan); }
-    elsif ($field_type eq 'bigtext') {  
+      $table_to_print .= &showEditorText($field, $datatype, $input_size, $colspan, $disabled); }
+    elsif ($field_type eq 'bigtext') {
       $span_type = ''; $border_style = "none"; 
-      $table_to_print .= &showEditorBigtext($field, $datatype, $input_size, $colspan); }
+      $table_to_print .= &showEditorBigtext($field, $datatype, $input_size, $cols_size, $rows_size, $colspan, $disabled); }
+    elsif ($field_type eq 'textarea') {
+      $span_type = ''; $border_style = "none"; 
+      $table_to_print .= &showEditorTextarea($field, $datatype, $input_size, $cols_size, $rows_size, $colspan, $disabled); }
     elsif ($field_type eq 'dropdown') { 
       $span_type = '&or;'; $border_style = $border_style_curator;
       $table_to_print .= &showEditorDropdown($field, $datatype, $input_size, $colspan, $freeForced); }
@@ -678,7 +725,7 @@ EndOfText
       $span_type = ''; $border_style = "none"; $colspan = 1;
       $table_to_print .= &showEditorToggle($field, $datatype, $colspan); 
       $table_to_print .= &generateEditorLabelTd($inline_field, $datatype);
-      $table_to_print .= &showEditorText($inline_field, $datatype, $input_size, $colspan); }	# button should query off of toggle, not text
+      $table_to_print .= &showEditorText($inline_field, $datatype, $input_size, $colspan, $disabled); }	# button should query off of toggle, not text
     unless ( ($field_type eq 'multidropdown') || ($field_type eq 'multiontology') ) { 		# query button except for multiontology / multidropdown, which have their own in showEditorMultiontology showEditorMultidropdown
       $table_to_print .= &generateEditorSpantypeQuerybuttonTds($field, $border_style, $span_type); }
     $table_to_print .= "</tr>\n";
@@ -686,6 +733,7 @@ EndOfText
   $table_to_print .= "</table>\n";
 
   print "<div style=\"font-weight: bold\" id=\"editor_title\">Editor";
+  if ($datatypes{$datatype}{label}) { print " " . uc($datatypes{$datatype}{label}); }
   print "<button style=\"float: right\" id=\"resetPage\">Reset</button>\n";
   foreach my $tab (sort keys %tabs) {
     next if ($tab eq 'all');
@@ -693,7 +741,7 @@ EndOfText
   }
   if ($batch_unsafe_flag) {
     my $batchUnsafeWarningText = "Warning, changes you make will do a single ajax update to postgres and give an all or nothing error message, but will NOT update the dataTable display below.";
-    print "<span style=\"color:red\" id=\"batchUnsafeWarning\" title=\"$batchUnsafeWarningText\" onClick=\"alert('$batchUnsafeWarningText')\";>Invisible Mode</span>\n";  }
+    print "<span style=\"color:red\" id=\"batchUnsafeWarning\" title=\"$batchUnsafeWarningText\" onClick=\"alert('$batchUnsafeWarningText')\";>Invisible Mode</span>\n"; }
   print "</div>";
 
   print "$table_to_print";
@@ -702,25 +750,38 @@ EndOfText
 
 
 sub showEditorBigtext {
-  my ($field, $datatype, $input_size, $colspan) = @_;
+  my ($field, $datatype, $input_size, $cols_size, $rows_size, $colspan, $disabled) = @_;
+  unless ($cols_size) { $cols_size = $input_size; }
+  unless ($rows_size) { $rows_size = '20'; }
   my $table_to_print = "<td width=\"150\" colspan=\"$colspan\">\n";	# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 150
-  $table_to_print .= "<input id=\"input_$field\" name=\"input_$field\" size=\"$input_size\">\n";
-  $table_to_print .= "<div id=\"container_bigtext_$field\"><textarea id=\"textarea_bigtext_$field\" rows=\"20\" cols=\"$input_size\" style=\"display:none\"></textarea></div>\n"; 
+  $table_to_print .= "<input id=\"input_$field\" name=\"input_$field\" $disabled size=\"$input_size\">\n";
+  $table_to_print .= "<div id=\"container_bigtext_$field\"><textarea id=\"textarea_bigtext_$field\" rows=\"$rows_size\" cols=\"$cols_size\" style=\"display:none\"></textarea></div>\n"; 
+#   $table_to_print .= "<div id=\"container_bigtext_$field\"><textarea id=\"textarea_bigtext_$field\" rows=\"$rows_size\" cols=\"$cols_size\" ></textarea></div>\n"; 
   $table_to_print .= "</td>\n";
   return $table_to_print;
 } # sub showEditorBigtext
 
-sub showEditorText {
-  my ($field, $datatype, $input_size, $colspan) = @_;
+sub showEditorTextarea {
+  my ($field, $datatype, $input_size, $cols_size, $rows_size, $colspan, $disabled) = @_;
+  unless ($cols_size) { $cols_size = $input_size; }
+  unless ($rows_size) { $rows_size = '20'; }
   my $table_to_print = "<td width=\"150\" colspan=\"$colspan\">\n";	# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 150
-  $table_to_print .= "<input id=\"input_$field\" name=\"input_$field\" size=\"$input_size\">\n";
+  $table_to_print .= "<div id=\"container_textarea_$field\"><textarea id=\"textarea_$field\" $disabled rows=\"$rows_size\" cols=\"$cols_size\" style=\"display:\"></textarea></div>\n"; 
+  $table_to_print .= "</td>\n";
+  return $table_to_print;
+} # sub showEditorTextarea
+
+sub showEditorText {
+  my ($field, $datatype, $input_size, $colspan, $disabled) = @_;
+  my $table_to_print = "<td width=\"150\" colspan=\"$colspan\">\n";	# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 150
+  $table_to_print .= "<input id=\"input_$field\" name=\"input_$field\" $disabled size=\"$input_size\">\n";
   $table_to_print .= "</td>\n";
   return $table_to_print;
 } # sub showEditorText
 
 sub showEditorQueryonly {
   my ($field, $datatype, $colspan) = @_;
-  my $width = $colspan / 3 * 100; $width .= '%';
+  my $width = $colspan / 4 * 100; $width .= '%';
   my $table_to_print = "<td id=\"queryonly_$field\" style=\"empty-cells:show; background-color: white\" width=\"$width\" colspan=\"$colspan\" align=\"center\">\n";	# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size
   $table_to_print .= "</td>\n";
   return $table_to_print;
@@ -728,7 +789,7 @@ sub showEditorQueryonly {
 
 sub showEditorToggle {
   my ($field, $datatype, $colspan) = @_;
-  my $width = $colspan / 3 * 100; $width .= '%';
+  my $width = $colspan / 4 * 100 ; $width .= '%';
   my $table_to_print = "<td id=\"toggle_$field\" style=\"empty-cells:show; border-style:ridge; border-color: grey; background-color: white\" height=\"1\" width=\"$width\" colspan=\"$colspan\" align=\"center\">\n";	# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size
   $table_to_print .= "</td>\n";
   return $table_to_print;
@@ -822,9 +883,14 @@ sub showObo {
 
 sub showControls {
   ($var, my $datatype) = &getHtmlVar($query, 'datatype');
+  ($var, my $batch_unsafe_flag) = &getHtmlVar($query, 'batch_unsafe_flag');
   print "Content-type: text/html\n\n";
   print "<html>\n<body bgcolor=\"white\">\n";
   print "<div id=\"loadingImage\"></div>\n";				# to show stuff when loading from query
+  my $newRowMaxAmount = $newRowMaxAmountNormalOa;			# get the maximum around of new rows that can be created based on normal OA or batch_unsafe
+  if ($batch_unsafe_flag eq 'true') { $newRowMaxAmount = $newRowMaxAmountBatchUnsafeOa; }
+  print "<input id=\"newRowMaxAmountValue\" value=\"$newRowMaxAmount\" type=\"hidden\">";	# pass the maximum amount of rows that can be created to javascript
+  print "<span id=\"newRowAmount\">1</span>\n";				# how many new rows will be created by pressing the New button
   print "<button id=\"newRow\">New</button>\n";
   print "<button id=\"duplicateRow\">Duplicate</button>\n";
   print "<button id=\"deleteRow\">Delete</button>\n";
@@ -1006,7 +1072,7 @@ There are four different ways of storing data :
 
 =over 4
 
-=item * text and bigtext types store text straight.
+=item * text and textarea and bigtext types store text straight.
 
 =item * toggle type store the label of the field shown on the editor for true, and '' for false.
 
@@ -1043,6 +1109,10 @@ update_obo_oa_ontologies.pl  is a script to download generic .obo files and upda
 $configLoaded  is a variable to specify which MOD-specific perl module has been loaded.  Refer to appropriate subroutine in  &asyncTermInfo  &asyncValidValue  &autocompleteXHR  &getTableDisplayData  &showLogin  &showMain  &initFields .
 
 $filtersMaxAmount  is the amount of filters to put in the OA's control frame.  This could be stored in a postgres table at some point, and code rewritten for it.  The control frame shows one filter by default, and more can be shown by changing the number in the dropdown.
+
+$newRowMaxAmountNormalOa  is the amount of new rows to create when pressing the 'New' button in the normal OA.
+
+$newRowMaxAmountBatchUnsafeOa  is the amount of new rows to create when pressing the 'New' button in the batch unsafe OA.
 
 %fieldIdToValue  is a hash to map IDs of data in postgres to what should be displayed in the dataTable when querying.  When a query will load a lot of values into the dataTable it's wasteful to query each ID to displayValue conversion multiple times for a single ID, so the values are stored in this hash and not re-queried if they already exist.  The first key is the dropdown_type for dropdown / multidropdown fields ;  for ontology / multiontology fields with simple obo_ tables, it's the 'obo_name_<ontology_table> ;  for ontology / multiontology fields with a custom specific lookup, it's the ontology type.  The second key is the ID of the value.  The value of the hash is what should be displayed, "display_value<span style='display: none'>id</span>" ;  the display_value is usually the name of the object, but it could be the ID in cases like WBPapers ;  the id is the ID of the object ;  the <span>s are html element tags to keep the id hidden in the dataTable display, and are used for getting the IDs in the cell when a dataTable row is clicked and they should be loaded to the OA's editor frame's corresponding fields (some display_values map to multiple IDs in some datatypes).
 
@@ -1111,11 +1181,15 @@ $action  is the action performed by the curator on the form.
 
 =item * $input_size  is the  $fields{<datatype>}{<field>}{'input_size'} .  This is the size of the html input element.  There is a default input size and default input size for inline fields.
 
+=item * $cols_size  is the  $fields{<datatype>}{<field>}{'cols_size'} .  This is the cols size of the html textarea element.
+
+=item * $rows_size  is the  $fields{<datatype>}{<field>}{'rows_size'} .  This is the rows size of the html textarea element.
+
 =item * $colspan  is the size of the html colspan.  By default it is 3, allowing inline fields to have a size of 1 for labels and inputs.
 
 =back
 
-and creates a table row, calling  &generateEditorLabelTd  to generate and append the field's label to the row, then depending on the  $field_type  it calls the appropriate  &showEditor...  subroutine(s) to create the html elements to display in the table.  Fields that are neither multidropdown nor multiontology also generate and print the value from  &generateEditorSpantypeQuerybuttonTds , because these fields are a single table row so their creation subroutines don't add this.  Creates a 'Reset' button that floats right, which calls  ontology_annotator.cgi  function  resetButton  which reloads the obo frame, removes all rows from the dataTable, and blanks all editor values.  Creates a tab html button for each tab in %tabs which when clicked shows only table rows corresponding to that tab.  If  batch_unsafe_flag  is set, a warning text is displayed in an html span element.
+and creates a table row, calling  &generateEditorLabelTd  to generate and append the field's label to the row, then depending on the  $field_type  it calls the appropriate  &showEditor...  subroutine(s) to create the html elements to display in the table.  Fields that are neither multidropdown nor multiontology also generate and print the value from  &generateEditorSpantypeQuerybuttonTds , because these fields are a single table row so their creation subroutines don't add this.  Creates a 'Reset' button that floats right, which calls  ontology_annotator.cgi  function  resetButton  which reloads the obo frame, removes all rows from the dataTable, and blanks all editor values.  Shows the configuration loaded from $datatypes{$datatype}{label}.  Creates a tab html button for each tab in %tabs which when clicked shows only table rows corresponding to that tab.  If  batch_unsafe_flag  is set, a warning text is displayed in an html span element.
 
 If the  $field_type  corresponds to something that should show multiple fields in one row, $colspan changes to more values will fit, and the appropriate separate  &showEditor...  subroutines are called.
 
@@ -1125,7 +1199,9 @@ If the  $field_type  corresponds to something that should show multiple fields i
 
 &showEditorText  creates an html td element for normal input fields, passing in the field, datatype, input_size, and colspan ;  and returning the created td element.  Creates a td element of fixed 150 width, colspan <colspan>, and an input field with id 'input_<field>' and size <input_size>.  The width is fixed because of some auto-sizing to nothing if there is no size. 
 
-&showEditorBigtext  is like  &showEditorText  but has an additional html div element with id 'container_bigtext_<field>', which contains a textarea with id 'textarea_bigtext_<field>' with cols <input_size>, rows fixed at '20', and default style 'display:none'.  When the input field is clicked, the ontology_annotator.js transfers the value to the textarea, hides the input, and shows the textarea.  When blurring the textarea, the ontology_annotator.js transfers the value to the input, hides the textarea, and shows the input.  This allows editing and seeing a large amount of text in a textarea, but normally only seeing a smaller input that takes up less space.
+&showEditorTextarea  is like  &showEditorText  but is a textarea instead of an input html element.
+
+&showEditorBigtext  is like  &showEditorText  but has an additional html div element with id 'container_bigtext_<field>', which contains a textarea with id 'textarea_bigtext_<field>', with rows <rows_size> or 20 if no value given, cols <cols_size> or <input_size> if no value given, and default style 'display:none'.  When the input field is clicked, the ontology_annotator.js transfers the value to the textarea, hides the input, and shows the textarea.  When blurring the textarea, the ontology_annotator.js transfers the value to the input, hides the textarea, and shows the input.  This allows editing and seeing a large amount of text in a textarea, but normally only seeing a smaller input that takes up less space.
 
 &showEditorQueryonly  creates an html td element for query only fields, passing in the field, datatype, colspan ;  and returning the created td element.  Creates a td element with id 'queryonly_<field>', colspan <colspan>, align 'center', and width of <colspan> / 3 * 100% which makes it take up the full width.  When queried  jsonFieldQuery  gets the custom query from  $fields{<datatype>}{<field>}{queryonlySub} instead of the field's non-existent postgres table.
 
@@ -1156,6 +1232,10 @@ If the  $field_type  corresponds to something that should show multiple fields i
 Gets the datatype from the form.  
 
 Creates an html div element with id 'loadingImage' to hold the image when loading data from a postgres query.  
+
+Creates a hidden html input element with id 'newRowMaxAmountValue' that stores the maximum amount of new rows to create with the 'New' button.  This value is  $newRowMaxAmountNormalOa  by default, or  $newRowMaxAmountBatchUnsafeOa  if the  $batch_unsafe_flag  is set to 'true'.
+
+Creates an html span element with id 'newRowAmount' with default value 1, to determine the amount of rows that will be created when pressing the button 'New'  ;  when clicked the  ontology_annotator.js  calls  changeNewRowAmountPromptListener  which gives a prompt to enter a value up to  $newRowMaxAmount .
 
 Creates an html button element with id 'newRow' to create a new dataTable row ;  when clicked the  ontology_annotator.js  calls  newRowButtonListener  which does an AJAX call to the CGI with action 'newRow', creating and getting a new pgid / joinkey, then doing another AJAX call to the CGI with action  jsonFieldQuery  passing the new pgid and getting the created row to load and highlight in the dataTable.  
 
@@ -1200,9 +1280,9 @@ For each field from $fields{<datatype>}, create an html input element of class '
 
 &autocompleteXHR  generates a text page for returning AJAX queries for autocompletion fields.  From the form gets datatype, field, and words from the default YUI autocomplete field 'query' ;  and prints rows of autocomplete values for the container html div element.  Words are lower cased.  If the field type is dropdown or multidropdown call  &getAnySimpleAutocomplete .  If the field type is ontology or multiontology, and the field's ontology_type is 'obo', call  &getGenericOboAutocomplete ;  otherwise check  $configLoaded  and call the appropriate subroutine ;  if any are loaded it calls  &getAnySpecificAutocomplete .  Print result matches.
 
-&getAnySimpleAutocomplete  generates ordered autocomplete matches for dropdown or multidropdown fields, passing in datatype, field, words ;  and returning the result matches.  Get dropdown_type from  $fields{<datatype>}{<field>}{dropdown_type} .  Call the MOD-specific perl module subroutine to get the values for the dropdown_type.  Return matching values.
+&getAnySimpleAutocomplete  generates ordered autocomplete matches for dropdown or multidropdown fields, passing in datatype, field, words ;  and returning the result matches.  Get dropdown_type from  $fields{<datatype>}{<field>}{dropdown_type} .  max_results is the maximum amount of autocomplete objects to return, by default it is 40, but if there are 5 or more characters typed it becomes 500 to match with &getGenericOboAutocomplete.  Call the MOD-specific perl module subroutine to get the values for the dropdown_type.  Return matching values.
 
-&getGenericOboAutocomplete  generates autocomplete matches from generic postgres obo_ tables, passing in datatype, field, words ;  and returning the result matches.  Get ontology_table from  $fields{<datatype>}{<field>}{ontology_table} .  max_results is the maximum amount of autocomplete objects to return, by default it is 20, but if there are 5 or more characters typed it becomes 500 because some GO ontologies have hundreds of terms with the same words.  Singlequotes are escaped for postgres queries.  The three tabletypes of postgres obo_ tables are name (id to name mapping), syn (id to synonyms), data (id to full data for term info display).  Results are stored in a tied hash to maintain order.  For each tabletype obotable is 'obo_<tabletype>_<ontology_table>'.  The column to match on is the table name, but for tabletype 'data' query the joinkey column.  Query the table matching the column for lower cased values starting with <words>, sorted by column, with a limit of max_results to avoid getting too many results that won't show anyway.  Get up to max_results, getting the data as '<data> ( <id> ) '.  If the tabletype is 'syn' or 'data' query the name tabletype to get the object's name.  If the tabletype is 'syn' append a '[<name>]' ;  if the tabletype is 'data', replace the match with '<name> ( <id> ) '.  Query again the same way matching for the word anywhere in the field except for in the beginning.  If there are more matches than max_results replace the last value with 'more ...' to let the user know there are more values.  Return matches.
+&getGenericOboAutocomplete  generates autocomplete matches from generic postgres obo_ tables, passing in datatype, field, words ;  and returning the result matches.  Get ontology_table from  $fields{<datatype>}{<field>}{ontology_table} .  max_results is the maximum amount of autocomplete objects to return, by default it is 30, but if there are 5 or more characters typed it becomes 500 because some GO ontologies have hundreds of terms with the same words.  Singlequotes are escaped for postgres queries.  The three tabletypes of postgres obo_ tables are name (id to name mapping), syn (id to synonyms), data (id to full data for term info display).  Results are stored in a tied hash to maintain order.  For each tabletype obotable is 'obo_<tabletype>_<ontology_table>'.  The column to match on is the table name, but for tabletype 'data' query the joinkey column.  Query the table matching the column for lower cased values starting with <words>, sorted by column, with a limit of max_results to avoid getting too many results that won't show anyway.  Get up to max_results, getting the data as '<data> ( <id> ) '.  If the tabletype is 'syn' or 'data' query the name tabletype to get the object's name.  If the tabletype is 'syn' append a '[<name>]' ;  if the tabletype is 'data', replace the match with '<name> ( <id> ) '.  Query again the same way matching for the word anywhere in the field except for in the beginning.  If there are more matches than max_results replace the last value with 'more ...' to let the user know there are more values.  Return matches.
 
 
 =head3 ASYNC TERM INFO SUBROUTINE
@@ -1233,7 +1313,7 @@ For each field from $fields{<datatype>}, create an html input element of class '
 
 =head3 NEW ROW SUBROUTINES
 
-&newRow  generates a text page for returning AJAX updates of new datatype object creation of dataTable / postgres table data.  From the form gets datatype and curator ;  and prints whether the creation is 'OK' or has an error message.  Get the highest used pgid from  &getHighestPgid .  If it's not a digit give an error.  Make a new pgid by adding one to the highest one.  Call the subroutine from  $datatypes{<datatype>}{newRowSub}  to create a new datatype object in the postgres data tables, getting back the new pgid or error message.  If the value returned is an integer the return message is 'OK', otherwise it's the value returned.  If there are errors print them, otherwise print 'OK' ;  followed by distinct divider for  ontology_annotator.js  newRowButtonListener  to separate data ;  followed by the new pgid.
+&newRow  generates a text page for returning AJAX updates of new datatype object creation of dataTable / postgres table data.  From the form gets amount of rows to create, datatype, and curator ;  and prints whether the creation is 'OK' or has an error message.  Get the highest used pgid from  &getHighestPgid .  If it's not a digit give an error.  If there are less than 2 rows to create, make 1 row.  For each row to create get a new pgid, if there's a  newRowSub  for the datatype use it, if there are errors (non digits response) add them to list to print, add created pgids to list of created pgids.  If there are errors print them, otherwise print 'OK' ;  followed by distinct divider for  ontology_annotator.js  newRowButtonListener  to separate data ;  followed by the pgids created with comma-separation.
 
 &getHighestPgid  gets the highest used pgid from the postgres tables, passing in the datatype ;  and returning the highest pgid.  Gets the postgres tables to check from  $datatypes{<datatype>}{highestPgidTables}  and queries for the highest joinkey as an integer, returning it, or gives an error message.
 
@@ -1245,7 +1325,7 @@ For each field from $fields{<datatype>}, create an html input element of class '
 
 =head3 DELETE BY PGIDS SUBROUTINE
 
-&deleteByPgids  generates a text page for returning AJAX updates of deletions from dataTable / postgres table data.  From the form gets datatype and idsToDelete ;  and prints whether the deletions are 'OK' or have an error message.  Split idsToDelete on comma to get array of pgids.  For each pgid loop through each datatype's field, skipping 'id' field and fields of type 'queryonly', making the postgres table as '<datatype>_<field>', querying it for data, and if it has data calling  &updatePostgresByTableJoinkeyNewvalue  on the table, pgid, and blank '' data.  If there are errors print them, otherwise print 'OK'.  This should never print anything because postgres deletes don't give errors and NULL inserts are skipped.
+&deleteByPgids  generates a text page for returning AJAX updates of deletions from dataTable / postgres table data.  From the form gets datatype and idsToDelete ;  and prints whether the deletions are 'OK' or have an error message.  Split idsToDelete on comma to get array of pgids.  For each pgid loop through each datatype's field, skipping 'id' field and fields of type 'queryonly', making the postgres table as '<datatype>_<field>', querying it for a row with that pgid, and if it has some call  &updatePostgresByTableJoinkeyNewvalue  on the table, pgid, and blank '' data.  If there are errors print them, otherwise print 'OK'.  This should never print anything because postgres deletes don't give errors and NULL inserts are skipped.
 
 
 =head3 CHECK DATA BY PGIDS SUBROUTINES
