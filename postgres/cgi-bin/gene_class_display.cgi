@@ -10,6 +10,8 @@
 # descriptions, lab, rep
 # Doesn't loop through all loci because that takes forever.
 # For Karen / Uma.  2011 04 22
+#
+# car_ tables got removed, so updated it to work off of con_ tables.  for Karen.  2013 11 21
 
 
 
@@ -49,7 +51,8 @@ sub getGc {
 
   my %has_concise;
   my %conciseByGc;
-  $result = $dbh->prepare( "SELECT * FROM car_concise" );
+#   $result = $dbh->prepare( "SELECT * FROM car_concise" );
+  $result = $dbh->prepare( "SELECT con_wbgene.con_wbgene, con_desctext.con_desctext FROM con_wbgene, con_desctext WHERE con_wbgene.joinkey = con_desctext.joinkey AND con_desctext.con_desctext IS NOT NULL ORDER BY (con_wbgene.con_wbgene);" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) { 
     $has_concise{$row[0]}++; 
@@ -152,7 +155,8 @@ while (my @row = $result->fetchrow) {
 
 
 sub display {
-  my $root_url = 'http://caprica.caltech.edu/celegans/svm_results/';
+#   my $root_url = 'http://caprica.caltech.edu/celegans/svm_results/';
+  my $root_url = 'http://131.215.52.209/celegans/svm_results/';
   print "Display of data from date directories from $root_url<br />\n";
 
   my $count = 0;

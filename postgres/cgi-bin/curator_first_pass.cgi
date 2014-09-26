@@ -842,7 +842,8 @@ sub hashName {
   $hash{mail}{genereg} = 'xdwang@its.caltech.edu';
   $hash{name}{seqfeat} = 'Regulatory sequence features.';
   $hash{exmp}{seqfeat} = 'Please indicate if your paper reports any gene expression regulatory elements, e.g., DNA/RNA elements required for gene expression, promoters, introns, UTR\'s, DNA binding sites, etc.';
-  $hash{mail}{seqfeat} = 'xdwang@its.caltech.edu, worm-bug@sanger.ac.uk, stlouis@wormbase.org';
+#   $hash{mail}{seqfeat} = 'xdwang@its.caltech.edu, worm-bug@sanger.ac.uk, stlouis@wormbase.org';
+  $hash{mail}{seqfeat} = 'xdwang@its.caltech.edu, seqcur@wormbase.org';		# changed for Kimberly 2011 11 30
   $hash{name}{matrices} = 'Position frequency matrix (PFM) or position weight matrix (PWM).';
   $hash{exmp}{matrices} = 'Please indicate if your paper reports PFMs or PWMs, which are typically used to define regulatory sites in genomic DNA (e.g., bound by transcription factors) or mRNA (e.g., bound by translational factors or miRNA). PFMs define simple nucleotide frequencies, while PWMs are scaled logarithmically against a background frequency.';
   $hash{mail}{matrices} = 'xdwang@its.caltech.edu';
@@ -875,7 +876,8 @@ sub hashName {
   $hash{name}{seq} = 'Genome Sequence Data';
   $hash{name}{structcorr} = 'Gene structure correction.';
   $hash{exmp}{structcorr} = 'Please indicate if your paper reports a gene structure that is different from the one in WormBase, e.g., different splice-site, SL1 instead of SL2, etc.';
-  $hash{mail}{structcorr} = 'wormticket@watson.wustl.edu, worm-bug@sanger.ac.uk';
+#   $hash{mail}{structcorr} = 'wormticket@watson.wustl.edu, worm-bug@sanger.ac.uk';
+  $hash{mail}{structcorr} = 'seqcur@wormbase.org';	# changed for Kimberly 2011 11 30
   $hash{name}{seqchange} = 'Sequencing mutant alleles.';
   $hash{exmp}{seqchange} = 'Please indicate if your paper reports new sequence data for any mutation.';
   $hash{mail}{seqchange} = 'genenames@wormbase.org';

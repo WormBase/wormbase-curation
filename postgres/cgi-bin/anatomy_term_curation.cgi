@@ -125,6 +125,8 @@
 # Added date to .ace output for Raymond.  2006 02 08
 #
 # Finally added a WBPaper filter for papers.  2006 11 20
+#
+# got_goterm has been removed, instead using obo_name_goid .  2013 11 21
 
 
 use strict;
@@ -474,7 +476,8 @@ print "theHash $type $i html_value $val<BR>\n";
 } # sub getHtmlValuesFromForm
 
 sub getPgGoTerms {
-  my $result = $dbh->prepare( "SELECT * FROM got_goterm;" );
+#   my $result = $dbh->prepare( "SELECT * FROM got_goterm;" );	# made obsolete, but was obsolete long before 2013 11 21
+  my $result = $dbh->prepare( "SELECT * FROM obo_name_goid;" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
   while (my @row = $result->fetchrow) { $goTerm{$row[0]} = $row[1]; }
 } # sub getPgGoTerms

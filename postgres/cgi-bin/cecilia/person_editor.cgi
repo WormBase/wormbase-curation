@@ -1,162 +1,101 @@
 #!/usr/bin/perl -w
 
-# edit pap tables's paper data
+# edit two tables's person data
 
-# The search feature is much more generalized, allowing search on
-# any field, and allowing substring matches, as well as case insensitive
-# matches (which are substring searches by default).
-# 
-# Instead of search for a given field, just type in as many different
-# fields as you like, with the independent substring / case options, and
-# it will search all those things, ranking results with how many matches
-# something has.
-# 
-# So, e.g., searching for year "2001" and author "paul sternb" (case
-# insensitive), gives 8 papers with 2 categories matching, and a ton of
-# papers that match either "paul sternb" or "2001" below that.
-# 
-# Typing in anything with a number in the number search will override
-# other search parameters and give back that exact paper ID match.
-# (padding zeroes for you and excluding non-digit text).
-# 
-# electronic_path converts to PDF links
-# author, gene, and type  show the author name (as well as ID), locus
-# name (as well as WBGene), and type name (instead of type index value)
-# 
-# author information also shows in a separate table the corresponding
-# person data, if there's any.
-# 
-# Toggling on the history display uses the history tables instead of the
-# normal tables.  2010 03 01
+# added two712, Karen Yook  2011 09 26
 #
-# author verification is now through this form instead of confirm_paper.cgi
-# by making a toggleTripleField in &paperAuthorPersonGroup();  2010 06 09
+# added two12028, Daniela Raciti  2011 10 12
 #
-# changed &authorGeneDisplay() to use pap tables instead of wpa tables,
-# although it's still querying for Curator_confirmed instead of 
-# Manually_connected.  Possibly want Manually_connected to show what was
-# entered when the WBGene was connected.  2010 06 24
+# changed &showInstitutionEditor to have a javascript link to only show institutions that have data in the institution field.
+# changed the paper_editor.js to have that function.  2012 02 03
 #
-# Live 2010 06 25
+# lab to oldlab  is different from  email to old_email  and intitution to old_institution  so the javascript is not generalized and has field-specific code, which is terrible.  (also old_inst had old_inst_date while old_email has old_email_date, so even more non-generalized).  email / institution / lab now all have a move button instead of just the first two.  2012 06 20
 #
-# only show pap_status = 'valid' papers in &rnaiCuration();  2010 08 04
+# added  Person Statistics  &personStatistics()  to show people created, people invalid, people current, and totals by year-month.  for Paul and Raymond.  2013 02 01
 #
-# added a blank curator option and give error if not picked one.  2010 08 09
+# added GD::Graph to generate charts at :
+#   /home/postgres/public_html/cgi-bin/cecilia/data/person_editor_valid.png
+#   /home/postgres/public_html/cgi-bin/cecilia/data/person_editor_totalvalid.png
+# changed  &personStatistics()  to properly (hopefully) get the amount of valid / invalid / any on any given month, and generate totals without just adding in case the person already existed (prevent being counted multiple times for changes in separate months, but will still show someone in valid set and in invalid set if they appear as both types).
+# added average valid created per month.  2013 02 02
 #
-# made this curators in frontpage an array of two#, instead of the changing 
-# standard names.  less convenient, but won't fail when someone changes 
-# their name  (idea on 2010 04 23, on 2010 08 25 Chris had this problem, and 
-# I finally did it)  2010 08 25
+# changed to dynamically create the embedded graphs with a get call to the CGI with &generatePng();  this may fail when the URL gets bigger than a get call can handle.  to switch back don't forget to touch the png files and chmod 666 them.  2012 02 03 
 #
-# Added Daniela.  two12028 |         1 | Daniela Raciti.  2010 09 10
+# changed  &displayPaper  to show pap_affiliation for iwm abstracts.  2013 07 11
 #
-# changed  &rnaiCuration()  to look at both cfp_rnai and afp_rnai (and cfp_lsrnai
-# and afp_lsrnai)  instead of just the cfp tables.  2010 09 15
+# added  two_orcid  and put in editors between oldlab and left_field.  2013 11 04
 #
-# added two4025 Gary Williams.  2010 09 20
-
-# added  remove  option to  &showConfirmXmlTable   which allows  &confirmAbstracts 
-# to treat removed papers the same as rejected papers, but storing them at
-# /home/postgres/work/pgpopulation/wpa_papers/pmid_downloads/removed_pmids
-# for Kimberly.  2010 11 12
+# added  affiliations  from xml to author display when showing a paper.  2014 07 28
 #
-# pubmed_final is not an editable field, don't display to prevent errors.
-# for Daniela / Kimberly.   2010 12 13
-#
-# changed  &updatePostgresAuthorIndexField  because it was passing @row2 variables
-# to  &updatePostgresByTableJoinkeyNewvalue  which meant the first call of
-# &updatePostgresByTableJoinkeyNewvalue  would replace the values of @row2 and
-# make the 2nd and 3rd fail (for sent and verified).  2011 04 21
-#
-# changed  &updatePostgresTableField  because $newValue wasn't getting the 
-# singlequotes escaped for postgres.  2011 04 25
-#
-# changed  &search  to only count multiple matches on a given joinkey-table once 
-# (it was counting multiples, e.g. identifier ~ '12' would say 'cgc12' 'pmid123'
-# as 2 matches) ;  also to display all matches (would only show 'pmid123' and now
-# shows ``cgc12, pmid123'').
-# changed  &firstPage  to have dropdowns for 'status', 'pubmed_final', 
-# 'curation_flags', 'primary_data'.  For Kimberly.  2011 05 03
-#
-# To  &enterNewPapers  added  &showEnterNonpmidPaper  for display of sectin / button
-# to create a new WBPaperID.  Calls  &enterNonPmids  to create the id and display it.
-# For Kimberly.  2011 05 06
-#
-# changed  &findDeadGenes  to point at the paper_editor instead of old wbpaper_editor.
-# changed  &authorGeneDisplay  to point at the paper_editor instead of old 
-# wbpaper_editor.  2011 05 09
-#
-# changed  &enterNonPmids  because it displayed the editor, and when editing, it would
-# reload the page, which would re-create yet another new paperId.  Changed javascript
-# for  window load  for whichPage === 'enterNonPmids'.  2011 05 23
-#
-# got rid of false positive buttons and subroutines since they should now go in the 
-# curation status form.  2013 02 01
-#
-# added Kevin Home and Michael Paulini.  2013 04 18
-#
-# changed 'functional_annotation' to 'non_nematode' in postgres and form.  2013 12 05
-#
-# added 'x' button next to number query field for Mary Ann, approved by Kimberly. 
-# 2014 06 19
-
-
-
-# 1) Identifiers - Identifier, Contained_in, Erratum_in, Status, Remark
-# 2) Publication Info - Title, Author, Affiliation, Journal, Publisher,
-# Editor, Page, Volume, Publication date (year, month, day), Abstract,
-# Full_text URL
-# 3) Genes
-# 4) Electronic Path
-
+# xml paths could be in different locations.  2014 09 17
 
 
 use strict;
 use CGI;
-use Fcntl;
-use Jex;
+use Jex;		# &getPgDate; &getSimpleDate;
 use DBI;
 use Tie::IxHash;
-use LWP::Simple;
+use Math::SigFigs;                              # significant figures $new = FormatSigFigs($n, $d);
+# use GD::Graph::lines;	# generate statistics graphs
+use GD::Graph::area;	# generate statistics graphs
 
 
-use lib qw( /home/postgres/work/pgpopulation/pap_papers/new_papers );
-use pap_match qw( processXmlIds );
+# Use all timestamps to use latest to create  Last_verified  date
 
 
+# my $dbh = DBI->connect ( "dbi:Pg:dbname=devdb", "", "") or die "Cannot connect to database!\n"; 
 my $dbh = DBI->connect ( "dbi:Pg:dbname=testdb", "", "") or die "Cannot connect to database!\n"; 
 my $result;
 
 my $query = new CGI;
-my $oop;
 
 my $frontpage = 1;
-# my $blue = '#00ffcc';			# redefine blue to a mom-friendly color
+# my $blue = '#b8f8ff';			# redefine blue to a mom-friendly color
 my $blue = '#e8f8ff';			# redefine blue to a mom-friendly color
+my $grey = '#d0d0d0';			# redefine grey to a mom-friendly color
 my $red = '#ff00cc';			# redefine red to a mom-friendly color
 
+my $tdDot = qq(td align="center" style="border-style: dotted; border-color: #007FFF");
+my $thDot = qq(th align="center" style="border-style: dotted; border-color: #007FFF");
 
 my %curators;                           # $curators{two}{two#} = std_name ; $curators{std}{std_name} = two#
-my %type_index;				# hash of possible 7 types of paper
-&populateTypeIndex();	
-my %valid_paper_index;			# hash of papers that are valid
-&populateValidPaperIndex();	
-my %month_index;				# hash of possible 7 types of paper
-&populateMonthIndex();	
 
-my @normal_tables = qw( status electronic_path pubmed_final identifier contained_in erratum_in title author affiliation journal abstract publisher editor pages volume year month day type fulltext_url remark gene curation_flags curation_done internal_comment primary_data );
-# my @normal_tables = qw( gene status electronic_path pubmed_final identifier contained_in erratum_in title author affiliation journal abstract publisher editor pages volume year month day type fulltext_url remark curation_flags internal_comment primary_data );
+my @normal_tables = qw( status firstname middlename lastname standardname aka_firstname aka_middlename aka_lastname email old_email old_email_date street city state post country institution old_institution old_inst_date mainphone labphone officephone otherphone fax pis lab oldlab orcid left_field unable_to_contact privacy webpage usefulwebpage wormbase_comment hide mergedinto acqmerge comment );
 
-my %single; my %multi;			# whether tables are single value or multivalue
-&populateSingleMultiTableTypes();
+my %type_input;				# all inputs are inputs, but usefulwebpage is a checkbox
+foreach ("number", @normal_tables) { $type_input{$_} = 'input'; } 
+$type_input{'usefulwebpage'} = 'checkbox';
+
+my %lineageDropdowns;
+
+my %order_type;
+my @single_order = qw( firstname middlename lastname standardname city state post country left_field unable_to_contact hide status mergedinto );
+my @multi_order = qw( street institution old_institution old_inst_date mainphone labphone officephone otherphone fax email old_email old_email_date pis lab oldlab orcid privacy aka_firstname aka_middlename aka_lastname webpage usefulwebpage wormbase_comment acqmerge comment );
+foreach (@single_order) { $order_type{single}{$_}++; }
+foreach (@multi_order) { $order_type{multi}{$_}++; }
+
+my %min_rows;
+foreach my $table (@normal_tables) { $min_rows{$table} = 1; }
+$min_rows{'street'} = 4;
+
+# 1-20 institutions show only top and show next when data in previous street1
+# for each institution show
+# inst<num>
+# street 1-20 (show only top and show next when data in previous)
+# city  state  post  county
+# institution
+# 
+# show all authors and their possible association
+# for each author, AID, aname
+# if already has pap_author_possible data : show two# (and link each to the person editor's person editing page)
+# elsif it has new matches to 1 or more two# : show possible matches (and link each to the person editor's person editing page)
+# else no existing pap_author_possible data, and 0 matches to existing persons : xml-forename, xml-lastname, <blank>middlename-field, standard_name default forename+ +lastname, inst-dropdown, <blank>email-field, comment-field with WBPaper####, button to create person.  require: lastname, firstname, stdname, institution-field-in-inst#.  New people add to 'two_status' 'Valid', 'two' '<#>'.  Associate to pap_author_possible aid.  Get back two# and replace this whole thing with a <td> to look like the pap_author_possible data (show two# w/link).
+
+
+# my %dropdowns;
+# @{ $dropdowns{status} } = qw( Valid Invalid );
 
 &display();
-
-
-# my @generic_tables = qw( title publisher journal volume pages year abstract affiliation comments paper );
-
-# my @generic_tables = qw( wpa wpa_identifier wpa_title wpa_publisher wpa_journal wpa_volume wpa_pages wpa_year wpa_date_published wpa_fulltext_url wpa_abstract wpa_affiliation wpa_type wpa_author wpa_hardcopy wpa_comments wpa_editor wpa_nematode_paper wpa_contained_in wpa_contains wpa_keyword wpa_erratum wpa_in_book );
-
 
 
 sub display {
@@ -167,28 +106,1501 @@ sub display {
     if ($frontpage) { &firstPage(); }
   } else { $frontpage = 0; }
 
-  if ($action eq 'Search') { &search(); }
-  elsif ($action eq 'Merge') { &displayMerge(); }
-  elsif ($action eq 'Enter New Papers') { &enterNewPapers(); }
-  elsif ($action eq 'Enter PMIDs') { &enterPmids(); }
-  elsif ($action eq 'Enter non-PMID paper') { &enterNonPmids(); }
-  elsif ($action eq 'Confirm Abstracts') { &confirmAbstracts(); }
-  elsif ($action eq 'Find Dead Genes') { &findDeadGenes(); }				# sort by genes, link to each paper per gene
-#   elsif ($action eq 'Flag False Positives') { &flagFalsePositives(); }
-#   elsif ($action eq 'Enter False Positives') { &enterFalsePositives(); }
-#   elsif ($action eq 'Show False Positives') { &showFalsePositives(); }
-  elsif ($action eq 'RNAi Curation') { &rnaiCuration(); }
-  elsif ($action eq 'Person Author Curation') { &personAuthorCuration(); }
-  elsif ($action eq 'Paper Author Person Group') { &paperAuthorPersonGroup(); }
-  elsif ($action eq 'Author Gene Curation') { &authorGeneDisplay(); }			# for Karen
+  if ($action eq 'autocompleteXHR') { &autocompleteXHR(); }
   elsif ($action eq 'updatePostgresTableField') { &updatePostgresTableField(); }
-#   elsif ($action eq 'deletePostgresTableField') { &deletePostgresTableField(); }	# use blank &updatePostgresByTableJoinkeyNewvalue(); instead
-
-#   if ($action eq 'Number !') { &pickNumber(); }
-#   elsif ($action eq 'Author !') { &pickAuthor(); }
-#   elsif ($action eq 'Title !') { &pickTitle(); }
-#   else { 1; }
+  elsif ($action eq 'updatePostgresLineageData') { &updatePostgresLineageData(); }
+  elsif ($action eq 'Search') { &search(); }
+  elsif ($action eq 'Create New Person') { &createNewPerson(); }
+  elsif ($action eq 'Search Paper') { &searchPaper(); }
+  elsif ($action eq 'Checkout Papers') { &checkoutPapers(); }
+  elsif ($action eq 'Create people from XML') { &createPeopleFromXml(); }
+  elsif ($action eq 'Person Statistics') { &personStatistics(); }
+  elsif ($action eq 'generatePng') { &generatePng(); }
 } # sub display
+
+sub autocompleteXHR {
+  print "Content-type: text/plain\n\n";
+  (my $var, my $words) = &getHtmlVar($query, 'query');
+  ($var, my $order) = &getHtmlVar($query, 'order');
+  ($var, my $field) = &getHtmlVar($query, 'field');
+  my $table = 'two_' . $field; my $column = $table;
+  if ($field eq 'number') { $table = 'two_standardname'; $column = 'joinkey'; }
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  ($words) = lc($words);                                        # search insensitively by lowercasing query and LOWER column values
+  my %matches; my $t = tie %matches, "Tie::IxHash";     # sorted hash to filter results
+  my $result = $dbh->prepare( "SELECT DISTINCT($column) FROM $table WHERE LOWER($column) ~ '^$words' ORDER BY $column;" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[0]"}++; }
+  $result = $dbh->prepare( "SELECT DISTINCT($column) FROM $table WHERE LOWER($column) ~ '$words' AND LOWER($column) !~ '^$words' ORDER BY $column;" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[0]"}++; }
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; print $matches;
+} # sub autocompleteXHR
+
+sub fromUrlToPostgres {
+  my $value = shift;
+  if ($value) {
+    if ($value =~ m/%2B/) { $value =~ s/%2B/+/g; }                # convert URL plus to literal
+    if ($value =~ m/%23/) { $value =~ s/%23/#/g; }                # convert URL pound to literal
+    if ($value =~ m/\'/) { $value =~ s/\'/''/g; }                 # escape singlequotes
+  }
+  return $value;
+} # sub fromUrlToPostgres
+
+sub updatePostgresByTableJoinkeyNewvalue {
+  my ($field, $joinkey, $order, $newValue, $curator_two) = @_;
+# print "F $field J $joinkey O $order N $newValue E<br/>\n";
+  my $uid = 'joinkey'; my $sorter = 'two_order';
+  my @pgcommands;
+# on update  delete from data table and insert ; delete from history table current-10 minutes and insert
+  if ($order) { 
+      my $command = "DELETE FROM two_$field WHERE $uid = '$joinkey' AND $sorter = '$order'";
+      push @pgcommands, $command;
+      $command = "DELETE FROM h_two_$field WHERE $uid = '$joinkey' AND $sorter = '$order' AND two_timestamp > now() - interval '10 minutes'";
+      push @pgcommands, $command;
+      $order = "'$order'"; } 
+    else { 
+      my $command = "DELETE FROM two_$field WHERE $uid = '$joinkey' AND $sorter IS NULL";
+      push @pgcommands, $command;
+      $command = "DELETE FROM h_two_$field WHERE $uid = '$joinkey' AND $sorter IS NULL AND two_timestamp > now() - interval '10 minutes'";
+      push @pgcommands, $command;
+      $order = 'NULL'; }
+
+  if ($newValue) { $newValue = "'$newValue'"; }
+    else { $newValue = 'NULL'; }
+
+  my $command = "INSERT INTO h_two_$field VALUES ('$joinkey', $order, $newValue, '$curator_two')";
+  push @pgcommands, $command;
+  if ($newValue ne 'NULL') {
+    $command = "INSERT INTO two_$field VALUES ('$joinkey', $order, $newValue, '$curator_two')";
+    push @pgcommands, $command; }
+
+  foreach my $command (@pgcommands) {
+#     print "$command<br />\n";
+    $result = $dbh->do( $command );
+  }
+  return "OK";
+} # sub updatePostgresByTableJoinkeyNewvalue
+
+sub updatePostgresTableField {                          # if updating postgres table values, update postgres and return OK if ok
+  print "Content-type: text/html\n\n";
+  (my $var, my $field) = &getHtmlVar($query, 'field');
+  ($var, my $joinkey) = &getHtmlVar($query, 'joinkey');
+  ($var, my $order) = &getHtmlVar($query, 'order');
+  ($var, my $curator_two) = &getHtmlVar($query, 'curator_two');
+  ($var, my $newValue) = &getHtmlVar($query, 'newValue');
+  ($newValue) = &fromUrlToPostgres($newValue);
+
+  my $isOk = 'NO';
+
+  ($isOk) = &updatePostgresByTableJoinkeyNewvalue($field, $joinkey, $order, $newValue, $curator_two);
+
+  if ($isOk eq 'OK') { print "OK"; }
+} # sub updatePostgresTableField
+
+sub updatePostgresLineageData {                          # if updating postgres table values, update postgres and return OK if ok
+  print "Content-type: text/html\n\n";
+  (my $var, my $column)   = &getHtmlVar($query, 'column');
+  ($var, my $joinkey)     = &getHtmlVar($query, 'joinkey');
+  ($var, my $curator_two) = &getHtmlVar($query, 'curator_two');
+  ($var, my $newValue)    = &getHtmlVar($query, 'newValue');  ($newValue)  = &fromUrlToPostgres($newValue);
+  ($var, my $sentname)    = &getHtmlVar($query, 'sentname');  ($sentname)  = &fromUrlToPostgres($sentname);
+  ($var, my $othername)   = &getHtmlVar($query, 'othername'); ($othername) = &fromUrlToPostgres($othername);
+  ($var, my $othertwo)    = &getHtmlVar($query, 'othertwo');  ($othertwo)  = &fromUrlToPostgres($othertwo);
+  ($var, my $role)        = &getHtmlVar($query, 'role');      ($role)      = &fromUrlToPostgres($role);
+  ($var, my $date1)       = &getHtmlVar($query, 'date1');     ($date1)     = &fromUrlToPostgres($date1);
+  ($var, my $date2)       = &getHtmlVar($query, 'date2');     ($date2)     = &fromUrlToPostgres($date2);
+  ($var, my $sender)      = &getHtmlVar($query, 'sender');    ($sender)    = &fromUrlToPostgres($sender);
+
+  my @pgcommands;
+  my $reverse_role = $role; my $reverse_sender = $sender;		# get reverse
+  my ($sentname_qual, $othername_qual, $othertwo_qual, $date1_qual, $date2_qual, $role_qual, $reverse_role_qual, $sender_qual, $reverse_sender_qual) = ('','','','','','','','','');
+  $joinkey = "'$joinkey'";			# there is always a joinkey
+  my $has_some_value = 0;			# only do INSERT if there is something to insert
+  if ($sentname) { $sentname_qual = " = '$sentname'"; $sentname = "'$sentname'"; $has_some_value++; }
+    else { $sentname_qual = " IS NULL"; $sentname = 'NULL'; }
+  if ($othername) { $othername_qual = " = '$othername'"; $othername = "'$othername'"; $has_some_value++; }
+    else { $othername_qual = " IS NULL"; $othername = 'NULL'; }
+  if ($othertwo) { $othertwo_qual = " = '$othertwo'"; $othertwo = "'$othertwo'"; $has_some_value++; }
+    else { $othertwo_qual = " IS NULL"; $othertwo = 'NULL'; }
+  if ($date1) { $date1_qual = " = '$date1'"; $date1 = "'$date1'"; $has_some_value++; } 
+    else { $date1_qual = " IS NULL"; $date1 = 'NULL'; }
+  if ($date2) { $date2_qual = " = '$date2'"; $date2 = "'$date2'"; $has_some_value++; } 
+    else { $date2_qual = " IS NULL"; $date2 = 'NULL'; }
+  if ($role) { $has_some_value++;  
+      if ($reverse_role eq 'Collaborated') { }
+        elsif ($reverse_role =~ m/^with/ ) { $reverse_role =~ s/with//g; }
+        else { $reverse_role = "with$reverse_role"; }
+      $role_qual = " = '$role'"; $role = "'$role'";
+      $reverse_role_qual = " = '$reverse_role'"; $reverse_role = "'$reverse_role'"; }
+    else { 
+      $role_qual = " IS NULL"; $reverse_role_qual = " IS NULL"; 
+      $role = 'NULL'; $reverse_role = 'NULL'; }
+  if ($sender) { $has_some_value++;  
+      if ($reverse_sender =~ m/^REV \- / ) { $reverse_sender =~ s/^REV \- //g; }
+        else { $reverse_sender = "REV - $reverse_sender"; }
+      $sender_qual = " = '$sender'"; $reverse_sender_qual = " = '$reverse_sender'"; 
+      $sender = "'$sender'"; $reverse_sender = "'$reverse_sender'"; }
+    else { 
+      $sender_qual = " IS NULL"; $reverse_sender_qual = " IS NULL"; 
+      $sender = 'NULL'; $reverse_sender = 'NULL'; }
+  if ($has_some_value) {				# only delete if there is something to delete
+    push @pgcommands, "DELETE FROM two_lineage WHERE joinkey = $joinkey AND two_sentname $sentname_qual AND two_othername $othername_qual AND two_number $othertwo_qual AND two_date1 $date1_qual AND two_date2 $date2_qual AND two_role $role_qual AND two_sender $sender_qual";
+    push @pgcommands, "DELETE FROM two_lineage WHERE joinkey $othertwo_qual AND two_sentname $othername_qual AND two_othername $sentname_qual AND two_number = $joinkey AND two_date1 $date1_qual AND two_date2 $date2_qual AND two_role $reverse_role_qual AND two_sender $reverse_sender_qual"; }
+  if    ($column eq 'sentname')  { if ($newValue) { $sentname = "'$newValue'"; } else { $sentname = 'NULL'; } }
+  elsif ($column eq 'othername') { if ($newValue) { $othername = "'$newValue'"; } else { $othername = 'NULL'; } }
+  elsif ($column eq 'othertwo')  { if ($newValue) { $othertwo = "'$newValue'"; } else { $othertwo = 'NULL'; } }
+  elsif ($column eq 'date1')     { if ($newValue) { $date1 = "'$newValue'"; } else { $date1 = 'NULL'; } }
+  elsif ($column eq 'date2')     { if ($newValue) { $date2 = "'$newValue'"; } else { $date2 = 'NULL'; } }
+  elsif ($column eq 'role')      { 
+    if ($newValue) { 
+        $reverse_role = $newValue;
+        if ($reverse_role eq 'Collaborated') { }
+          elsif ($reverse_role =~ m/^with/ ) { $reverse_role =~ s/with//g; }
+          else { $reverse_role = "with$reverse_role"; }
+        $reverse_role = "'$reverse_role'"; $role = "'$newValue'"; }
+      else { $role = 'NULL'; $reverse_role = 'NULL'; } }
+  elsif ($column eq 'sender')    {
+    if ($newValue) {
+        $reverse_sender = $newValue;
+        if ($reverse_sender =~ m/^REV \- / ) { $reverse_sender =~ s/^REV \- //g; }
+          else { $reverse_sender = "REV - $reverse_sender"; }
+        $reverse_sender = "'$reverse_sender'"; $sender = "'$newValue'"; }
+      else { $sender = 'NULL'; $reverse_sender = 'NULL'; } }
+  if ( ($sentname ne 'NULL') || ($othername ne 'NULL') || ($othertwo ne 'NULL') || ($role ne 'NULL') || ($date1 ne 'NULL') || ($date2 ne 'NULL') || ($sender ne 'NULL') ) {		# if any non-joinkey column is not null insert entries
+    push @pgcommands, "INSERT INTO two_lineage VALUES ( $joinkey, $sentname, $othername, $othertwo, $role, $date1, $date2, $sender )";
+    push @pgcommands, "INSERT INTO two_lineage VALUES ( $othertwo, $othername, $sentname, $joinkey, $reverse_role, $date1, $date2, $reverse_sender )"; }
+
+  foreach my $command (@pgcommands) {
+#     print "$command<br />\n";
+    $result = $dbh->do( $command );
+  }
+  print "OK";
+} # sub updatePostgresLineageData
+
+
+sub getHighestJoinkey {
+  $result = $dbh->prepare( "SELECT two FROM two ORDER BY two::INTEGER DESC" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  my @row = $result->fetchrow(); my ($two_number) = $row[0]; return $two_number;
+} # sub getHighestJoinkey
+
+sub createNewPerson {
+  &printHtmlHeader();
+  my ($curator_two) = &getCuratorFromForm();
+  my ($two_number) = &getHighestJoinkey();
+  $two_number++;
+  my $joinkey = 'two' . $two_number;
+  print "Will create $joinkey (IF THESE ARE THE RIGHT COMMANDS, TELL JUANCARLOS TO MAKE IT LIVE, IT'S NOT DOING ANYTHING NOW)<br />\n";
+  my $url = "person_editor.cgi?curator_two=$curator_two&action=Search&display_or_edit=edit&input_number_1=$joinkey";
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"createNewPerson\">";
+  print "<input type=\"hidden\" name=\"redirect_to\" id=\"redirect_to\" value=\"$url\">";
+  my @pgcommands;
+  (@pgcommands) = &addToPgcommandsTwoCreation($two_number, $curator_two, @pgcommands);
+  foreach my $command (@pgcommands) {
+    print "$command<br />\n";
+    $result = $dbh->do( $command );
+  } # foreach my $command (@pgcommands)
+} # sub createNewPerson
+
+
+### Search Section ###
+ 
+sub search {
+  &printHtmlHeader();
+  my ($curator_two) = &getCuratorFromForm();
+  (my $var, my $number) = &getHtmlVar($query, "input_number_1");
+  if ($number) {
+    if ($number =~ m/(\d+)/) { &displayPerson("two$1", $curator_two); return; }
+      else { print "Not a number in a number search for $number<br />\n"; } }
+
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"searchResults\">";
+
+  my %hash;
+  my $order = 1;
+  foreach my $table (@normal_tables) {
+    ($var, my $data) = &getHtmlVar($query, "input_${table}_${order}");
+    next unless ($data);	# skip those with search params
+    my $substring = ''; my $case = ''; my $operator = '=';
+    ($var, $substring) = &getHtmlVar($query, "substring_$table");
+    ($var, $case) = &getHtmlVar($query, "case_$table");
+    if ($case eq 'on') { $operator = '~*'; }
+    elsif ($substring eq 'on') { $operator = '~'; }
+#     print "SELECT joinkey, two_$table FROM two_$table WHERE two_$table $operator '$data'<br />\n";
+    $result = $dbh->prepare( "SELECT joinkey, two_$table FROM two_$table WHERE two_$table $operator '$data'" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) { 
+      $hash{matches}{$row[0]}{$table}++; 
+      push @{ $hash{table}{$table}{$row[0]} }, $row[1]; }
+  } # foreach my $table (@normal_tables)
+  my %matches; 
+  my $joinkeys = join"','", keys %{ $hash{matches} }; my %std_name; my %status;
+  $result = $dbh->prepare( "SELECT joinkey, two_standardname FROM two_standardname WHERE joinkey IN ('$joinkeys')" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  while (my @row = $result->fetchrow) { $std_name{$row[0]} = $row[1]; }
+  $result = $dbh->prepare( "SELECT joinkey, two_status FROM two_status WHERE joinkey IN ('$joinkeys')" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  while (my @row = $result->fetchrow) { if ($row[1] eq 'Invalid') { $status{$row[0]} = $row[1]; } else { $status{$row[0]} = ''; } }
+  foreach my $joinkey (keys %{ $hash{matches} }) {
+    my $count = scalar keys %{ $hash{matches}{$joinkey} }; $matches{$count}{$joinkey}++; }
+  foreach my $count (reverse sort {$a<=>$b} keys %matches) {
+    print "<br />Matches $count<br />\n";
+    foreach my $joinkey (sort {$a<=>$b} keys %{ $matches{$count} }) {
+      print "<font color=\"red\">$status{$joinkey}</font> ";	# add invalid flag to person search 2012 07 31
+      print "<a href=\"person_editor.cgi?curator_two=$curator_two&action=Search&display_or_edit=display&input_number_1=$joinkey\">$joinkey</a>\n";
+      print "<font color=\"brown\">$std_name{$joinkey}</font> ";
+      foreach my $table (keys %{ $hash{table} }) {
+        next unless $hash{table}{$table}{$joinkey};
+        my $data_match = join", ", @{ $hash{table}{$table}{$joinkey} }; 
+        print "$table : <font color=\"green\">$data_match</font>\n"; }
+      print "<br />\n";
+    } # foreach my $joinkey (sort {$a<=>$b} keys %{ $matches{$count} })
+  } # foreach my $count (reverse sort {$a<=>$b} keys %matches)
+  &printFooter();
+} # sub search
+
+### End Search Section ###
+
+
+### Person Editing Section ###
+
+sub displayPerson {
+  my ($joinkey, $curator_two) = @_;
+  (my $var, my $display_or_edit) = &getHtmlVar($query, "display_or_edit");
+  print "<input type=\"hidden\" name=\"person_joinkey\" id=\"person_joinkey\" value=\"$joinkey\">";
+
+  my %display_data;
+  my $header_bgcolor = '#dddddd'; my $header_color = 'black';
+
+  print "<table style=\"border-style: none;\" border=\"0\" >\n";
+  my $entry_data = "<tr bgcolor='$header_bgcolor'><td>$joinkey</td><td colspan=6><div style=\"color:$header_color\">Person Information</div></td></tr>\n";
+
+  my %pgdata;
+  foreach my $table (@normal_tables) {
+    $entry_data .= "<input type=\"hidden\" class=\"fields\" value=\"$table\" \/>\n";
+    my $pg_table = 'two_' . $table; 
+    $result = $dbh->prepare( "SELECT * FROM $pg_table WHERE joinkey = '$joinkey' ORDER BY two_order" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) {
+      next unless ($row[2]);				# skip blank entries
+      $pgdata{$table}{$row[1]}{highest_order} = $row[1];
+      $pgdata{$table}{$row[1]}{data} = $row[2];
+      $pgdata{$table}{$row[1]}{row_curator} = $row[3];
+      $pgdata{$table}{$row[1]}{timestamp} = $row[4]; }
+  } # foreach my $table (@normal_tables)
+
+#   if ($display_or_edit eq 'display') { ($entry_data) = &displayPersonDisplay($joinkey, $curator_two, $entry_data, \%pgdata); }
+#     else { ($entry_data) = &displayPersonEditor($joinkey, $curator_two, $entry_data, \%pgdata); }
+
+  my $is_valid = '';			# if person status is Invalid make red to show on toggle href switch  2012 07 30
+  if ($pgdata{'status'}{1}{data}) { if ($pgdata{'status'}{1}{data} eq 'Invalid') { $is_valid = qq(<b style="color: red;font-size: 14pt">Invalid : </b>\n); } }
+
+  my $which_page = 'displayPersonEditor'; my $opp_display_or_edit = 'display';
+  if ($display_or_edit eq 'display') { $which_page = 'displayPersonDisplay'; $opp_display_or_edit = 'edit'; }
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"$which_page\">";
+  my $toggle_url = "person_editor.cgi?curator_two=$curator_two&action=Search&display_or_edit=$opp_display_or_edit&input_number_1=$joinkey";	# add link to person_editor in display mode
+  $entry_data .= "$is_valid Switch to <a href=\"$toggle_url\">$opp_display_or_edit</a>.<br />\n";
+
+  foreach my $table (@normal_tables) {
+    next if ( ($table eq 'middlename') || ($table eq 'lastname') || ($table eq 'aka_middlename') || ($table eq 'aka_lastname') || 
+              ($table eq 'old_inst_date') || ($table eq 'old_email_date') || ($table eq 'usefulwebpage') );
+    my $highest_order = 0;
+#     if ($table eq 'status') { $entry_data .= "<tr bgcolor='$header_bgcolor'><td colspan=7><div style=\"color:$header_color\">Publication Information</div></td></tr>\n"; }
+
+    foreach my $order (sort {$a<=>$b} keys %{ $pgdata{$table} }) {
+      if ($table eq 'firstname') {
+        $entry_data .= &makeTripletHorizontal(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'middlename', 'lastname', 'name'); }
+      elsif ($table eq 'aka_firstname') {
+        $entry_data .= &makeTripletHorizontal(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'aka_middlename', 'aka_lastname', 'aka_name'); }
+      elsif ($table eq 'old_email') {
+#         $entry_data .= &makeDoubleTimeHorizontal(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'old_email_date', 'old_email');
+        $entry_data .= &makeDoubleVertical(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'old_email_date', 'old_email'); }
+      elsif ($table eq 'old_institution') {
+        $entry_data .= &makeDoubleVertical(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'old_inst_date', 'old_institution'); }
+      elsif ($table eq 'webpage') {
+        $entry_data .= &makeCheckboxInput(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'usefulwebpage', 'webpage'); }
+      else {
+        $entry_data .= &makeSingleNormal(\%pgdata, $display_or_edit, $joinkey, $order, $table); }
+      if ($order > $highest_order) { $highest_order = $order; }
+    } # foreach my $order (sort {$a<=>$b} keys %{ $pgdata{$table} })
+
+    if ($display_or_edit eq 'edit') {					# in edit mode, show extra fields
+      if ($order_type{multi}{$table}) { if ($highest_order) { 
+        if ($highest_order >= $min_rows{$table}) { $min_rows{$table} = $highest_order+1; } } }	# always make one more row than are for multi value tables
+      while ($highest_order < $min_rows{$table}) {						# while there are less rows than should be
+        $highest_order++; my $order = $highest_order;
+        $pgdata{$table}{$highest_order}{highest_order} = $highest_order;
+        if ($table eq 'firstname') {
+          $entry_data .= &makeTripletHorizontal(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'middlename', 'lastname', 'name'); }
+        elsif ($table eq 'aka_firstname') {
+          $entry_data .= &makeTripletHorizontal(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'aka_middlename', 'aka_lastname', 'aka_name'); }
+        elsif ($table eq 'old_email') {
+#           $entry_data .= &makeDoubleTimeHorizontal(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'old_email_date', 'old_email');
+          $entry_data .= &makeDoubleVertical(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'old_email_date', 'old_email'); }
+        elsif ($table eq 'old_institution') {
+          $entry_data .= &makeDoubleVertical(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'old_inst_date', 'old_institution'); }
+        elsif ($table eq 'webpage') {
+          $entry_data .= &makeCheckboxInput(\%pgdata, $display_or_edit, $joinkey, $order, $table, 'usefulwebpage', 'webpage'); }
+        else {
+          $entry_data .= &makeSingleNormal(\%pgdata, $display_or_edit, $joinkey, $order, $table); }
+      } # while ($highest_order < $min_rows{$table})
+    } # if ($display_or_edit eq 'edit')
+  } # foreach my $table (@normal_tables)
+
+  foreach my $table (@normal_tables) {
+    my ($highest_order, @junk) = sort {$b<=>$a} keys %{ $pgdata{$table} };
+    unless ($highest_order) { $highest_order = 1; }
+    print "<input type=\"hidden\" id=\"type_input_$table\" value=\"$type_input{$table}\">\n";
+    print "<input type=\"hidden\" id=\"highest_order_$table\" value=\"$highest_order\">\n";
+  } # foreach my $table (@normal_tables)
+
+  print "$entry_data\n";
+  print "</table>\n";
+
+  print "Switch to <a href=\"$toggle_url\">$opp_display_or_edit</a>.<br />\n";
+  &makeLineageDisplay($joinkey, $display_or_edit, $header_bgcolor, $header_color);
+  # allow editing of two_sender (in reverse) two_othername two_role two_date1 two_date2 two_sender
+
+} # sub displayPerson
+
+sub makeLineageDisplay {
+  my ($joinkey, $display_or_edit, $header_bgcolor, $header_color) = @_;
+  &populateLineageDropdowns();
+  my $result = $dbh->prepare( "SELECT * FROM two_lineage WHERE joinkey = '$joinkey';" );
+#   print "SELECT * FROM two_lineage WHERE joinkey = '$joinkey';<br />" ;
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  my $bgcolor = $blue;
+  print "<table style=\"border-style: none;\" border=\"0\" >\n";
+  print "<tr bgcolor='$header_bgcolor'><td>$joinkey</td><td colspan=7><div style=\"color:$header_color\">Lineage</div></td></tr>\n";
+  print "<tr bgcolor='$header_bgcolor'><td>sentname</td><td>othername</td><td>othertwo</td><td>role</td><td>date1</td><td>date2</td><td>sender</td><td>timestamp</td></tr>\n";
+  my $lineage_count = 0;
+  while (my @row = $result->fetchrow) {
+    my ($a, $sentname, $othername, $othertwo, $role, $date1, $date2, $sender, $timestamp) = @row;
+    unless ($sentname) { $sentname = ''; } unless ($othername) { $othername = ''; } unless ($othertwo) { $othertwo = ''; }
+    unless ($role) { $role = ''; } unless ($date1) { $date1 = ''; } unless ($date2) { $date2 = ''; }
+    unless ($sender) { $sender = ''; } unless ($timestamp) { $timestamp = ''; }
+    $timestamp =~ s/\.[\d\-]+$//;
+    $lineage_count++;
+    if ($display_or_edit eq 'edit') { &makeLineageRowEdit($lineage_count, $bgcolor, $joinkey, $sentname, $othername, $othertwo, $role, $date1, $date2, $sender, $timestamp); }
+      else { print "<tr bgcolor='$bgcolor'><td>$sentname</td><td>$othername</td><td>$othertwo</td><td>$role</td><td>$date1</td><td>$date2</td><td>$sender</td><td>$timestamp</td></tr>\n"; }
+  } # while (my @row = $result->fetchrow)
+  if ($display_or_edit eq 'edit') { 
+    $bgcolor = 'white'; my $extra_lineage_fields = '5';
+    for (1 .. $extra_lineage_fields) {
+      $lineage_count++;
+      &makeLineageRowEdit($lineage_count, $bgcolor, $joinkey, '', '', '', '', '', '', '', ''); } }
+  print "</table>\n";
+  print "<input type=\"hidden\" id=\"highest_order_lineage\" value=\"$lineage_count\">\n";
+  print "<input type=\"hidden\" class=\"lineage_fields\" value=\"sentname\">\n";
+  print "<input type=\"hidden\" class=\"lineage_fields\" value=\"othername\">\n";
+  print "<input type=\"hidden\" class=\"lineage_fields\" value=\"othertwo\">\n";
+  print "<input type=\"hidden\" class=\"lineage_fields\" value=\"role\">\n";
+  print "<input type=\"hidden\" class=\"lineage_fields\" value=\"date1\">\n";
+  print "<input type=\"hidden\" class=\"lineage_fields\" value=\"date2\">\n";
+  print "<input type=\"hidden\" class=\"lineage_fields\" value=\"sender\">\n";
+  print "<input type=\"hidden\" id=\"type_input_sentname\"  value=\"input\">\n";
+  print "<input type=\"hidden\" id=\"type_input_othername\" value=\"input\">\n";
+  print "<input type=\"hidden\" id=\"type_input_othertwo\"  value=\"input\">\n";
+  print "<input type=\"hidden\" id=\"type_input_role\"      value=\"dropdown\">\n";
+  print "<input type=\"hidden\" id=\"type_input_date1\"     value=\"dropdown\">\n";
+  print "<input type=\"hidden\" id=\"type_input_date2\"     value=\"dropdown\">\n";
+  print "<input type=\"hidden\" id=\"type_input_sender\"    value=\"input\">\n";
+} # sub makeLineageDisplay
+
+sub makeLineageRowEdit {
+  my ($lineage_count, $bgcolor, $joinkey, $sentname, $othername, $othertwo, $role, $date1, $date2, $sender, $timestamp) = @_;
+  print "<tr bgcolor='$bgcolor'>";
+  &makeLineageInput($lineage_count, $joinkey, $sentname, 'sentname');
+  &makeLineageInput($lineage_count, $joinkey, $othername, 'othername');
+  &makeLineageInput($lineage_count, $joinkey, $othertwo, 'othertwo');
+  &makeLineageDropdown($lineage_count, $joinkey, $role, 'role');
+  &makeLineageDropdown($lineage_count, $joinkey, $date1, 'date1');
+  &makeLineageDropdown($lineage_count, $joinkey, $date2, 'date2');
+  &makeLineageInput($lineage_count, $joinkey, $sender, 'sender');
+  print "<td>$timestamp</td>";
+  print "</tr>";
+} # sub makeLineageRowEdit
+
+sub makeLineageInput {
+  my ($lineage_count, $joinkey, $value, $column) = @_;
+  unless ($value) { $value = ''; }
+  print "<td><input type=\"hidden\" id=\"old_${column}_${lineage_count}\" value=\"$value\">  <input id=\"cur_${column}_${lineage_count}\" value=\"$value\"></td>";
+} # sub makeLineageInput
+
+sub makeLineageDropdown {
+  my ($lineage_count, $joinkey, $value, $column) = @_;
+  unless ($value) { $value = ''; }
+  print "<td><input type=\"hidden\" id=\"old_${column}_${lineage_count}\" value=\"$value\">";
+  print "<select id=\"cur_${column}_${lineage_count}\" size=\"1\">";
+  foreach my $option (keys %{ $lineageDropdowns{$column} }) {
+    my $selected = ''; if ($option eq $value) { $selected = 'selected="selected"'; }
+    print "<option value=\"$option\" $selected>$lineageDropdowns{$column}{$option}</option>\n"; }
+  print "</td>";
+} # sub makeLineageDropdown
+
+sub populateLineageDropdowns {
+  my @dates = qw( date1 date2 );
+  my ($cur_date) = &getSimpleDate();
+  foreach my $column (@dates) { 
+    tie %{ $lineageDropdowns{$column} }, "Tie::IxHash";
+    $lineageDropdowns{$column}{''} = '';
+    $lineageDropdowns{$column}{'present'} = 'present';
+    my ($year) = $cur_date =~ m/^(\d{4})/;
+    while ($year > 1900) {
+      $lineageDropdowns{$column}{$year} = $year;
+      $year--; } }
+  tie %{ $lineageDropdowns{'role'} }, "Tie::IxHash";
+  $lineageDropdowns{'role'}{''} = '';
+  $lineageDropdowns{'role'}{'withPhd'} = 'I trained as a PhD under';
+  $lineageDropdowns{'role'}{'withPostdoc'} = 'I trained as a Postdoc under';
+  $lineageDropdowns{'role'}{'withMasters'} = 'I trained as a Masters under';
+  $lineageDropdowns{'role'}{'withUndergrad'} = 'I trained as an Undergrad under';
+  $lineageDropdowns{'role'}{'withHighschool'} = 'I trained as a High School student under';
+  $lineageDropdowns{'role'}{'withSabbatical'} = 'I trained for a Sabbatical under';
+  $lineageDropdowns{'role'}{'withLab_visitor'} = 'I trained as a Lab Visitor under';
+  $lineageDropdowns{'role'}{'withResearch_staff'} = 'I trained as a Research Staff under';
+  $lineageDropdowns{'role'}{'withAssistant_professor'} = 'I trained as an Assistant Professor under';
+  $lineageDropdowns{'role'}{'withUnknown'} = 'I trained as an Unknown under';
+  $lineageDropdowns{'role'}{'Phd'} = 'I trained this person as a PhD';
+  $lineageDropdowns{'role'}{'Postdoc'} = 'I trained this person as a Postdoc';
+  $lineageDropdowns{'role'}{'Masters'} = 'I trained this person as a Masters';
+  $lineageDropdowns{'role'}{'Undergrad'} = 'I trained this person as an Undergrad';
+  $lineageDropdowns{'role'}{'Highschool'} = 'I trained this person as a High School student';
+  $lineageDropdowns{'role'}{'Sabbatical'} = 'I trained this person during a Sabbatical';
+  $lineageDropdowns{'role'}{'Lab_visitor'} = 'I trained this person as a Lab Visitor';
+  $lineageDropdowns{'role'}{'Research_staff'} = 'I trained this person as a Research Staff';
+  $lineageDropdowns{'role'}{'Assistant_professor'} = 'I trained this person as an Assistant Professor';
+  $lineageDropdowns{'role'}{'Unknown'} = 'I trained this person as an Unknown';
+  $lineageDropdowns{'role'}{'Collaborated'} = 'I collaborated with';
+} # sub populateLineageDropdowns
+
+
+sub makeDisplayField {
+  my ($current_value, $table, $joinkey, $order, $colspan, $rowspan, $class, $td_width, $input_size) = @_;
+  unless ($current_value) { $current_value = ''; }
+  if ($table eq 'webpage') { $current_value = "<a href=\"$current_value\" target=\"new\">$current_value</a>"; }
+  my $data = "<td width=\"$td_width\" class=\"$class\" rowspan=\"$rowspan\" colspan=\"$colspan\">$current_value</td>";
+  return $data;
+} # sub makeDisplayField
+
+sub makeInputField {
+  my ($current_value, $table, $joinkey, $order, $colspan, $rowspan, $class, $td_width, $input_size) = @_;
+  unless ($current_value) { $current_value = ''; }
+  my $freeForced = 'free';
+  my $containerSpanId = "container${freeForced}${table}${order}AutoComplete";
+  my $divAutocompleteId = "${freeForced}${table}${order}AutoComplete";
+  my $inputId = "input_${table}_$order";
+  my $divContainerId = "${freeForced}${table}${order}Container";
+  my $data = "<td width=\"$td_width\" class=\"$class\" rowspan=\"$rowspan\" colspan=\"$colspan\">
+  <span id=\"$containerSpanId\">
+  <div id=\"$divAutocompleteId\" class=\"div-autocomplete\">
+  <input id=\"$inputId\" name=\"$inputId\" size=\"$input_size\" value=\"$current_value\">
+  <div id=\"$divContainerId\"></div></div></span>
+  </td>";
+#    <span id=\"container${freeForced}${table}AutoComplete\">
+#    <div id=\"${freeForced}${table}AutoComplete\" class=\"div-autocomplete\">
+#    <input id=\"input_$table\" name=\"input_$table\" size=\"$input_size\">
+#    <div id=\"${freeForced}${table}Container\"></div></div></span>
+  return $data;
+} # sub makeInputField
+
+sub makeCheckboxField {
+  my ($current_value, $table, $joinkey, $order) = @_;
+  my $checked = ''; if ($current_value) { $checked = 'checked="checked"'; }
+  my $inputId = "input_${table}_$order";
+  my $data = "<input type=\"checkbox\" id=\"$inputId\" name=\"$inputId\" value=\"$table\" $checked>";
+  return $data;
+} # sub makeCheckboxField
+
+sub makeSingleNormal {
+  my ($pgdata_ref, $display_or_edit, $joinkey, $order, $one_table) = @_;
+  my %pgdata = %$pgdata_ref;
+  my $td_width = '550';		# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 550
+  my $input_size = '80';
+  my $bgcolor = 'white';
+  my ($one_data, $one_row_curator, $one_timestamp, $two_data, $two_row_curator, $two_timestamp) = ('', '', '', '', '', '');
+  if ($pgdata{$one_table}{$order}{data}) { $one_data = $pgdata{$one_table}{$order}{data}; $bgcolor = $blue; }
+  if ($pgdata{$one_table}{$order}{row_curator}) { $one_row_curator = $pgdata{$one_table}{$order}{row_curator}; }
+  if ($pgdata{$one_table}{$order}{timestamp}) { $one_timestamp = $pgdata{$one_table}{$order}{timestamp}; $one_timestamp =~ s/\.[\d\-]+$//; $one_timestamp .= "<input type=\"hidden\" id=\"timestamp_${one_table}_${order}\" value=\"$one_timestamp\">"; }
+  my $td_one_data = '';
+  if ($display_or_edit eq 'edit') {
+      ($td_one_data) = &makeInputField($one_data, $one_table, $joinkey, $order, '3', '1', '', $td_width, $input_size); 
+      if ( ($bgcolor eq $blue) && ( ($one_table eq 'email') || ($one_table eq 'institution') || ($one_table eq 'lab') ) ) { ($one_table) = &labelAddMoveButton($one_table, $order); } }	# if the table already existed and has a corresponding old table, add a button to move the data
+    else {
+      ($td_one_data) = &makeDisplayField($one_data, $one_table, $joinkey, $order, '3', '1', '', $td_width, $input_size); }
+  if ($bgcolor eq 'white') { $order .= "<input type=\"hidden\" id=\"highest_${one_table}_order\" value=\"$order\">\n"; }	# have an id for the next highest order of the old tables for oldlab
+  return "<tr bgcolor='$bgcolor'><td>$one_table</td><td>$order</td>$td_one_data<td style=\"width:12em\">&nbsp; $one_timestamp</td></tr>\n";
+} # sub makeSingleNormal
+
+sub labelAddMoveButton {
+  my ($table, $order) = @_;
+  $table .= " <button onclick=\"moveDataToOldTable('$table', '$order')\">move</button>";
+  return $table;
+} # sub labelAddMoveButton
+
+sub makeCheckboxInput {
+  my ($pgdata_ref, $display_or_edit, $joinkey, $order, $one_table, $two_table, $label) = @_;
+  my %pgdata = %$pgdata_ref;
+  my $td_width = '550';		# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 550
+  my $input_size = '80';
+  my $bgcolor = 'white';
+  my ($one_data, $one_row_curator, $one_timestamp, $two_data, $two_row_curator, $two_timestamp) = ('', '', '', '', '', '');
+  my ($td_one_data, $td_two_data, $two_checkbox);
+  if ($pgdata{$one_table}{$order}{data}) { $one_data = $pgdata{$one_table}{$order}{data}; $bgcolor = $blue; }
+  if ($pgdata{$one_table}{$order}{row_curator}) { $one_row_curator = $pgdata{$one_table}{$order}{row_curator}; }
+  if ($pgdata{$one_table}{$order}{timestamp}) { $one_timestamp = $pgdata{$one_table}{$order}{timestamp}; $one_timestamp =~ s/\.[\d\-]+$//; }
+  if ($pgdata{$two_table}{$order}{data}) { $two_data = $pgdata{$two_table}{$order}{data}; }
+  if ($pgdata{$two_table}{$order}{row_curator}) { $two_row_curator = $pgdata{$two_table}{$order}{row_curator}; }
+  if ($pgdata{$two_table}{$order}{timestamp}) { $two_timestamp = $pgdata{$two_table}{$order}{timestamp}; $two_timestamp =~ s/\.[\d\-]+$//; }
+  if ($display_or_edit eq 'edit') {
+      ($td_one_data) = &makeInputField($one_data, $one_table, $joinkey, $order, '3', '1', '', $td_width, $input_size);
+      ($two_checkbox) = &makeCheckboxField($two_data, $two_table, $joinkey, $order);
+      return "<tr bgcolor='$bgcolor'><td rowspan=\"1\">$label $two_checkbox</td><td rowspan=\"1\">$order</td>${td_one_data}<td style=\"width:12em\">&nbsp; $one_timestamp</td></tr>\n"; }
+    else {
+      ($td_one_data) = &makeDisplayField($one_data, $one_table, $joinkey, $order, '2', '1', '', '', $input_size);
+      ($td_two_data) = &makeDisplayField($two_data, $two_table, $joinkey, $order, '1', '1', '', '', $input_size);
+      return "<tr bgcolor='$bgcolor'><td rowspan=\"1\">$label</td><td rowspan=\"1\">$order</td>${td_one_data}${td_two_data}<td style=\"width:12em\">&nbsp; $one_timestamp</td></tr>\n"; }
+} # sub makeCheckboxInput
+
+sub makeTripletHorizontal {
+  my ($pgdata_ref, $display_or_edit, $joinkey, $order, $one_table, $two_table, $three_table, $label) = @_;
+  my %pgdata = %$pgdata_ref;
+  my $td_width = '40';		# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 550
+  my $input_size = '20';
+  my $bgcolor = 'white';
+  my ($one_data, $one_row_curator, $one_timestamp, $two_data, $two_row_curator, $two_timestamp, $three_data, $three_row_curator, $three_timestamp);
+  my ($td_one_data, $td_two_data, $td_three_data);
+  if ($pgdata{$one_table}{$order}{data}) { $one_data = $pgdata{$one_table}{$order}{data}; $bgcolor = $blue; }
+  if ($pgdata{$one_table}{$order}{row_curator}) { $one_row_curator = $pgdata{$one_table}{$order}{row_curator}; }
+  if ($pgdata{$one_table}{$order}{timestamp}) { $one_timestamp = $pgdata{$one_table}{$order}{timestamp}; $one_timestamp =~ s/\.[\d\-]+$//; }
+  if ($pgdata{$two_table}{$order}{data}) { $two_data = $pgdata{$two_table}{$order}{data}; }
+  if ($pgdata{$two_table}{$order}{row_curator}) { $two_row_curator = $pgdata{$two_table}{$order}{row_curator}; }
+  if ($pgdata{$two_table}{$order}{timestamp}) { $two_timestamp = $pgdata{$two_table}{$order}{timestamp}; $two_timestamp =~ s/\.[\d\-]+$//; }
+  if ($pgdata{$three_table}{$order}{data}) { $three_data = $pgdata{$three_table}{$order}{data}; }
+  if ($pgdata{$three_table}{$order}{row_curator}) { $three_row_curator = $pgdata{$three_table}{$order}{row_curator}; }
+  if ($pgdata{$three_table}{$order}{timestamp}) { $three_timestamp = $pgdata{$three_table}{$order}{timestamp}; $three_timestamp =~ s/\.[\d\-]+$//; }
+  if ($display_or_edit eq 'edit') {
+      ($td_one_data) = &makeInputField($one_data, $one_table, $joinkey, $order, '1', '1', '', $td_width, $input_size);
+      ($td_two_data) = &makeInputField($two_data, $two_table, $joinkey, $order, '1', '1', '', $td_width, $input_size);
+      ($td_three_data) = &makeInputField($three_data, $three_table, $joinkey, $order, '1', '1', '', $td_width, $input_size); }
+    else {
+      if ($one_timestamp) { $one_timestamp = '<br/>' . $one_timestamp; } if ($two_timestamp) { $two_timestamp = '<br/>' . $two_timestamp; } if ($three_timestamp) { $three_timestamp = '<br/>' . $three_timestamp; }
+      ($td_one_data) = &makeDisplayField($one_data, $one_table, $joinkey, $order, '1', '1', '', $td_width, $input_size);
+      ($td_two_data) = &makeDisplayField($two_data, $two_table, $joinkey, $order, '1', '1', '', $td_width, $input_size);
+      ($td_three_data) = &makeDisplayField($three_data, $three_table, $joinkey, $order, '1', '1', '', $td_width, $input_size); }
+  if ($one_timestamp) { $td_one_data =~ s/<\/td>$/$one_timestamp<\/td>/; }
+  if ($two_timestamp) { $td_two_data =~ s/<\/td>$/$two_timestamp<\/td>/; }
+  if ($three_timestamp) { $td_three_data =~ s/<\/td>$/$three_timestamp<\/td>/; }
+  return "<tr bgcolor='$bgcolor'><td>$label</td><td>$order</td>${td_one_data}${td_two_data}${td_three_data}</tr>\n";
+} # sub makeTripletHorizontal
+
+sub makeDoubleTimeHorizontal {			# not being used
+  my ($pgdata_ref, $display_or_edit, $joinkey, $order, $one_table, $two_table, $label) = @_;
+  my %pgdata = %$pgdata_ref;
+  my $td_width = '40';		# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 550
+  my $input_size = '20';
+  my $bgcolor = 'white';
+  my ($one_data, $one_row_curator, $one_timestamp, $two_data, $two_row_curator, $two_timestamp) = ('', '', '', '', '', '');
+  my ($td_one_data, $td_two_data);
+  if ($pgdata{$one_table}{$order}{data}) { $one_data = $pgdata{$one_table}{$order}{data}; $bgcolor = $blue; }
+  if ($pgdata{$one_table}{$order}{row_curator}) { $one_row_curator = $pgdata{$one_table}{$order}{row_curator}; }
+  if ($pgdata{$one_table}{$order}{timestamp}) { $one_timestamp = $pgdata{$one_table}{$order}{timestamp}; $one_timestamp =~ s/\.[\d\-]+$//; }
+  if ($pgdata{$two_table}{$order}{data}) { $two_data = $pgdata{$two_table}{$order}{data}; }
+  if ($pgdata{$two_table}{$order}{row_curator}) { $two_row_curator = $pgdata{$two_table}{$order}{row_curator}; }
+  if ($pgdata{$two_table}{$order}{timestamp}) { $two_timestamp = $pgdata{$two_table}{$order}{timestamp}; $two_timestamp =~ s/\.[\d\-]+$//; }
+  if ($display_or_edit eq 'edit') {
+      ($td_one_data) = &makeInputField($one_data, $one_table, $joinkey, $order, '1', '1', '', $td_width, $input_size);
+      ($td_two_data) = &makeInputField($two_data, $two_table, $joinkey, $order, '1', '1', '', $td_width, $input_size); }
+    else {
+      ($td_one_data) = &makeDisplayField($one_data, $one_table, $joinkey, $order, '1', '1', '', $td_width, $input_size);
+      ($td_two_data) = &makeDisplayField($two_data, $two_table, $joinkey, $order, '1', '1', '', $td_width, $input_size); }
+  return "<tr bgcolor='$bgcolor'><td>$label</td><td>$order</td>${td_one_data}<td class=\"\" width=\"$td_width\">&nbsp; $one_timestamp</td>${td_two_data}<td style=\"width:$td_width\">&nbsp; $two_timestamp</td></tr>\n";
+} # sub makeDoubleTimeHorizontal
+
+sub makeDoubleVertical {
+  my ($pgdata_ref, $display_or_edit, $joinkey, $order, $one_table, $two_table, $label) = @_;
+  my %pgdata = %$pgdata_ref;
+  my $td_width = '550';		# there's some weird auto-sizing of the field where it shrinks to nothing if the td doesn't have a size, so min size is 550
+  my $input_size = '80';
+  my $bgcolor = 'white';
+  my ($one_data, $one_row_curator, $one_timestamp, $two_data, $two_row_curator, $two_timestamp) = ('', '', '', '', '', '');
+  my ($td_one_data, $td_two_data);
+  if ($pgdata{$one_table}{$order}{data}) { $one_data = $pgdata{$one_table}{$order}{data}; $bgcolor = $blue; }
+  if ($pgdata{$one_table}{$order}{row_curator}) { $one_row_curator = $pgdata{$one_table}{$order}{row_curator}; }
+  if ($pgdata{$one_table}{$order}{timestamp}) { $one_timestamp = $pgdata{$one_table}{$order}{timestamp}; $one_timestamp =~ s/\.[\d\-]+$//; }
+  if ($pgdata{$two_table}{$order}{data}) { $two_data = $pgdata{$two_table}{$order}{data}; }
+  if ($pgdata{$two_table}{$order}{row_curator}) { $two_row_curator = $pgdata{$two_table}{$order}{row_curator}; }
+  if ($pgdata{$two_table}{$order}{timestamp}) { $two_timestamp = $pgdata{$two_table}{$order}{timestamp}; $two_timestamp =~ s/\.[\d\-]+$//; }
+  if ($display_or_edit eq 'edit') {
+      ($td_one_data) = &makeInputField($one_data, $one_table, $joinkey, $order, '3', '1', '', $td_width, $input_size);
+      ($td_two_data) = &makeInputField($two_data, $two_table, $joinkey, $order, '3', '1', '', $td_width, $input_size); }
+    else {
+      ($td_one_data) = &makeDisplayField($one_data, $one_table, $joinkey, $order, '3', '1', '', $td_width, $input_size);
+      ($td_two_data) = &makeDisplayField($two_data, $two_table, $joinkey, $order, '3', '1', '', $td_width, $input_size); }
+  if ($bgcolor eq 'white') { $order .= "<input type=\"hidden\" id=\"highest_${one_table}_order\" value=\"$order\">\n"; }	# have an id for the next highest order of the old tables
+  my $entry_data = "<tr bgcolor='$bgcolor'><td rowspan=\"1\">$label</td><td rowspan=\"2\">$order</td>${td_one_data}<td style=\"width:12em\">&nbsp; $one_timestamp</td></tr>\n";
+  $entry_data .= "<tr bgcolor='$bgcolor'><td rowspan=\"1\">$two_table</td>${td_two_data}<td style=\"width:12em\">&nbsp; $two_timestamp</td></tr>\n";
+} # sub makeDoubleVertical
+
+### End Person Editing Section ###
+
+
+### Paper Editing Section ###
+
+sub checkoutPapers {
+  &printHtmlHeader();
+  my ($curator_two) = &getCuratorFromForm();
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"checkoutPapers\">";
+#   print "What papers to show here ?<br />\n";
+#   print "SELECT joinkey FROM pap_curation_flags WHERE pap_curation_flags = 'author_person' AND joinkey NOT IN (SELECT joinkey FROM pap_curation_done WHERE pap_curation_done = 'author_person') ORDER BY joinkey::INTEGER DESC<br />" ;
+  $result = $dbh->prepare( "SELECT joinkey FROM pap_curation_flags WHERE pap_curation_flags = 'author_person' AND joinkey NOT IN (SELECT joinkey FROM pap_curation_done WHERE pap_curation_done = 'author_person') ORDER BY joinkey::INTEGER DESC" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  my $to_display = '';
+  my $count = 0; my $max_papers_to_show = 200;
+  while (my @row = $result->fetchrow) {
+    $count++; next if ($count > $max_papers_to_show);
+    my $url = "person_editor.cgi?curator_two=$curator_two&paper_id=$row[0]&action=Search+Paper";
+    $to_display .= "<a href=\"$url\">$row[0]</a><br/>\n";
+  }
+  print "There are " . scalar($count) . " papers, will only display the highest $max_papers_to_show paper IDs :<br/>";
+  print $to_display;
+} # sub &checkoutPapers
+
+sub createPeopleFromXml {
+  &printHtmlHeader();
+  my ($curator_two) = &getCuratorFromForm();
+
+    # add link to checkout more papers, also add link to next WBPaper ID
+  (my $var, my $paper_joinkey) = &getHtmlVar($query, "paper_joinkey");
+  my $paper_editor_url = "http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=$curator_two&action=Search&data_number=$paper_joinkey";
+  print "Creating persons from authors in WBPaper$paper_joinkey <a target=\"new\" href=\"$paper_editor_url\">paper editor link</a>.<br />\n";
+  my $prev_paper_joinkey = $paper_joinkey - 1;
+  my $prev_url = "person_editor.cgi?curator_two=$curator_two&paper_id=$prev_paper_joinkey&action=Search+Paper";
+  print "Checkout previous paper id <a href=\"$prev_url\">WBPaper" . &padZeros($prev_paper_joinkey) . "</a> ";
+  my $next_paper_joinkey = $paper_joinkey + 1;
+  my $next_url = "person_editor.cgi?curator_two=$curator_two&paper_id=$next_paper_joinkey&action=Search+Paper";
+  print "Checkout next paper id <a href=\"$next_url\">WBPaper" . &padZeros($next_paper_joinkey) . "</a> ";
+  my $checkout_url = "person_editor.cgi?curator_two=$curator_two&paper_id=&action=Checkout+Papers";
+  print "<a href=\"$checkout_url\">checkout page</a>.<br />";
+  print "<hr/>\n";
+
+  print "<input type=\"hidden\" name=\"paper_joinkey\" id=\"paper_joinkey\" value=\"$paper_joinkey\">";
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"createPeopleFromXml\">";
+  print "<input type=\"hidden\" name=\"curator_two\" id=\"curator_two\" value=\"$curator_two\">";
+  ($var, my $max_institutions) = &getHtmlVar($query, "max_institutions");
+  ($var, my $aids_to_check) = &getHtmlVar($query, "aids_to_check");
+  my %inst; my %aids;
+  my @inst_tables = qw( institution street city state post country );
+  for my $i (1 .. $max_institutions) {
+    foreach my $table (@inst_tables) {
+      if ($table eq 'street') {
+          for my $j (1 .. 4) {  
+            my $extra_order = ($i - 1) * 4 + $j;
+            ($var, my $data)    = &getHtmlVar($query, "input_${table}_$extra_order");
+            if ($data) {          $inst{$i}{$table}{$j} = $data; } } }
+        else {
+          ($var, my $data) = &getHtmlVar($query, "input_${table}_$i");
+          if ($data) {       $inst{$i}{$table}{1} = $data; } } } }
+  my @two_fields = qw( old_inst_choice inst_choice aid highest_join standardname firstname middlename lastname email );
+  my @two_tables = qw( standardname firstname middlename lastname email );
+
+  my ($two_number) = &getHighestJoinkey(); 
+  my @pgcommands;
+  foreach my $i (0 .. $aids_to_check) {
+    foreach my $table (@two_fields) {
+      ($var, my $data) = &getHtmlVar($query, "${table}_$i");
+      if ($data) {       $aids{$i}{$table}{1} = $data; } }
+    my $aid = $aids{$i}{aid}{1};
+    my $pap_join = 1; if ($aids{$i}{highest_join}{1}) { $pap_join = $aids{$i}{highest_join}{1} + 1; }
+
+    my $aid_error_message = '';
+    unless ($aids{$i}{lastname}{1}) { $aid_error_message .= "No lastname chosen for AID $aid<br/>\n"; }
+    unless ( ($aids{$i}{inst_choice}{1}) || ($aids{$i}{old_inst_choice}{1}) ) { $aid_error_message .= "No institution nor old institution chosen for AID $aid<br/>\n"; }
+    if ($aid_error_message) { print "$aid_error_message<hr/>"; next; }
+
+    my $inst_error_message = ''; my $inst_id = ''; my $old_inst_id = '';
+    if ( $aids{$i}{inst_choice}{1} ) { 
+      $inst_id = $aids{$i}{inst_choice}{1};
+      unless ($inst{$inst_id}{institution}{1}) { $inst_error_message .= "ERROR : Institution $inst_id chosen for Inst, but it has no institution data<br />\n"; } }
+    if ( $aids{$i}{old_inst_choice}{1} ) { 
+      $old_inst_id = $aids{$i}{old_inst_choice}{1};
+      unless ($inst{$old_inst_id}{institution}{1}) { $inst_error_message .= "ERROR : Institution $old_inst_id chosen for old Inst, but it has no institution data<br />\n"; } }
+    if ($inst_error_message) { print "$inst_error_message<hr/>"; next; }
+
+    $two_number++;
+    my $joinkey = 'two' . $two_number;
+    (@pgcommands) = &addToPgcommandsTwoCreation($two_number, $curator_two, @pgcommands);
+    foreach my $table (@two_tables) {
+      my $order = 1;
+      if ($aids{$i}{$table}{$order}) { 
+        my $data = $aids{$i}{$table}{$order};
+        (@pgcommands) = &addToPgAndHst($table, $joinkey, $order, $data, $curator_two, @pgcommands);
+        print "$table : $data<br />\n"; } }
+    if ($inst_id) {						# institution data
+      foreach my $table (@inst_tables) {
+        foreach my $order (sort {$a<=>$b} keys %{ $inst{$inst_id}{$table} }) {
+          (@pgcommands) = &addToPgAndHst($table, $joinkey, $order, $inst{$inst_id}{$table}{$order}, $curator_two, @pgcommands);
+          print "$table : $order : $inst{$inst_id}{$table}{$order}<br />\n"; } } }
+    if ($old_inst_id) {						# old institution data (only get the first institution)
+      my $table = 'old_institution'; my $order = 1;
+      (@pgcommands) = &addToPgAndHst($table, $joinkey, $order, $inst{$old_inst_id}{'institution'}{$order}, $curator_two, @pgcommands);
+      print "$table : $order : $inst{$old_inst_id}{'institution'}{$order}<br />\n";
+      my $date = &getPgDate(); $table = 'old_inst_date';	# use current date for old institution date (confirmed by Cecilia)
+      (@pgcommands) = &addToPgAndHst($table, $joinkey, $order, $date, $curator_two, @pgcommands);
+      print "$table : $order : $date<br />\n"; }
+    my $edit_two_url = "person_editor.cgi?curator_two=$curator_two&action=Search&display_or_edit=edit&input_number_1=$joinkey";	# add link to person_editor in edit mode
+    print "aid $aid with new join $pap_join to new <a href=\"$edit_two_url\" target=\"new\">$joinkey</a>.<br />\n";
+    print "<hr>\n";
+  } # foreach my $i (0 .. $aids_to_check)
+
+  my $is_curation_done = 0;
+  $result = $dbh->prepare( "SELECT pap_curation_done FROM pap_curation_done WHERE pap_curation_done = 'author_person' AND joinkey = '$paper_joinkey'" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  my @row = $result->fetchrow(); if ($row[0]) { $is_curation_done++; }
+  unless ($is_curation_done) {					# if it's not curation_done for author_person, add it
+    my $order = 0;
+    $result = $dbh->prepare( "SELECT pap_order FROM pap_curation_done WHERE joinkey = '$paper_joinkey' ORDER BY pap_order DESC" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    my @row = $result->fetchrow(); if ($row[0]) { $order = $row[0]; }
+    $order++;
+    push @pgcommands, "INSERT INTO pap_curation_done VALUES ('$paper_joinkey', 'author_person', '$order', '$curator_two')";
+    push @pgcommands, "INSERT INTO h_pap_curation_done VALUES ('$paper_joinkey', 'author_person', '$order', '$curator_two')";
+  } # unless ($is_curation_done)
+
+  foreach my $pgcommand (@pgcommands) {
+    print "$pgcommand<br>\n";
+    $dbh->do( $pgcommand );
+  } # foreach my $pgcommand (@pgcommands)
+
+#   ($isOk) = &updatePostgresByTableJoinkeyNewvalue($field, $joinkey, $order, $newValue, $curator_two);
+
+  print "<input type=\"hidden\" name=\"max_institutions\" value=\"$max_institutions\">\n";
+} # sub createPeopleFromXml
+
+sub addToPgcommandsTwoCreation {
+  my ($two_number, $curator_two, @pgcommands) = @_;
+  my $joinkey = 'two' . $two_number;
+  push @pgcommands, "INSERT INTO two VALUES ('$joinkey', '$two_number');";	# table two has no _hst, two_order, nor two_curator
+  (@pgcommands) = &addToPgAndHst('status', $joinkey, '1', 'Valid', $curator_two, @pgcommands); 
+  return @pgcommands; }
+
+sub addToPgAndHst {
+  my ($table, $joinkey, $order, $data, $curator_two, @pgcommands) = @_;
+  if ($data) { if ($data =~ m/\'/) { $data =~ s/\'/''/g; } $data = "E'$data'"; } else { $data = 'NULL'; }
+  push @pgcommands, "INSERT INTO two_$table VALUES ('$joinkey', $order, $data, '$curator_two')";
+  push @pgcommands, "INSERT INTO h_two_$table VALUES ('$joinkey', $order, $data, '$curator_two')";
+  return @pgcommands;
+} # sub addToPgAndHst
+
+sub searchPaper {
+  &printHtmlHeader();
+  my ($curator_two) = &getCuratorFromForm();
+  my ($var, $paper_id) = &getHtmlVar($query, "paper_id");
+  if ($paper_id =~ m/(\d+)/) { &displayPaper(&padZeros($1), $curator_two); return; }
+    else { print "Not a number in $paper_id<br />\n"; }
+} # sub searchPaper
+
+sub makePdfLinkFromPath {
+  my ($path) = shift;
+  my ($pdf) = $path =~ m/\/([^\/]*)$/;
+  my $link = 'http://tazendra.caltech.edu/~acedb/daniel/' . $pdf;
+  my $data = "<a href=\"$link\" target=\"new\">$pdf</a>"; return $data; }
+
+sub displayPaper {
+  my ($joinkey, $curator_two) = @_;
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"displayPaperXml\">";
+  my %curation_flags; my $curation_flags;
+  $result = $dbh->prepare( "SELECT pap_curation_flags FROM pap_curation_flags WHERE joinkey = '$joinkey'" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { $curation_flags{$row[0]}++; } $curation_flags = join", ", sort keys %curation_flags;
+  if ($curation_flags) { print "<b style=\"color: red;font-size: 14pt\">curation_flags : $curation_flags</b><br />\n"; }
+  my %curation_done; my $curation_done;
+  $result = $dbh->prepare( "SELECT pap_curation_done FROM pap_curation_done WHERE joinkey = '$joinkey'" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { $curation_done{$row[0]}++; } $curation_done = join", ", sort keys %curation_done;
+  if ($curation_done) { print "<b style=\"color: red;font-size: 14pt\">curation_done : $curation_done</b><br />\n"; }
+
+  my $paper_editor_url = "http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=$curator_two&action=Search&data_number=$joinkey";
+  print "WBPaper$joinkey <a target=\"new\" href=\"$paper_editor_url\">paper editor link</a>.<br />\n";
+  my $pmid; my %pg_aid;
+  $result = $dbh->prepare( "SELECT * FROM pap_identifier WHERE joinkey = '$joinkey'" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { 
+    if ($row[1] =~ m/pmid/) { $pmid = $row[1]; $pmid =~ s/pmid//; $row[1] = "<a href=\"http://www.ncbi.nlm.nih.gov/pubmed/$pmid\" target=\"new\">$row[1]</a>"; }
+    print "Identifier : $row[1]<br />\n"; }
+  $result = $dbh->prepare( "SELECT * FROM pap_affiliation WHERE joinkey = '$joinkey'" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { 
+    print "Affiliation : $row[1]<br />\n"; }
+  $result = $dbh->prepare( "SELECT pap_electronic_path FROM pap_electronic_path WHERE joinkey = '$joinkey' AND pap_electronic_path IS NOT NULL" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { my ($pdf_link) = &makePdfLinkFromPath($row[0]); print "pdf link : $pdf_link<br />\n"; }
+  
+  my @aids; 
+  $result = $dbh->prepare( "SELECT pap_author FROM pap_author WHERE joinkey = '$joinkey' ORDER BY pap_order" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { push @aids, $row[0]; }
+  my $aids = join"','", @aids;
+  my @aut_tables = qw( index possible sent verified );
+  foreach my $table (@aut_tables) {
+    $result = $dbh->prepare( "SELECT * FROM pap_author_$table WHERE author_id IN ('$aids')" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+    while (my @row = $result->fetchrow) { unless ($row[2]) { $row[2] = 1; } $pg_aid{$row[0]}{$table}{$row[2]} = $row[1]; } }
+
+  my $xmldata = ''; my $affiliation = ''; my %xml_authors; my %xml_authors_found;
+
+  if ($pmid) {
+      $/ = undef;
+      my @xml_paths = qw( /home/postgres/work/pgpopulation/wpa_papers/pmid_downloads/done/ /home/postgres/work/pgpopulation/wpa_papers/wpa_pubmed_final/xml/ );
+      my $xmlfile = '';
+      foreach my $path (@xml_paths) {
+        my $file = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads/done/' . $pmid;
+        if (-e $file) { $xmlfile = $file; }
+      }
+      if ($xmlfile) {
+          print "pmid $pmid xml found<br />\n";
+          open (IN, "<$xmlfile") or die "Cannot open $xmlfile : $!";
+          $xmldata = <IN>;
+          close (IN) or die "Cannot close $xmlfile : $!";
+          $/ = "\n";
+          %xml_authors = &getXmlAuthors($xmldata); }
+        else { print "NO XML for $pmid\n"; } }
+    else { print "<br />No PMID found for WBPaper$joinkey<br />\n"; }
+  
+  print "<hr>\n";
+  print "<form name='form1' method=\"post\" action=\"person_editor.cgi\">\n";
+  print "<input type=\"hidden\" name=\"curator_two\" id=\"curator_two\" value=\"$curator_two\">";
+  print "<input type=\"hidden\" name=\"paper_joinkey\" id=\"paper_joinkey\" value=\"$joinkey\">";
+
+  my $max_institutions = 100;
+  print "<input type=\"hidden\" id=\"max_institutions\" name=\"max_institutions\" value=\"$max_institutions\">\n";
+  my @affil_tables = qw( institution street city state post country );
+  for my $i (1 .. $max_institutions) { 
+    &showInstitutionEditor($i, $curator_two, \@affil_tables, $affiliation, $max_institutions); }
+  foreach my $table (@affil_tables) {
+    print "<input type=\"hidden\" class=\"fields\" value=\"$table\" \/>\n";
+    print "<input type=\"hidden\" id=\"type_input_$table\" value=\"$type_input{$table}\">\n";
+    my $highest_order_table = $max_institutions;
+    if ($table eq 'street') { $highest_order_table = $max_institutions * 4; }
+    print "<input type=\"hidden\" id=\"highest_order_$table\" value=\"$highest_order_table\">\n"; }
+
+  print "<hr>\n";
+
+#   my %aka_hash = (); # &getAkaHash();
+  my %aka_hash = &getAkaHash();
+
+  print "<table border=0 cellspacing=5>\n";
+  print "<tr bgcolor=\"$blue\"><td>aid</td><td>author</td><td>possible</td><td>sent</td><td>verified</td><td>standard name</td><td>firstname</td><td>middlename</td><td>lastname</td><td>email</td><td>inst</td><td>old inst</td></tr>\n";
+  foreach my $i (0 .. $#aids) {
+    my $aid = $aids[$i]; my $aname = $pg_aid{$aid}{index}{'1'};
+    my $bgcolor = $blue; my $already_verified = 0;
+    my $line = '';
+    $line .= "<td><input name=\"aid_$i\" type=\"hidden\" value=\"$aid\">$aid</td>";
+    $line .= "<td>$aname</td>";
+    $aname =~ s/[\,\.]//g;                         # take out commas and dots
+    $aname =~ s/_/ /g;                             # replace underscores for spaces
+    my @tables = qw( possible sent verified ); my $highest_join = 0;
+    foreach my $table (@tables) {
+      my @data = (); 
+      foreach my $pap_join (sort {$a<=>$b} keys %{ $pg_aid{$aid}{$table} }) { 
+        my $data = $pg_aid{$aid}{$table}{$pap_join};
+        if ($table eq 'possible') { push @data, &twonumToLink($data, $curator_two); }
+          elsif ($table eq 'verified') { push @data, $data; if ($data =~ m/YES/) { $already_verified++; } }
+          else { push @data, $data; }
+        if ($pap_join > $highest_join) { $highest_join = $pap_join; } }
+      my $data = join"<br />", @data; $line .= "<td>$data</td>\n"; }
+    my ($firstname, $middlename, $lastname, $standardname, $affiliation) = ('','','','','');
+    if ($xml_authors{$aname}) {				# without this check, the subhash checks create the hash entry
+      if ($xml_authors{$aname}{affiliation}) { $affiliation = $xml_authors{$aname}{affiliation}; $xml_authors_found{$aname}++; }
+      if ($xml_authors{$aname}{lastname}) { $lastname = $xml_authors{$aname}{lastname}; $xml_authors_found{$aname}++; }
+      if ($xml_authors{$aname}{firstname}) { $firstname = $xml_authors{$aname}{firstname}; $xml_authors_found{$aname}++; }
+      if ($xml_authors{$aname}{standardname}) { $standardname = $xml_authors{$aname}{standardname}; $xml_authors_found{$aname}++; } }
+    print "<input type=\"hidden\" name=\"highest_join_$i\" value=\"$highest_join\">\n";
+    $line .= "<td><input name=\"standardname_$i\" value=\"$standardname\"></td>";
+    $line .= "<td><input name=\"firstname_$i\" value=\"$firstname\"></td>";
+    $line .= "<td><input name=\"middlename_$i\" value=\"\"></td>";
+    $line .= "<td><input name=\"lastname_$i\" value=\"$lastname\"></td>";
+    $line .= "<td><input name=\"email_$i\" value=\"\"></td>";
+    $line .= "<td><select name=\"inst_choice_$i\" size=\"1\">\n";
+    $line .= "<option value=\"\" selected=\"selected\"></option>\n";
+    foreach my $i (1 .. $max_institutions) { $line .= "<option value=\"$i\" >Inst$i</option>\n"; }
+    $line .= "</select></td>";
+    $line .= "<td><select name=\"old_inst_choice_$i\" size=\"1\">\n";
+    $line .= "<option value=\"\" selected=\"selected\"></option>\n";
+    foreach my $i (1 .. $max_institutions) { $line .= "<option value=\"$i\" >Inst$i</option>\n"; }
+    $line .= "</select></td>";
+    if ($already_verified) { $bgcolor = $grey; }
+    $line = "<tr bgcolor=\"$bgcolor\">" . $line;
+    $line .= "</tr><tr bgcolor=\"$bgcolor\">";
+    my ($matchCount, $matchTwos) = &matchFullnameToAka($standardname, $firstname, $lastname, \%aka_hash, $curator_two);
+    $line .= qq(<td colspan="2" align="right">$matchCount matches</td><td colspan="4">$matchTwos</td><td colspan="6">$affiliation</td>);
+    $line .= "</tr>";
+    print "$line\n";
+  } # foreach my $i (0 .. $#aids)
+
+  print "</table>\n";
+  print "<input type=\"hidden\" name=\"aids_to_check\" value=\"$#aids\">\n";
+  unless ($curation_done =~ m/author_person/) {		# only show button to create person if it's not done for author_person
+    print "<input type=submit name=action value=\"Create people from XML\"><br/>\n"; }
+
+  foreach my $aname (sort keys %xml_authors) {		# list all authors in xml that were not found in current paper
+    next unless $aname; next if ($xml_authors_found{$aname});
+    my ($firstname, $lastname, $initials) = ('','','','');
+    if ($xml_authors{$aname}{lastname}) { $lastname = $xml_authors{$aname}{lastname}; }
+    if ($xml_authors{$aname}{firstname}) { $firstname = $xml_authors{$aname}{firstname}; }
+    if ($xml_authors{$aname}{initials}) { $initials = $xml_authors{$aname}{initials}; }
+    print "XML author $aname has no match in paper Firstname : $firstname ; Lastname : $lastname ; Initials : $initials<br />\n"; }
+
+  print "</form>\n";
+} # sub displayPaper
+
+sub twonumToLink {
+  my ($twonum, $curator_two) = @_;
+  return "<a target=\"new\" href=\"person_editor.cgi?action=Search&input_number_1=$twonum&curator_two=$curator_two\">$twonum</a>"; }
+
+sub matchFullnameToAka {
+  my ($fullname, $forename, $lastname, $aka_hash_ref, $curator_two) = @_;
+  my %aka_hash = %$aka_hash_ref;
+  my $orig_author = $fullname;
+  $fullname = lc($fullname);
+  my @two_links;
+  if ($aka_hash{$fullname}) {
+      foreach my $two (sort keys %{ $aka_hash{$fullname} } ) { 
+        push @two_links, &twonumToLink("two$two", $curator_two); } }
+  if ( (scalar(@two_links) == 0) &&  ($forename =~ m/ \w$/) ) {
+    $forename =~ s/ \w$//; $fullname = "$forename $lastname"; $fullname = lc($fullname);
+    if ($aka_hash{$fullname}) {
+      foreach my $two (sort keys %{ $aka_hash{$fullname} } ) { 
+        push @two_links, &twonumToLink("two$two", $curator_two); } } }
+  my $twos = join", ", @two_links;
+  my $count = scalar @two_links;
+#   return "<td colspan=\"2\" align=\"right\">$count matches</td><td colspan=\"10\">$twos</td>";
+  return ($count, $twos);
+} # sub matchFullnameToAka
+
+sub getXmlAuthors {
+  my ($xmldata) = @_; my %xml_authors;
+  my @xml_authors = $xmldata =~ /\<Author.*?\>(.+?)\<\/Author\>/sig;
+  foreach my $author_xml (@xml_authors) {
+    my ($affiliation) = $author_xml =~ /\<Affiliation\>(.+?)\<\/Affiliation\>/i;
+    my ($lastname) = $author_xml =~ /\<LastName\>(.+?)\<\/LastName\>/i;
+    my ($initials) = $author_xml =~ /\<Initials\>(.+?)\<\/Initials\>/i;
+    my ($forename) = $author_xml =~ /\<ForeName\>(.+?)\<\/ForeName\>/i;
+    my $author = $lastname . " " . $initials;
+    $xml_authors{$author}{affiliation} = $affiliation;
+    $xml_authors{$author}{lastname} = $lastname;
+    $xml_authors{$author}{firstname} = $forename;
+    $xml_authors{$author}{initials} = $initials;
+    $xml_authors{$author}{standardname} = "$forename $lastname"; }
+  return %xml_authors; 
+} # sub getXmlAuthors
+
+# sub showAuthorXmlEditor {
+# # THIS DOESN'T WORK because it shows by XML instead of by aid
+# # show all authors and their possible association
+# # for each author, AID, aname
+# # if already has pap_author_possible data : show two# (and link each to the person editor's person editing page)
+# # elsif it has new matches to 1 or more two# : show possible matches (and link each to the person editor's person editing page)
+# # else no existing pap_author_possible data, and 0 matches to existing persons : xml-forename, xml-lastname, <blank>middlename-field, standard_name default forename+ +lastname, inst-dropdown, <blank>email-field, comment-field with WBPaper####, button to create person.  require: lastname, firstname, stdname, institution-field-in-inst#.  New people add to 'two_status' 'Valid', 'two' '<#>'.  Associate to pap_author_possible aid.  Get back two# and replace this whole thing with a <td> to look like the pap_author_possible data (show two# w/link).
+#   my ($i, $author_xml, $joinkey, $curator_two, $max_institutions, $pg_pap_href, $aka_hash_href) = @_;
+#   my %pg_pap = %$pg_pap_href; my %aka_hash = %$aka_hash_href;
+#   my ($lastname) = $author_xml =~ /\<LastName\>(.+?)\<\/LastName\>/i;
+#   my ($initials) = $author_xml =~ /\<Initials\>(.+?)\<\/Initials\>/i;
+#   my ($forename) = $author_xml =~ /\<ForeName\>(.+?)\<\/ForeName\>/i;
+#   my $author = $lastname . " " . $initials;
+#   my $line = "<tr bgcolor=\"$blue\">";
+#   $line .= "<td>$author</td>";
+#   if ($pg_pap{$joinkey}{aut}{$author}) {			# $joinkey and $author matches an author_id
+#     my $aid = $pg_pap{$joinkey}{aut}{$author};
+#     my $fullname = "$forename $lastname";
+#     $line .= "<td><input name=\"aid_$i\" type=\"hidden\" value=\"$aid\">$aid</td>";
+#     $line .= "<td><input name=\"standard_name_$i\" value=\"$fullname\"></td>";
+#     $line .= "<td><input name=\"firstname_$i\" value=\"$forename\"></td>";
+#     $line .= "<td><input name=\"middlename_$i\" value=\"\"></td>";
+#     $line .= "<td><input name=\"lastname_$i\" value=\"$lastname\"></td>";
+#     $line .= "<td><select name=\"inst_choice_$i\" size=\"1\">\n";
+#     $line .= "<option value=\"\" selected=\"selected\"></option>\n";
+#     foreach my $i (1 .. $max_institutions) { $line .= "<option value=\"$i\" >Inst$i</option>\n"; }
+#     $line .= "</select></td>";
+#     my $twos = '';
+#     my $orig_author = $fullname;
+#     $fullname = lc($fullname);
+# #     my $count = 0;
+# #     my $next = 0;                             # skip flag if there are too many two matches for that fullname
+#     my @two_links;
+#     if ($aka_hash{$fullname}) {
+#         foreach my $two (sort keys %{ $aka_hash{$fullname} } ) { 
+#           push @two_links, "<a target=\"new\" href=\"person_editor.cgi?action=Search&input_number_1=two$two&curator_two=$curator_two\">two$two</a>"; } }
+# #         my @twos = keys %{ $aka_hash{$fullname} };
+# #         $count = scalar(@twos);
+# #         if ($count > 20) { print "Author $orig_author @twos\n"; $next++; }
+# #         $twos = join", ", @twos; 
+#     if ( (scalar(@two_links) == 0) &&  ($forename =~ m/ \w$/) ) {
+#       $forename =~ s/ \w$//; $fullname = "$forename $lastname"; $fullname = lc($fullname);
+#       if ($aka_hash{$fullname}) {
+#         foreach my $two (sort keys %{ $aka_hash{$fullname} } ) { 
+#           push @two_links, "<a target=\"new\" href=\"person_editor.cgi?action=Search&input_number_1=two$two&curator_two=$curator_two\">two$two</a>"; } } }
+# #         my @twos = keys %{ $aka_hash{$fullname} };
+# #         $count = scalar(@twos);
+# #         if ($count > 20) { print "Author $orig_author @twos\n"; $next++; }
+# #         $twos = join", ", @twos;
+# #     next if $next;
+#     my $twos = join", ", @two_links;
+#     my $count = scalar @two_links;
+#     $line .= "</td><td>$count matches</td><td>$twos</td>";
+#   } # if ($pg_pap{$joinkey}{aut}{$author})
+#   $line .= "</tr>";
+#   print "$line\n";
+# } # sub showAuthorXmlEditor
+
+sub showInstitutionEditor {
+  my ($i, $curator_two, $affil_tables_ref, $affiliation, $max_institutions) = @_;
+  my @affil_tables = @$affil_tables_ref;
+  my $show_another_institution = ''; my $hide_this_institution = '';
+  if ($i < $max_institutions) { 			# link to show another institution if it's not the last one (last cannot show anything else)
+    my $html_table_id = $i + 1; $html_table_id = 'table_' . $html_table_id;
+    $show_another_institution = "<a href=\"#\" onclick=\"document.getElementById('$html_table_id').style.display = ''; return false\">show another institution</a>"; }
+  if ($i > 1) { 					# link to hide this institution if it's not the first one (first must always be there)
+    my $html_table_id = 'table_' . $i;
+    $hide_this_institution = "<a href=\"#\" onclick=\"document.getElementById('$html_table_id').style.display = 'none'; return false\">hide this institution</a>"; }
+  my $show_institutions_with_data_only = qq(<a href="#" onclick="showInstitutionsWithDataOnly(); return false">show institutions with data only</a>);
+  my $style = ''; if ($i > 1) { $style = 'display: none'; }
+  print "<table border=0 cellspacing=5 id=\"table_$i\" style=\"$style\">\n";
+  print "<tr><td>Inst$i</td><td>$curator_two $show_another_institution $hide_this_institution $show_institutions_with_data_only</td></tr>\n";
+  my $order = $i; my $input_size = 80; my $colspan = 1;
+  foreach my $table (@affil_tables) {
+    my $value = ''; if ( ($table eq 'institution') && ($order == 1) ) { $value = $affiliation; }
+    if ($table eq 'street') {
+        for my $j (1 .. 4) {  
+          my $street_order = ($order - 1) * 4 + $j;
+          my $table_row_autocomplete = &showEditorText($table, $street_order, $input_size, $colspan, $value);
+          print "<tr bgcolor=\"$blue\">$table_row_autocomplete</tr>\n"; } }
+      else {
+        my $table_row_autocomplete = &showEditorText($table, $order, $input_size, $colspan, $value);
+        print "<tr bgcolor=\"$blue\">$table_row_autocomplete</tr>\n"; } }
+  print "</table>\n";
+} # sub showInstitutionEditor
+
+sub getAkaHash {
+  my %filter; my %aka_hash;
+  my @tables = qw (first middle last);
+  foreach my $table (@tables) {
+    $result = $dbh->prepare ( "SELECT * FROM two_aka_${table}name WHERE two_aka_${table}name IS NOT NULL AND two_aka_${table}name != 'NULL' AND two_aka_${table}name != '' AND joinkey IN (SELECT joinkey FROM two_status WHERE two_status = 'Valid');" ); 
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+    while ( my @row = $result->fetchrow ) {
+      my $joinkey = $row[0];
+      $row[2] =~ s/^\s+//g; $row[2] =~ s/\s+$//g;     # take out spaces in front and back
+      $row[2] =~ s/[\,\.]//g;                         # take out commas and dots
+      $row[2] =~ s/_/ /g;                             # replace underscores for spaces
+      $row[2] = lc($row[2]);                          # for full values (lowercase it)
+      $row[0] =~ s/two//g;                            # take out the 'two' from the joinkey
+      $filter{$row[0]}{$table}{$row[2]}++;
+      unless ($table eq 'last') {                     # look at initials for first and middle but not last name
+        my ($init) = $row[2] =~ m/^(\w)/;             # for initials
+        if ($init) { $filter{$row[0]}{$table}{$init}++; } } }
+    $result = $dbh->prepare ( "SELECT * FROM two_${table}name WHERE two_${table}name IS NOT NULL AND two_${table}name != 'NULL' AND two_${table}name != '' AND joinkey IN (SELECT joinkey FROM two_status WHERE two_status = 'Valid');" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+    while ( my @row = $result->fetchrow ) {
+      my $joinkey = $row[0];
+      $row[2] =~ s/^\s+//g; $row[2] =~ s/\s+$//g;     # take out spaces in front and back
+      $row[2] =~ s/[\,\.]//g;                         # take out commas and dots
+      $row[2] =~ s/_/ /g;                             # replace underscores for spaces
+      $row[2] = lc($row[2]);                          # for full values (lowercase it)
+      $row[0] =~ s/two//g;                            # take out the 'two' from the joinkey
+      $filter{$row[0]}{$table}{$row[2]}++;
+      unless ($table eq 'last') {
+        my ($init) = $row[2] =~ m/^(\w)/;             # for initials
+        $filter{$row[0]}{$table}{$init}++; } }
+  } # foreach my $table (@tables)
+
+  my $possible;
+  foreach my $person (sort keys %filter) {
+    foreach my $last (sort keys %{ $filter{$person}{last}} ) {
+      foreach my $first (sort keys %{ $filter{$person}{first}} ) {
+        $possible = "$last $first"; $aka_hash{$possible}{$person}++;
+        $possible = "$first $last"; $aka_hash{$possible}{$person}++;
+        if ( $filter{$person}{middle} ) {		# Middle name okay if last first middle or first middle last  2007 02 22
+          foreach my $middle (sort keys %{ $filter{$person}{middle}} ) {
+            $possible = "$last $first $middle"; $aka_hash{$possible}{$person}++;
+            $possible = "$last ${first}$middle"; $aka_hash{$possible}{$person}++;
+            $possible = "$first $middle $last"; $aka_hash{$possible}{$person}++;
+            $possible = "${first}$middle $last"; $aka_hash{$possible}{$person}++; } } } } }
+  return %aka_hash;
+} # sub getAkaHash
+
+### End Paper Editing Section ###
+
+
+### Person Statistics Section ###
+
+sub personStatistics {
+  print "Content-type: text/html\n\n";
+  my %stats; my %total; my %isCurrent;				# stats by month-status-joinkey ; total stats by status-joinkey ; current status state for joinkey
+  my $result = $dbh->prepare( "SELECT * FROM h_two_status ORDER BY two_timestamp" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while ( my @row = $result->fetchrow() ) {
+    my ($joinkey, $order, $status, $curator, $timestamp) = @row;
+    my ($month) = $timestamp =~ m/^(\d\d\d\d\-\d\d)/;
+#     next unless ($month =~ m/2007/);				# to test only a subset
+    my $isCurrent = ''; if ($isCurrent{$joinkey}) { $isCurrent = $isCurrent{$joinkey}; }
+    if ($status ne $isCurrent) {				# only add to stats if status has changed
+      $isCurrent{$joinkey} = $status;				# keep track of latest status state
+      $stats{$month}{$status}{$joinkey}++;			# stats by month / status / personId
+      $stats{$month}{any}{$joinkey}++;				# add an "any" status
+    } # if ($status ne $isCurrent)
+  } # while ( my @row = $result->fetchrow() )
+  print qq(<table style="border-style: none;" border="1" color="blue">);
+#   print "<tr><$thDot>Year-Month</td><$thDot>Valid</td><$thDot>Invalid</td><$thDot>Delta Valid</th><$thDot>Total Valid</td><$thDot>Total Invalid</td><$thDot>Total Current Valid</th></tr>\n";
+  print "<tr><$thDot>Year-Month</td><$thDot>Valid</td><$thDot>Invalid</td><$thDot>Valid or Invalid</th><$thDot>Total Valid</td><$thDot>Total Invalid</td><$thDot>Total Any</th></tr>\n";
+  my $mcount = 0; my @vmonths; my @valid; my @tmonths; my @totalvalid;	# month count (don't use first month for average nor valid graph), arrays for graphs of months vs valid and months vs total valid 
+  foreach my $month (sort keys %stats) {				# sort months alphanumerically so total will be inclusive up to current month looping through
+    $mcount++;								# track month count
+    foreach my $status (sort keys %{ $stats{$month} }) {
+      foreach my $joinkey (sort keys %{ $stats{$month}{$status} }) {
+        $total{$status}{$joinkey}++;					# add to %total hash for that status (bug, in the total, people will show as both valid and invalid if they're ever each)
+        $total{any}{$joinkey}++; } }					# total always keeps track of all values up to that month (since it sorts months alphanumerically
+    my $validCount = scalar keys %{ $stats{$month}{Valid} };
+    my $invalidCount = scalar keys %{ $stats{$month}{Invalid} };
+    my $anyCount = scalar keys %{ $stats{$month}{any} };
+    my $totalValid = scalar keys %{ $total{Valid} };
+    my $totalInvalid = scalar keys %{ $total{Invalid} };
+    my $totalAny = scalar keys %{ $total{any} };
+    if ($mcount > 1) { push @vmonths, $month; push @valid, $validCount; }	# graph valid except for first month which has a lot of transferred objects
+    push @tmonths, $month; push @totalvalid, $totalValid;			# graph total valid for all months
+    print "<tr><$tdDot>$month</td><$tdDot>$validCount</td><$tdDot>$invalidCount</td><$tdDot>$anyCount</td><$tdDot>$totalValid</td><$tdDot>$totalInvalid</td><$tdDot>$totalAny</td></tr>\n";
+#     my $deltaValid = $validCount - $invalidCount;
+#     $totalValid += $validCount; $totalInvalid += $invalidCount; $totalDeltaValid += $deltaValid;
+#     print "<tr><$tdDot>$month</td><$tdDot>$validCount</td><$tdDot>$invalidCount</td><$tdDot>$deltaValid</td><$tdDot>$totalValid</td><$tdDot>$totalInvalid</td><$tdDot>$totalDeltaValid</td></tr>\n";
+  } # foreach my $month (sort keys %stats)
+  print "<tr><$thDot>Year-Month</td><$thDot>Valid</td><$thDot>Invalid</td><$thDot>Valid or Invalid</th><$thDot>Total Valid</td><$thDot>Total Invalid</td><$thDot>Total Any</th></tr>\n";
+  print "</table>";
+
+#     # generate graphs of valid and totalvalid in data/ .png files
+#   my @data = (\@vmonths, \@valid);
+#   my $xsize = scalar(@vmonths) * 50;
+#   my $mygraph = GD::Graph::area->new($xsize, 300);
+#   $mygraph->set(
+#     x_label     => 'Year-Month',
+#     y_label     => 'Valid Persons created',
+#     title       => 'Valid Persons created in each Year-Month',
+#   ) or warn $mygraph->error;
+#   my $myimage = $mygraph->plot(\@data) or warn $mygraph->error;
+#   my $validPngFile = '/home/postgres/public_html/cgi-bin/cecilia/data/person_editor_valid.png';
+#   open (OUT, ">$validPngFile") or warn "Cannot create $validPngFile : $!";
+#   print OUT $myimage->png;
+#   close (OUT) or warn "Cannot close $validPngFile : $!";
+#   @data = (\@tmonths, \@totalvalid);
+#   $xsize = scalar(@tmonths) * 50;
+#   $mygraph = GD::Graph::area->new($xsize, 300);
+#   $mygraph->set(
+#     x_label     => 'Year-Month',
+#     y_label     => 'Total Valid Persons',
+#     title       => 'Total Valid Persons in each Year-Month',
+#   ) or warn $mygraph->error;
+#   $myimage = $mygraph->plot(\@data) or warn $mygraph->error;
+#   my $totalvalidPngFile = '/home/postgres/public_html/cgi-bin/cecilia/data/person_editor_totalvalid.png';
+#   open (OUT, ">$totalvalidPngFile") or warn "Cannot create $totalvalidPngFile : $!";
+#   print OUT $myimage->png;
+#   close (OUT) or warn "Cannot close $totalvalidPngFile : $!";
+#   print qq(<img src="data/person_editor_valid.png"><br/>\n);
+#   print qq(<img src="data/person_editor_totalvalid.png"><br/>\n);
+
+  my $xdata = join"|", @vmonths;
+  my $ydata = join"|", @valid;
+  my $xlabel = 'Year-Month';
+  my $ylabel = 'Valid Persons created';
+  my $title   = 'Valid Persons created in each Year-Month';
+  my $graph_valid = qq(<img src="person_editor.cgi?action=generatePng&xdata=$xdata&ydata=$ydata&xlabel=$xlabel&ylabel=$ylabel&title=$title"><br/>\n);
+
+  $xdata = join"|", @tmonths;
+  $ydata = join"|", @totalvalid;
+  $xlabel = 'Year-Month';
+  $ylabel = 'Total Valid Persons';
+  $title   = 'Total Valid Persons in each Year-Month';
+  my $graph_totalvalid = qq(<img src="person_editor.cgi?action=generatePng&xdata=$xdata&ydata=$ydata&xlabel=$xlabel&ylabel=$ylabel&title=$title"><br/>\n);
+
+  pop @valid;	# get rid of the current month, which is not yet finished
+  my $totalvalidforavg = 0; foreach my $v (@valid) { $totalvalidforavg += $v; } 	# add up all months minus the most recent month
+  my $avgvalidcreated = FormatSigFigs($totalvalidforavg / scalar(@valid), 5);		# divide by the number of months added together, and round to 5 sig figs
+  print "<br/>$avgvalidcreated Average Valid Created per Month (except for first month and most recent month)<br/><br/>\n";
+
+  print $graph_valid;
+  print $graph_totalvalid;
+
+} # sub personStatistics
+
+sub generatePng {
+  (my $oop, my $xdata)  = &getHtmlVar($query, 'xdata' );
+  ($oop, my $ydata)  = &getHtmlVar($query, 'ydata' );
+  ($oop, my $xlabel) = &getHtmlVar($query, 'xlabel');
+  ($oop, my $ylabel) = &getHtmlVar($query, 'ylabel');
+  ($oop, my $title)  = &getHtmlVar($query, 'title' );
+  my @xdata = split/\|/, $xdata;
+  my @ydata = split/\|/, $ydata;
+  my @data = (\@xdata, \@ydata);
+  my $xsize = scalar(@xdata) * 50;
+  my $mygraph = GD::Graph::area->new($xsize, 300);
+  $mygraph->set(
+    x_label     => $xlabel,
+    y_label     => $ylabel,
+    title       => $title,
+  ) or warn $mygraph->error;
+  my $myimage = $mygraph->plot(\@data) or warn $mygraph->error;
+  print "Content-type: image/png\n\n";
+  print $myimage->png;
+} # sub generatePng
+
+### End Person Statistics Section ###
+
+
+sub firstPage {
+  &printHtmlHeader();
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"firstPage\">";
+  my $date = &getDate();
+    # using post instead of get makes a confirmation request when javascript reloads the page after a change.  2010 03 12
+  print "<form name='form1' method=\"get\" action=\"person_editor.cgi\">\n";
+  print "<table border=0 cellspacing=5>\n";
+  print "<tr><td colspan=\"2\">Select your Name : <select name=\"curator_two\" size=\"1\">\n";
+  &populateCurators();
+  my $ip = $query->remote_host();                               # select curator by IP if IP has already been used
+  my $curator_by_ip = '';
+  my $result = $dbh->prepare( "SELECT * FROM two_curator_ip WHERE two_curator_ip = '$ip';" ); 
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; my @row = $result->fetchrow;
+  if ($row[0]) { $curator_by_ip = $row[0]; }
+#   my @curator_list = ('Juancarlos Chan', 'Cecilia Nakamura');
+  my @curator_list = ('two1823', 'two1', 'two12028', 'two712');
+  foreach my $joinkey (@curator_list) {                         # display curators in alphabetical (array) order, if IP matches existing ip record, select it
+    my $curator = $joinkey;
+    if ($curators{two}{$curator}) { $curator = $curators{two}{$curator}; }
+    if ($joinkey eq $curator_by_ip) { print "<option value=\"$joinkey\" selected=\"selected\">$curator</option>\n"; }
+      else { print "<option value=\"$joinkey\" >$curator</option>\n"; } }
+  print "</select></td>";
+  print "<td colspan=\"2\">Date : $date</td></tr>\n";
+
+  print "<tr><td>&nbsp;</td></tr>\n";
+
+  print "<tr>\n";
+  print "<td colspan=\"3\">WBPaperID : <input id=\"paper_id\" name=\"paper_id\" size=\"10\" value=\"\"><input type=submit name=action value=\"Search Paper\">\n";
+  print "<input type=submit name=action value=\"Checkout Papers\">\n";
+  print "<input type=submit name=action value=\"Person Statistics\"></td>\n";
+  print "<tr>\n";
+  print "<td colspan=\"3\"><input type=submit name=action value=\"Create New Person\">\n";
+  print "<input type=submit name=action value=\"Search\">\n";
+  (my $var, my $display_or_edit) = &getHtmlVar($query, "display_or_edit"); my $display_checked = 'checked="checked"'; my $edit_checked = ''; 
+  if ($display_or_edit) { if ($display_or_edit eq 'edit') { $edit_checked = 'checked="checked"'; $display_checked = ''; } }
+#       if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
+  print "<input type=\"radio\" name=\"display_or_edit\" value=\"display\" $display_checked />display\n";
+  print "<input type=\"radio\" name=\"display_or_edit\" value=\"edit\" $edit_checked />edit\n";
+  print "</td>\n";
+#   print "<td><input type=\"checkbox\" name=\"history\" value=\"on\">display history (not search history)</td>\n";
+  print "</tr>\n";
+  foreach my $table ("number", @normal_tables) {
+    my $order = 1; my $input_size = 80; my $colspan = 1;
+    my $table_to_print = &showEditorText($table, $order, $input_size, $colspan, '');
+    $table_to_print .= "<input type=\"hidden\" class=\"fields\" value=\"$table\" \/>\n";
+    $table_to_print .= "<input type=\"hidden\" id=\"type_input_$table\" value=\"$type_input{$table}\">\n";
+    $table_to_print .= "<input type=\"hidden\" id=\"highest_order_$table\" value=\"1\">\n";
+
+    print "<tr>";
+    print $table_to_print;
+    my $style = ''; 
+    if ( ($table eq 'number') || ($table eq 'status') ) { $style = 'display: none'; }
+#     print "<tr><td>$table</td>";
+#     if ( $dropdowns{$table} ) {				# if there are dropdown options for the table
+#         my ($td_data) = &makeSelectField('', $table, 0, 0); print $td_data; }
+#       else {
+#     print "<td><input size=40 name=\"data_$table\"></td>\n"; }
+    print "<td style='$style'><input type=\"checkbox\" value=\"on\" name=\"substring_$table\">substring</td>\n";
+    print "<td style='$style'><input type=\"checkbox\" value=\"on\" name=\"case_$table\">case insensitive (automatic substring)</td>\n"; 
+    print "</tr>\n";
+  } # foreach my $table "number", (@normal_tables)
+
+  print "</table>\n";
+  print "</form>\n";
+  &printFooter();
+} # sub firstPage
+
+sub showEditorText {
+  my ($table, $order, $input_size, $colspan, $value) = @_;
+  my $table_to_print = "<td id=\"label_$table\">$table</td><td width=\"550\" colspan=\"$colspan\">\n";  # there's some weird auto-sizing of the table where it shrinks to nothing if the td doesn't have a size, so min size is 550
+#   $table_to_print .= "<input id=\"input_$table\" name=\"input_$table\" size=\"$input_size\">\n";
+  my $freeForced = 'free';
+  my $containerSpanId = "container${freeForced}${table}${order}AutoComplete";
+  my $divAutocompleteId = "${freeForced}${table}${order}AutoComplete";
+  my $inputId = "input_${table}_$order";
+  my $divContainerId = "${freeForced}${table}${order}Container";
+  $table_to_print .= "<span id=\"$containerSpanId\">\n";
+  $table_to_print .= "<div id=\"$divAutocompleteId\" class=\"div-autocomplete\">\n";
+  $table_to_print .= "<input id=\"$inputId\" name=\"$inputId\" size=\"$input_size\" value=\"$value\">\n";
+  $table_to_print .= "<div id=\"$divContainerId\"></div></div></span>\n";
+#   $table_to_print .= "<span id=\"container${freeForced}${table}AutoComplete\">\n";
+#   $table_to_print .= "<div id=\"${freeForced}${table}AutoComplete\" class=\"div-autocomplete\">\n";
+#   $table_to_print .= "<input id=\"input_$table\" name=\"input_$table\" size=\"$input_size\">\n";
+#   $table_to_print .= "<div id=\"${freeForced}${table}Container\"></div></div></span>\n";
+  $table_to_print .= "</td>\n";
+  return $table_to_print;
+} # sub showEditorText
+
+
+sub getCuratorFromForm {
+  (my $var, my $curator_two) = &getHtmlVar($query, "curator_two");
+  if ($curator_two) { &updateCurator($curator_two); } else { print "ERROR : No curator chosen, using two1<br />\n"; $curator_two = 'two1'; }
+  print "<input type=\"hidden\" name=\"curator_two\" id=\"curator_two\" value=\"$curator_two\">";
+  return $curator_two;
+} # sub getCuratorFromForm
+
+sub populateCurators {
+  my $result = $dbh->prepare( "SELECT * FROM two_standardname; " );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) {
+    $curators{two}{$row[0]} = $row[2];
+    $curators{std}{$row[2]} = $row[0]; } }
+
+sub updateCurator {
+  my ($joinkey) = @_;
+  my $ip = $query->remote_host();
+  my $result = $dbh->prepare( "SELECT * FROM two_curator_ip WHERE two_curator_ip = '$ip' AND joinkey = '$joinkey';" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  my @row = $result->fetchrow;
+  unless ($row[0]) {
+    $result = $dbh->do( "DELETE FROM two_curator_ip WHERE two_curator_ip = '$ip' ;" );
+    $result = $dbh->do( "INSERT INTO two_curator_ip VALUES ('$joinkey', '$ip')" );
+    print "IP $ip updated for $joinkey<br />\n"; } }
+
+
+sub padZeros {
+  my $joinkey = shift;
+  if ($joinkey =~ m/^0+/) { $joinkey =~ s/^0+//g; }
+  if ($joinkey < 10) { $joinkey = '0000000' . $joinkey; }
+  elsif ($joinkey < 100) { $joinkey = '000000' . $joinkey; }
+  elsif ($joinkey < 1000) { $joinkey = '00000' . $joinkey; }
+  elsif ($joinkey < 10000) { $joinkey = '0000' . $joinkey; }
+  elsif ($joinkey < 100000) { $joinkey = '000' . $joinkey; }
+  elsif ($joinkey < 1000000) { $joinkey = '00' . $joinkey; }
+  elsif ($joinkey < 10000000) { $joinkey = '0' . $joinkey; }
+  return $joinkey;
+} # sub padZeros
+
+sub printHtmlHeader {
+  print "Content-type: text/html\n\n";
+  my $title = 'Person Editor';
+  my $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><HTML><HEAD>';
+  $header .= "<title>$title</title>\n";
+
+  $header .= '<link rel="stylesheet" href="http://tazendra.caltech.edu/~azurebrd/stylesheets/jex.css" />';
+#   $header .= '<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.7.0/build/fonts/fonts-min.css" />';
+  $header .= "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://yui.yahooapis.com/2.7.0/build/autocomplete/assets/skins/sam/autocomplete.css\" />";
+
+
+  $header .= "<style type=\"text/css\">#forcedPersonAutoComplete { width:25em; padding-bottom:2em; } .div-autocomplete { padding-bottom:1.5em; }</style>";
+
+  $header .= '
+    <!-- always needed for yui -->
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/yahoo-dom-event/yahoo-dom-event.js"></script>
+
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/element/element-min.js"></script>-->
+
+    <!-- for autocomplete calls -->
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/datasource/datasource-min.js"></script>
+
+    <!-- OPTIONAL: Connection Manager (enables XHR for DataSource)	needed for Connect.asyncRequest -->
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/connection/connection-min.js"></script> 
+
+    <!-- Drag and Drop source file --> 
+    <script src="http://yui.yahooapis.com/2.7.0/build/dragdrop/dragdrop-min.js" ></script>
+
+    <!-- At least needed for drag and drop easing -->
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/animation/animation-min.js"></script>
+
+
+    <!-- OPTIONAL: JSON Utility (for DataSource) -->
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/json/json-min.js"></script>-->
+
+    <!-- OPTIONAL: Get Utility (enables dynamic script nodes for DataSource) -->
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/get/get-min.js"></script>-->
+
+    <!-- OPTIONAL: Drag Drop (enables resizeable or reorderable columns) -->
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/dragdrop/dragdrop-min.js"></script>-->
+
+    <!-- OPTIONAL: Calendar (enables calendar editors) -->
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/calendar/calendar-min.js"></script>-->
+
+    <!-- Source files -->
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/datatable/datatable-min.js"></script>-->
+
+    <!-- Resize not needed to resize data table, just change div height -->
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/resize/resize.js"></script> -->
+
+    <!-- autocomplete js -->
+    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/autocomplete/autocomplete-min.js"></script>
+
+    <!-- container_core js -->
+    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/container/container-min.js"></script>-->
+
+    <!-- form-specific js put this last, since it depends on YUI above -->
+    <script type="text/javascript" src="../javascript/person_editor.js"></script>
+
+  ';
+  $header .= "</head>";
+  $header .= '<body class="yui-skin-sam">';
+  print $header;
+} # printHtmlHeader
+
+__END__
+
+sub updatePostgresLineageDataTEMP {
+  if ($sentname) { $sentname_pair = "two_sentname = '$sentname'"; $sentname = "'$sentname'"; $has_some_value++; }
+    else { $sentname_pair = "two_sentname IS NULL"; $sentname = 'NULL'; }
+  if ($othername) { $othername_pair = "two_othername = '$othername'"; $othername = "'$othername'"; $has_some_value++; }
+    else { $othername_pair = "two_othername IS NULL"; $othername = 'NULL'; }
+  if ($othertwo) { $othertwo_pair = "two_othertwo = '$othertwo'"; $othertwo = "'$othertwo'"; $has_some_value++; }
+    else { $othertwo_pair = "two_othertwo IS NULL"; $othertwo = 'NULL'; }
+  if ($date1) { $date1_pair = "two_date1 = '$date1'"; $date1 = "'$date1'"; $has_some_value++; } 
+    else { $date1_pair = "two_date1 IS NULL"; $date1 = 'NULL'; }
+  if ($date2) { $date2_pair = "two_date2 = '$date2'"; $date2 = "'$date2'"; $has_some_value++; } 
+    else { $date2_pair = "two_date2 IS NULL"; $date2 = 'NULL'; }
+  if ($role) {
+      $has_some_value++;  
+      if ($reverse_role eq 'Collaborated') { }
+        elsif ($reverse_role =~ m/^with/ ) { $reverse_role =~ s/with//g; }
+        else { $reverse_role = "with$reverse_role"; }
+      $role_pair = "two_role = '$role'"; $role = "'$role'";
+      $reverse_role_pair = "two_role = '$reverse_role'"; $reverse_role = "'$reverse_role'"; }
+    else { 
+      $role_pair = "two_role IS NULL"; $reverse_role_pair = "two_role IS NULL"; 
+      $role = 'NULL'; $reverse_role = 'NULL'; }
+  if ($sender) {
+      $has_some_value++;  
+      if ($reverse_sender =~ m/^REV \- / ) { $reverse_sender =~ s/^REV \- //g; }
+        else { $reverse_sender = "REV - $reverse_sender"; }
+      $sender_pair = "two_sender = '$sender'"; $reverse_sender_pair = "two_sender = '$reverse_sender'"; 
+      $sender = "'$sender'"; $reverse_sender = "'$reverse_sender'"; }
+    else { 
+      $sender_pair = "two_sender IS NULL"; $reverse_sender_pair = "two_sender IS NULL"; 
+      $sender = 'NULL'; $reverse_sender = 'NULL'; }
+  push @pgcommands, "DELETE FROM two_lineage WHERE joinkey = $joinkey AND $sentname_pair AND $othername_pair AND $othertwo_pair AND $date1_pair AND $date2_pair AND $role_pair AND $sender_pair";
+} # sub updatePostgresLineageDataTEMP
+
+sub makeSelectField {
+  my ($current_value, $table, $order, $is_editable) = @_;
+  my $data = "<td colspan=\"3\">";
+  if (scalar (@{ $dropdowns{$table} }) > 0) {				# if there are dropdown options for the table
+    my $javascript_action = '';
+    if ($is_editable eq 'editable') { $javascript_action = " onchange=\"changeSelect('$table', '$order')\""; }
+    my $element_name = "data_$table"; if ($order) { $element_name .= "_$order"; }
+    $data .= "<select id=\"$element_name\" name=\"$element_name\" $javascript_action>\n";
+    my $found_value = '';
+    foreach my $value ('', @{ $dropdowns{$table} }) {
+      my $selected = "";
+      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
+      $data .= "<option value=\"$value\" $selected>$value</option>\n"; }
+    $data .= "</select>";
+    unless ($found_value) { $data .= $current_value; }
+  } # if (scalar (@{ $dropdowns{$table} }) > 0)
+  $data .= "</td>";
+  return $data;
+} # sub makeSelectField
 
 sub stub {
   &printHtmlHeader();
@@ -240,7 +1652,7 @@ sub paperAuthorPersonGroup {
 
   print "<table style=\"border-style: none;\" border=\"1\" >";
   foreach my $joinkey (@joinkeys) {
-    my $pap_link = "paper_editor.cgi?curator_id=$curator_id&action=Search&data_number=$joinkey";
+    my $pap_link = "http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=$curator_id&action=Search&data_number=$joinkey";
     print "<tr><td class=\"normal_odd\" colspan=\"5\"><br/><a href=\"$pap_link\">$joinkey</a></td></tr>\n";
     foreach my $table (@tables) {
       if ($paper_hash{$table}{$joinkey}) {
@@ -296,7 +1708,7 @@ sub personAuthorCuration {
     else { $two_number_search = ''; }
   print "<input type=\"hidden\" name=\"curator_id\" id=\"curator_id\" value=\"$curator_id\">\n";
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"personAuthorCuration\">\n";
-  print "two number : <input id=\"two_number_search\" value=\"$two_number_search\" onblur=\"var url = 'paper_editor.cgi?curator_id=$curator_id&action=Person+Author+Curation&two_number_search=' + document.getElementById('two_number_search').value; window.location = url\"><br />\n";
+  print "two number : <input id=\"two_number_search\" value=\"$two_number_search\" onblur=\"var url = 'http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=$curator_id&action=Person+Author+Curation&two_number_search=' + document.getElementById('two_number_search').value; window.location = url\"><br />\n";
   if ($two_number_search) { 
     my $two_id = 'two' . $two_number_search;
     my ($lastnames_arrayref, $all_names_hashref) = &displayPersonInfo($two_id);
@@ -355,8 +1767,7 @@ my $start = time;
       $aid_names{$row[0]} = $row[1]; }
     my (@aids) = sort keys %aid_names; my $author_ids = join"', '", @aids;
     my %paper;
-#     $result = $dbh->prepare( "SELECT * FROM pap_author WHERE pap_author IN ('$author_ids') AND joinkey NOT IN (SELECT joinkey FROM pap_curation_flags WHERE pap_curation_flags = 'non_nematode') ;" );		# papers must be in list of matching author names and not non_nematode flag
-    $result = $dbh->prepare( "SELECT * FROM pap_author WHERE pap_author IN ('$author_ids') AND joinkey IN (SELECT joinkey FROM pap_curation_flags WHERE pap_curation_flags = 'author_person') ;" );	# papers must be in list of matching author names and author_person flag	Kimberly / Cecilia 2014 01 21
+    $result = $dbh->prepare( "SELECT * FROM pap_author WHERE pap_author IN ('$author_ids') AND joinkey NOT IN (SELECT joinkey FROM pap_curation_flags WHERE pap_curation_flags = 'functional_annotation') ;" );		# papers must be in list of matching author names and not functinal_annotation flag
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) { $paper{pap_aid}{$row[0]}{$row[1]}++; $paper{aid_pap}{$row[1]}{$row[0]}++; }
 
@@ -407,7 +1818,7 @@ my $start = time;
           if ($category{$type}{$aid}) {
             $count++;
             my $color = $category_index{$category{$type}{$aid}}{color};
-            my $pap_link = "paper_editor.cgi?curator_id=$curator_id&action=Search&data_number=$joinkey";
+            my $pap_link = "http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=$curator_id&action=Search&data_number=$joinkey";
             $cell_data .= "<a style=\"color: $color; text-decoration: none\" href=\"$pap_link\">$joinkey ( $aid $aid_names{$aid} )</a><br />\n";
             push @paper_aid_in_group, "$joinkey, $aid, $category{$type}{$aid}";
 #             $cell_data .= "<span style=\"color: $color\">J $joinkey A $aid C $category{$type}{$aid} E</span><br />\n";
@@ -439,7 +1850,7 @@ print "$diff seconds<br/>\n";
 sub formTrPaperAuthorMatchesByPerson {		# make a tr and form for a set of paper author matches by person
   my ($curator_id, $two_id, $paper_aid_in_group_arrayref, $start, $count, $cell_data) = @_;
   my $paper_aid_in_group = join"\t", @$paper_aid_in_group_arrayref;
-  print "<form name='form1' method=\"get\" action=\"paper_editor.cgi\">\n";
+  print "<form name='form1' method=\"get\" action=\"http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi\">\n";
   print "<input type=\"hidden\" name=\"paper_aid_in_group\" value=\"$paper_aid_in_group\">";
   print "<input type=\"hidden\" name=\"two_id\" value=\"$two_id\">";
   print "<input type=\"hidden\" name=\"curator_id\" value=\"$curator_id\">";
@@ -452,7 +1863,7 @@ sub displayPersonInfo {
   my %hash; my %all_lastnames; my %all_names;
   my @show_tables = qw( institution firstname middlename lastname aka_firstname aka_middlename aka_lastname );
   my %shown; foreach (@show_tables) { $shown{$_}++; }
-  my @tables = qw( firstname middlename lastname street city state post country institution mainphone labphone officephone otherphone fax email old_email lab oldlab pis left_field unable_to_contact privacy aka_firstname aka_middlename aka_lastname webpage );
+  my @tables = qw( firstname middlename lastname street city state post country institution mainphone labphone officephone otherphone fax email old_email pis lab oldlab orcid left_field unable_to_contact privacy aka_firstname aka_middlename aka_lastname apu_firstname apu_middlename apu_lastname webpage );
   my @simple_tables = qw( comment );
   foreach my $table (@tables) {
     $result = $dbh->prepare( "SELECT * FROM two_$table WHERE joinkey = '$two_id';" );
@@ -515,7 +1926,7 @@ sub getFirstPassTables {
   return \@fptables; }
 
 
-sub findDeadGenes {	# for Kimberly to find dead genes and update them in the paper editor.  will need to update to point to paper_editor later.  2010 04 09
+sub findDeadGenes {	# for Kimberly to find dead genes and update them in the wbpaper editor.  will need to update to point to paper_editor later.  2010 04 09
   &printHtmlHeader();
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"findDeadGenes\">";
   (my $oop, my $curator_id) = &getHtmlVar($query, 'curator_id');		# this is pointless, will be overridden by two10877 for pubmed
@@ -526,8 +1937,7 @@ sub findDeadGenes {	# for Kimberly to find dead genes and update them in the pap
   $result = $dbh->prepare( "SELECT gin_dead.gin_dead, pap_gene.joinkey, pap_gene.pap_gene, pap_gene.pap_evidence, pap_gene.pap_curator FROM pap_gene, gin_dead WHERE pap_gene.pap_gene = gin_dead.joinkey ORDER BY pap_gene.pap_gene, pap_gene.joinkey;" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) {
-#     print "<tr><td><a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/wbpaper_editor.cgi?curator_name=$curator_id&number=$row[1]&action=Number+!\" target=\"new\">$row[1]</a></td><td>$row[2]</td><td>$row[3]</td><td>$row[0]</td></tr>\n";
-    print "<tr><td><a href=\"paper_editor.cgi?curator_id=$curator_id&data_number=$row[1]&action=Search\" target=\"new\">$row[1]</a></td><td>$row[2]</td><td>$row[3]</td><td>$row[0]</td></tr>\n";
+    print "<tr><td><a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/wbpaper_editor.cgi?curator_name=$curator_id&number=$row[1]&action=Number+!\" target=\"new\">$row[1]</a></td><td>$row[2]</td><td>$row[3]</td><td>$row[0]</td></tr>\n";
   } # while (my @row = $result->fetchrow)
   print "</table>";
   &printFooter();
@@ -538,16 +1948,15 @@ sub enterPmids {
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"enterPmids\">";
   (my $oop, my $curator_id) = &getHtmlVar($query, 'curator_id');		# this is pointless, will be overridden by two10877 for pubmed
   unless ($curator_id) { print "ERROR NO CURATOR<br />\n"; return; }
-  my $functional_flag = ''; my $primary_flag = ''; my $aut_per_priority = '';
+  my $functional_flag = ''; my $primary_flag = '';
   ($oop, $functional_flag) = &getHtmlVar($query, 'functional_flag');
   ($oop, $primary_flag) = &getHtmlVar($query, 'primary_flag');
-  ($oop, $aut_per_priority) = &getHtmlVar($query, 'author_person_priority_flag');
 
   ($oop, my $pmids) = &getHtmlVar($query, 'pmids');
   my (@pmids) = $pmids =~ m/(\d+)/g;
   my @pairs; 
   foreach my $pmid (@pmids) { 
-    push @pairs, "$pmid, $primary_flag, $aut_per_priority"; }
+    push @pairs, "$pmid, $primary_flag"; }
   my $list = join"\t", @pairs;
 
   my ($link_text) = &processXmlIds($curator_id, $functional_flag, $list);
@@ -589,8 +1998,7 @@ sub confirmAbstracts {
       }
       elsif ($choice eq 'approve') {
         my $primary_flag = ""; ($oop, $primary_flag) = &getHtmlVar($query, "primary_$i");		
-        my $aut_per_priority = ""; ($oop, $aut_per_priority) = &getHtmlVar($query, "author_person_priority_$i");		
-        push @process_list, "$pmid, $primary_flag, $aut_per_priority";
+        push @process_list, "$pmid, $primary_flag";
 #         my ($link_text) = &processLocal($pmid, $curators{std}{$theHash{curator}}, '');
 # no longer move here, approved stuff gets into @process_list and moved by processXmlIds
 #         my $move = "mv -f ${directory}/xml/$pmid ${directory}/done/"; 	# need to force move in ubuntu
@@ -614,57 +2022,26 @@ sub confirmAbstracts {
 
 sub enterNewPapers {
   &printHtmlHeader();
-  print "<form name='form1' method=\"post\" action=\"paper_editor.cgi\">\n";
+  print "<form name='form1' method=\"post\" action=\"http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi\">\n";
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"mergePage\">";
   ($oop, my $curator_id) = &getHtmlVar($query, 'curator_id');
   unless ($curator_id) { print "ERROR NO CURATOR<br />\n"; return; }
   print "<input type=\"hidden\" name=\"curator_id\" id=\"curator_id\" value=\"$curator_id\">";
   print "You are $curator_id<br />\n";
   &showEnterPmidBox($curator_id);
-  &showEnterNonpmidPaper($curator_id);
   &showConfirmXmlTable($curator_id);
   print "</form>\n";
   &printFooter();
 }
 
-sub enterNonPmids {
-  &printHtmlHeader();
-  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"enterNonPmids\">";
-  (my $oop, my $curator_id) = &getHtmlVar($query, 'curator_id');
-  unless ($curator_id) { print "ERROR NO CURATOR<br />\n"; return; }
-  $result = $dbh->prepare( "SELECT joinkey FROM pap_status ORDER BY joinkey DESC;" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  my @row = $result->fetchrow(); my $joinkey = $row[0];
-  $joinkey++;
-  my $pgcommand = "INSERT INTO pap_status VALUES ('$joinkey', 'valid', NULL, '$curator_id');";
-#   print "$pgcommand<br />\n";
-  $result = $dbh->do( $pgcommand );
-  $pgcommand = "INSERT INTO h_pap_status VALUES ('$joinkey', 'valid', NULL, '$curator_id');";
-#   print "$pgcommand<br />\n";
-  $result = $dbh->do( $pgcommand );
-  my $url = "paper_editor.cgi?action=Search&data_number=$joinkey&curator_id=$curator_id";
-  print "You have created : <a href=\"$url\">WBPaper$joinkey</a>.  This page will now redirect to $url\n";
-  print "<input type=\"hidden\" name=\"redirect_to\" id=\"redirect_to\" value=\"$url\">";
-#   if ($joinkey =~ m/(\d+)/) { &displayNumber(&padZeros($1), $curator_id); return; }	# do not display editor, any reload would create another new joinkey
-  &printFooter();
-} # sub enterNonPmids
-
-sub showEnterNonpmidPaper {
-  print "<hr>\n";
-  my ($curator_id) = @_;
-  print "<input type=submit name=action value=\"Enter non-PMID paper\">\n";
-} # sub showEnterNonpmidPaper
-
 sub showConfirmXmlTable {
-  print "<hr>\n";
   my ($curator_id) = @_;
   my $directory = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads';
   my $rejected_file = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads/rejected_pmids';
   my @read_pmids = <$directory/xml/*>;
   print "<input type=submit name=action value=\"Confirm Abstracts\">\n";
   print "<table border=1>\n";
-#   print "<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td>Approve</td><td>primary</td></tr>\n";
-  print "<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td>Flags</td></tr>\n";
+  print "<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td>Approve</td><td>primary</td></tr>\n";
   my $count = 0;
   foreach my $infile (@read_pmids) {
     $/ = undef;
@@ -672,12 +2049,6 @@ sub showConfirmXmlTable {
     my $file = <IN>;
     close (IN) or die "Cannot open $infile : $!";
     my ($abstract) = $file =~ /\<AbstractText\>(.+?)\<\/AbstractText\>/i;
-    unless ($abstract) {                          # if there is no abstract match, try to get label and concatenate multiple matches.
-      my @abstracts = $file =~ /\<AbstractText(.+?)\<\/AbstractText\>/gi;
-      foreach my $ab (@abstracts) {
-        if ($ab =~ m/Label=\"(.*?)\"/i) { $abstract .= "${1}: "; }
-        if ($ab =~ m/^.*\>/) { $ab =~ s/^.*\>//; } $abstract .= "$ab "; }
-      if ($abstract) { if ($abstract =~ m/ +$/) { $abstract =~ s/ +$//; } } }
     my ($type) = $file =~ /\<PublicationType\>(.+?)\<\/PublicationType\>/i;
     my ($journal) = $file =~ /\<MedlineTA\>(.+?)\<\/MedlineTA\>/i;	# show Journal to reject 
     my ($title) = $file =~ /\<ArticleTitle\>(.+?)\<\/ArticleTitle\>/i;	# show article Title to reject 
@@ -689,9 +2060,8 @@ sub showConfirmXmlTable {
     $authors =~ s/\W+$//;
     my ($pmid) = $infile =~ m/(\d+)$/;
     my ($doi) = $file =~ /\<ArticleId IdType=\"doi\"\>(.+?)\<\/ArticleId\>/i;
-    my $input_buttons = "<td>approve_reject<br/><select size=1 name=approve_reject_$count><option></option><option>approve</option><option>reject</option><option>remove</option></select>";
-    $input_buttons .= "<br /><br />primary<br/><select size=1 name=primary_$count><option></option><option selected=\"selected\" value=\"primary\">primary</option><option value=\"not_primary\">not_primary</option><option value=\"not_designated\">not_designated</option></select>\n";
-    $input_buttons .= "<br /><br />aut-per_priority<br/><select size=1 name=author_person_priority_$count><option selected=\"selected\" value=\"author_person\">priority</option><option value=\"\">not_priority</option></select></td>\n";
+    my $input_buttons = "<td><select size=1 name=approve_reject_$count><option></option><option>approve</option><option>reject</option><option>remove</option></select></td>";
+    $input_buttons .= "<td><select size=1 name=primary_$count><option></option><option selected=\"selected\" value=\"primary\">primary</option><option value=\"not_primary\">not_primary</option><option value=\"not_designated\">not_designated</option></select></td>\n";
     if ($journal eq 'Genetics') { 
         print "<TR bgcolor='$red'>\n"; 					# show Genetics papers in red	2009 07 21
         if ($doi) { $journal .= "<br />$doi"; } 			# show DOI			2009 07 23
@@ -713,16 +2083,12 @@ sub showConfirmXmlTable {
 } # sub showConfirmXmlTable
 
 sub showEnterPmidBox {
-  print "<hr>\n";
   my ($curator_id) = @_;
   print "<table border=0 cellspacing=2>\n";
   print "<tr><td>Enter the PMID numbers, one per line.  e.g. :<br/>\n";
   print "16061202<br />16055504<br />16055082<br />\n";
   print "<td><textarea name=\"pmids\" rows=6 cols=60 value=\"\"></textarea></td>\n";
-  print "<td align=left><input name=\"functional_flag\" type=checkbox value=\"non_nematode\">non_nematode flag<br />\n";
-  print "<select size=1 name=\"primary_flag\"><option value=\"\" selected=\"selected\"></option><option value=\"primary\">primary</option><option value=\"not_primary\">not_primary</option><option value=\"not_designated\">not_designated</option></select><br />\n";
-  print "author-person : <select size=1 name=\"author_person_priority_flag\"><option value=\"author_person\" selected=\"selected\">priority</option><option value=\"\">not_priority</option></select><br />\n";
-  print "<input type=\"submit\" name=\"action\" value=\"Enter PMIDs\"></td></tr>\n";
+  print "<td align=left><input name=\"functional_flag\" type=checkbox value=\"functional_annotation\">functional annotation flag<br /><select size=1 name=\"primary_flag\"><option value=\"\" selected=\"selected\"></option><option value=\"primary\">primary</option><option value=\"not_primary\">not_primary</option><option value=\"not_designated\">not_designated</option></select><br /><input type=\"submit\" name=\"action\" value=\"Enter PMIDs\"></td></tr>\n";
   print "</table>\n";
 } # sub showEnterPmidBox
 
@@ -1020,64 +2386,6 @@ sub updatePostgresAuthorReorderField {		# author field deletes all current value
 } # sub updatePostgresAuthorReorderField 
 
 
-sub makeSelectField {
-  my ($current_value, $table, $joinkey, $order, $curator_id) = @_;
-  my $data = "<td colspan=\"3\"><select id=\"select_${table}_$order\" name=\"select_${table}_$order\" onchange=\"changeSelect('$table', '$joinkey', '$order', '$curator_id')\">\n";
-  $data .= "<option value=\"\"></option>\n";
-  my $found_value = '';
-  if ($table eq 'type') {
-    foreach my $value (sort {$a<=>$b} keys %type_index) {
-      my $selected = "";
-      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-      $data .= "<option value=\"$value\" $selected>$type_index{$value}</option>\n"; } }
-# this is waaaay too slow
-#   elsif ( ($table eq 'erratum_in') || ($table eq 'contained_in') ) {
-#     my @curation_flags = qw(  Phenotype2GO rnai_curation rnai_int_done );
-#     foreach my $value (sort {$a<=>$b} keys %valid_paper_index) {
-#       my $selected = "";
-#       if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-#       $data .= "<option value=\"$value\" $selected>$value</option>\n"; } }
-  elsif ($table eq 'primary_data') {
-    my @curation_flags = qw( primary not_primary not_designated );
-    foreach my $value (@curation_flags) {
-      my $selected = "";
-      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-      $data .= "<option value=\"$value\" $selected>$value</option>\n"; } }
-  elsif ($table eq 'curation_flags') {
-#     my @curation_flags = qw( functional_annotation genestudied_done Phenotype2GO rnai_curation rnai_int_done );
-    my @curation_flags = qw( author_person non_nematode Phenotype2GO rnai_curation );	# got rid of rnai_int_done, not being used 2011 05 03  moved genestudied_done to curation_done as 'genestudied' 2011 05 18
-    foreach my $value (@curation_flags) {
-      my $selected = "";
-      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-      $data .= "<option value=\"$value\" $selected>$value</option>\n"; } }
-  elsif ($table eq 'curation_done') {
-    my @curation_flags = qw( author_person genestudied gocuration );
-    foreach my $value (@curation_flags) {
-      my $selected = "";
-      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-      $data .= "<option value=\"$value\" $selected>$value</option>\n"; } }
-  elsif ($table eq 'year') {
-    my $date = &getPgDate(); my ($year) = $date =~ m/^(2\d{3})/;
-    foreach my $value (reverse (1900 .. $year)) {
-      my $selected = "";
-      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-      $data .= "<option value=\"$value\" $selected>$value</option>\n"; } }
-  elsif ($table eq 'month') {
-    foreach my $value (01 .. 12) {
-      my $selected = "";
-      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-      $data .= "<option value=\"$value\" $selected>$month_index{$value}</option>\n"; } }
-  elsif ($table eq 'day') {
-    foreach my $value (01 .. 31) {
-      my $selected = "";
-      if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
-      $data .= "<option value=\"$value\" $selected>$value</option>\n"; } }
-  $data .= "</select>";
-  unless ($found_value) { $data .= $current_value; }
-  $data .= "</td>";
-  return $data;
-} # sub makeSelectField
-
 # sub makeAuthorInputField {
 #   my ($current_value, $table, $aid, $join, $curator_id, $colspan, $rowspan, $class) = @_;
 #   # the $order here is usually the pap_order value of a normal table, but it's the author_id of an author_<stuff> table to server as a unique identifier for the html ids
@@ -1167,7 +2475,7 @@ sub getGeneName {
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   my @row = $result->fetchrow(); $name = $row[1];
   unless ($name) {
-    my $result = $dbh->prepare( "SELECT * FROM gin_seqname WHERE joinkey = '$current_value'" );	# check gin_seqname instead of gin_sequence for Kimberly 2011 05 06
+    my $result = $dbh->prepare( "SELECT * FROM gin_sequence WHERE joinkey = '$current_value'" );
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     my @row = $result->fetchrow(); $name = $row[1]; }
   return $name;
@@ -1175,7 +2483,7 @@ sub getGeneName {
 
 sub getGeneDisplay {
   my ($display_data, $evi) = @_;
-  my $name = &getGeneName($display_data);
+  my $name = &getGeneName($display_data); 
   $display_data = "<td>$display_data ( $name )</td><td>$evi</td>";
   return $display_data;
 } # sub getGeneDisplay
@@ -1291,7 +2599,7 @@ sub displayMerge {
       foreach my $data_tr (@data_trs) { print "$data_tr"; } }
   } # foreach my $table (@normal_tables)
   print "</table>\n";
-  print "<hr/><input type=\"button\" onclick=\"updatePostgresTableField(\'identifier\', \'$acquires_joinkey\', \'$identifier_highest_order\', \'$curator_id\', \'$merge_joinkey\', \'\', \'paper_editor.cgi?curator_id=two1823&action=Search&data_number=$merge_joinkey\');\" value=\"merge WBPaper$merge_into into pap_identifier of WBPaper$acquires_joinkey and review WBPaper$merge_joinkey for deletion\">";
+  print "<hr/><input type=\"button\" onclick=\"updatePostgresTableField(\'identifier\', \'$acquires_joinkey\', \'$identifier_highest_order\', \'$curator_id\', \'$merge_joinkey\', \'\', \'http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=two1823&action=Search&data_number=$merge_joinkey\');\" value=\"merge WBPaper$merge_into into pap_identifier of WBPaper$acquires_joinkey and review WBPaper$merge_joinkey for deletion\">";
 # my $identifier_highest_order = 0;
   &printFooter();
 } # sub displayMerge
@@ -1372,9 +2680,8 @@ sub displayNumber {
           $td_data = "<td colspan=\"3\">$data</td>"; }	# display as is
         elsif ($table eq 'electronic_path') {
           my ($pdf) = $data =~ m/\/([^\/]*)$/;
-          my $additional_text = ''; if ($pdf =~ m/^\d{8}$/) { $additional_text = ' additional info'; }
           $pdf = 'http://tazendra.caltech.edu/~acedb/daniel/' . $pdf;
-          $td_data = "<td colspan=\"3\"><a href=\"$pdf\">$pdf</a>$additional_text</td>\n"; }
+          $td_data = "<td colspan=\"3\"><a href=\"$pdf\">$pdf</a></td>\n"; }
 # This is replaced by makeGeneDeleteField
 #         elsif ($table eq 'gene') { 
 #           my $name = '';
@@ -1396,7 +2703,7 @@ sub displayNumber {
 
 #       my @data; foreach (@row) { if ($_) { push @data, $_; } else { push @data, ""; } }		# some data is undefined
 #       my $data = join"</td><td>", @data;
-      if ( ($table eq 'type') || ($table eq 'curation_flags') || ($table eq 'curation_done') || ($table eq 'primary_data') 
+      if ( ($table eq 'type') || ($table eq 'curation_flags') || ($table eq 'primary_data') 
                               || ($table eq 'year') || ($table eq 'month') || ($table eq 'day') ) { 
           ($td_data) = &makeSelectField($data, $table, $joinkey, $order, $curator_id); }
         elsif ( ($table eq 'electronic_path') || ($table eq 'pubmed_final') ) { 1; }
@@ -1418,7 +2725,7 @@ sub displayNumber {
       my $td_data = '';			# default new values are blank
       if ($table eq 'electronic_path') { 1; }			# not an editable field
         elsif ($table eq 'pubmed_final') { 1; }			# not an editable field	# don't display to prevent errors  2010 12 13
-        elsif ( ($table eq 'type') || ($table eq 'curation_flags') || ($table eq 'curation_done') || ($table eq 'year') || ($table eq 'month') || ($table eq 'day') ) { 
+        elsif ( ($table eq 'type') || ($table eq 'curation_flags') || ($table eq 'year') || ($table eq 'month') || ($table eq 'day') ) { 
           ($td_data) = &makeSelectField("", $table, $joinkey, $order, $curator_id); 
           $entry_data .= "<tr bgcolor=\"white\"><td>$table</td>$td_data<td>$order</td><td>$curator_id</td><td>current</td></tr>\n"; }
         elsif ($table eq 'gene') { 
@@ -1612,7 +2919,7 @@ sub search {
     print "<br />Matches $count<br />\n";
     foreach my $joinkey (sort {$a<=>$b} keys %{ $matches{$count} }) {
 #       print "<a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?action=Search&data_number=$joinkey&history=$history\">WBPaper$joinkey</a>\n";
-      print "<a href=\"paper_editor.cgi?action=Search&data_number=$joinkey&curator_id=$curator_id\">WBPaper$joinkey</a>\n";
+      print "<a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?action=Search&data_number=$joinkey&curator_id=$curator_id\">WBPaper$joinkey</a>\n";
       foreach my $table (keys %{ $hash{table} }) {
         next unless $hash{table}{$table}{$joinkey};
         my $data_match = join", ", @{ $hash{table}{$table}{$joinkey} }; 
@@ -1624,82 +2931,101 @@ sub search {
   &printFooter();
 } # sub search
 
-sub firstPage {
+
+sub flagFalsePositives {
   &printHtmlHeader();
-  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"firstPage\">";
-  my $date = &getDate();
-    # using post instead of get makes a confirmation request when javascript reloads the page after a change.  2010 03 12
-  print "<form name='form1' method=\"get\" action=\"paper_editor.cgi\">\n";
-  print "<table border=0 cellspacing=5>\n";
+  ($oop, my $curator_id) = &getHtmlVar($query, 'curator_id');
+  unless ($curator_id) { print "ERROR NO CURATOR<br />\n"; return; }
+  print "<form name='form1' method=\"post\" action=\"http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi\">\n";
+  print "<input type=\"hidden\" name=\"curator_id\" id=\"curator_id\" value=\"$curator_id\">";
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"flagFalsePositives\">";
+  my ($arrayref) = &getFirstPassTables();
+  my @fptables = @$arrayref; my %filter;
+  foreach my $table (@fptables) { $filter{$table}++; }
+  $filter{""}++; $filter{antibody}++; $filter{extvariation}++;
+  print "Select a first pass type to mark as false positive : <select name=\"fptype\" size=1>\n";
+  foreach my $table (sort keys %filter) { print "<option value=\"$table\">$table</option>\n"; }
+  print "</select><br />\n";
 
-  print "<tr><td colspan=\"2\">Select your Name : <select name=\"curator_id\" size=\"1\">\n";
-  print "<option value=\"\"></option>\n";
-  &populateCurators();
-  my $ip = $query->remote_host();                               # select curator by IP if IP has already been used
-  my $curator_by_ip = '';
-  my $result = $dbh->prepare( "SELECT * FROM two_curator_ip WHERE two_curator_ip = '$ip';" ); $result->execute; my @row = $result->fetchrow;
-  if ($row[0]) { $curator_by_ip = $row[0]; }
+  print "Enter WBPapers and comment (one each per line) : <br/>\n";
+  print "<textarea name=\"false_positives\" rows=35 cols=80 value=\"\"></textarea><br/>\n";
+  print "<input type=\"submit\" name=\"action\" value=\"Enter False Positives\">\n";
+  print "<input type=\"submit\" name=\"action\" value=\"Show False Positives\"><br />\n";
 
-  my @curator_list = qw( two1823 two101 two1983 two8679 two2021 two2987 two3111 two324 two363 two1 two4055 two12028 two557 two567 two625 two2970 two1843 two736 two1760 two712 two9133 two480 two1847 two627 two4025 );
-#   my @curator_list = ('', 'Juancarlos Chan', 'Wen Chen', 'Paul Davis', 'Ruihua Fang', 'Jolene S. Fernandes', 'Chris', 'Kevin Howe',  'Ranjana Kishore', 'Raymond Lee', 'Cecilia Nakamura', 'Michael Paulini', 'Gary C. Schindelman', 'Erich Schwarz', 'Paul Sternberg', 'Mary Ann Tuli', 'Kimberly Van Auken', 'Qinghua Wang', 'Xiaodong Wang', 'Karen Yook', 'Margaret Duesbury', 'Tuco', 'Anthony Rogers', 'Theresa Stiernagle', 'Gary Williams' );
-  foreach my $joinkey (@curator_list) {                         # display curators in alphabetical (array) order, if IP matches existing ip record, select it
-    my $curator = 0;
-    if ($curators{two}{$joinkey}) { $curator = $curators{two}{$joinkey}; }
-    if ($joinkey eq $curator_by_ip) { print "<option value=\"$joinkey\" selected=\"selected\">$curator</option>\n"; }
-      else { print "<option value=\"$joinkey\" >$curator</option>\n"; } }
-  print "</select></td>";
-  print "<td colspan=\"2\">Date : $date</td></tr>\n";
-
-  print "<tr><td>&nbsp;</td></tr>\n";
-
-  print "<tr>\n";
-  print "<td><input type=submit name=action value=\"Search\"></td>\n";
-#   print "<td><input type=\"checkbox\" name=\"history\" value=\"on\">display history (not search history)</td>\n";
-  print "</tr>\n";
-  foreach my $table ("number", @normal_tables) { 
-    my $style = ''; 
-    if ( ($table eq 'number') || ($table eq 'status') || ($table eq 'type') ) { $style = 'display: none'; }
-    print "<tr><td>$table</td>";
-    if ( $table eq 'type' ) {					# for type show dropdown instead of text input
-        print "<td><select id=\"data_$table\" name=\"data_$table\">\n";
-        print "<option value=\"\"></option>\n";
-        foreach my $value (sort {$a<=>$b} keys %type_index) {
-          print "<option value=\"$value\">$type_index{$value}</option>\n"; }
-        print "</select></td>"; }
-      elsif ( ($table eq 'status') || ($table eq 'pubmed_final') || ($table eq 'curation_flags') || ($table eq 'curation_done') || ($table eq 'primary_data') ) {
-        my @values = ();
-        if ($table eq 'status') { @values = qw( valid invalid ); }
-        if ($table eq 'pubmed_final') { @values = qw( final not_final ); }
-        if ($table eq 'curation_flags') { @values = qw( author_person non_nematode Phenotype2GO rnai_curation ); }
-        if ($table eq 'curation_done') { @values = qw( author_person genestudied gocuration ); }
-        if ($table eq 'primary_data') { @values = qw( primary not_primary not_designated ); }
-        print "<td><select id=\"data_$table\" name=\"data_$table\">\n";
-        print "<option value=\"\"></option>\n";
-        foreach my $value (@values) {
-          print "<option value=\"$value\">$value</option>\n"; }
-        print "</select></td>"; }
-      else { print "<td><input size=40 id=\"data_$table\" name=\"data_$table\"></td>\n"; }	# normal tables have input
-    if ( $table eq 'number' ) {					# for number show an X to clear the field for Mary Ann approved by Kimberly  2014 06 18
-#       print qq(<td><span style="border:1px solid" onclick="document.getElementById('data_$table').value = '';">&nbsp;x&nbsp;</span>&nbsp;&nbsp;<button onclick="document.getElementById('data_$table').value = '';">x</button>\n);
-      print qq(<td><button onclick="document.getElementById('data_$table').value = '';">x</button>\n); }
-    print "<td style='$style'><input type=\"checkbox\" value=\"on\" name=\"substring_$table\">substring</td>\n";
-    print "<td style='$style'><input type=\"checkbox\" value=\"on\" name=\"case_$table\">case insensitive (automatic substring)</td></tr>\n";
-  } # foreach my $table ("number", @normal_tables)
-
-  print "<tr><td>&nbsp;</td></tr>\n";
-  print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"Enter New Papers\"></td></tr>\n";
-#   print "<tr><td colspan=\"2\"><!-- This is LIVE --> <input type=\"submit\" name=\"action\" VALUE=\"Flag False Positives\"></td></tr>\n";
-  print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"RNAi Curation\"></td></tr>\n";
-  print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"Find Dead Genes\"></td></tr>\n";
-  print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"Author Gene Curation\"></td></tr>\n";
-  print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"Person Author Curation\"></td></tr>\n";
-
-  print "</table>\n";
   print "</form>\n";
+
   &printFooter();
-} # sub firstPage
+} # sub flagFalsePositives
 
+sub showFalsePositives {
+  &printHtmlHeader();
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"showFalsePositives\">";
+  my ($var, $table) = &getHtmlVar($query, "fptype");
+  print "using table $table<BR>\n";
+  print "<table border=1>\n";
+  my $result = $dbh->prepare( "SELECT * FROM cfp_$table WHERE cfp_$table ~ 'FALSE POSITIVE' ");
+  $result->execute;
+  while (my @row = $result->fetchrow) {
+    foreach (@row) { $_ = "<td>$_</td>"; }
+    print "<tr>@row</tr>\n"; 
+  } # while (my @row = $result->fetchrow)
+  print "</TABLE>\n";
+  &printFooter();
+} # sub showFalsePositives
 
+sub enterFalsePositives {
+  &populateCurators();						# for false positive comment
+  &printHtmlHeader();
+  ($oop, my $curator_id) = &getHtmlVar($query, 'curator_id');
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"enterFalsePositives\">";
+  my ($var, $table) = &getHtmlVar($query, "fptype");
+  print "using table $table<BR>\n";
+
+  ($var, my $data) = &getHtmlVar($query, "false_positives");
+  my (@lines) = split/\n/, $data;
+  foreach my $line (@lines) {
+    my ($wbp, $comment) = ("", "no comment");
+    if ($line =~ m/^\s*?(\S+)\s+(.*)$/) {
+      ($wbp, $comment) = $line =~ m/^\s*?(\S+)\s+(.*)$/; }
+    elsif ($line =~ m/^\s*?(\S+)$/) {
+      ($wbp) = $line =~ m/^\s*?(\S+)$/; }
+    $wbp = lc($wbp);
+    my $paper = '';
+    if ($wbp =~ m/wbpaper(\d+)/) { $paper = $1; }
+    elsif ($wbp =~ m/^(\d+)$/) { $paper = $1; }
+    else { print "<FONT COLOR=red>ERROR, line doesn't start with a WBPaper : $line</FONT>.<BR>\n"; next; }
+    &postgresFalsePositive($table, $paper, $comment, $curator_id);
+  } # foreach my $line (@lines)
+  &printFooter();
+} # sub enterFalsePositives
+
+sub postgresFalsePositive {
+  my ($table, $paper, $comment, $curator_id) = @_;
+  ($comment) = &filterForPg($comment);                  # replace ' with ''
+  my $result = $dbh->prepare( "SELECT * FROM cfp_$table WHERE joinkey = '$paper' ");
+  $result->execute;
+  my $pgcommand = '';
+  my @row = $result->fetchrow();
+  if ($row[0]) {
+    $pgcommand = "UPDATE cfp_$table SET cfp_$table = '$row[1] is FALSE POSITIVE : $comment -- $curators{two}{$curator_id}' WHERE joinkey = '$paper'; ";
+    $result = $dbh->prepare( $pgcommand );
+    $result->execute;
+    print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
+    $pgcommand = "UPDATE cfp_$table SET cfp_timestamp = CURRENT_TIMESTAMP WHERE joinkey = '$paper'; ";
+    $result = $dbh->prepare( $pgcommand );
+    $result->execute;
+    print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
+    $pgcommand = "UPDATE cfp_$table SET cfp_curator = '$curator_id' WHERE joinkey = '$paper'; ";
+    $result = $dbh->prepare( $pgcommand );
+    $result->execute;
+    print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
+  } else {
+    $pgcommand = "INSERT INTO cfp_$table VALUES ('$paper', 'FALSE POSITIVE : $comment -- $curators{two}{$curator_id}', '$curator_id'); ";
+    $result = $dbh->prepare( $pgcommand );
+    $result->execute;
+    print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
+  }
+} # sub postgresFalsePositive
 
 sub makePdfLinkFromPath {
   my ($path) = shift;
@@ -1787,7 +3113,7 @@ sub rnaiCuration {
 #         my $order = 1; if ($highest{$joinkey}) { $order = $highest{$joinkey} + 1; }
         $curate_link = "<a href=\"#\" onclick=\"updatePostgresTableField('curation_flags', '$joinkey', 'new', '$curator_id', 'rnai_curation', '', 'nothing'); document.getElementById('td_curate_$joinkey').innerHTML = '$curators{two}{$curator_id}'; return false\">curate</a>"; }
     print "<tr>";
-    print "<td align=\"$alignment\"><a href=\"paper_editor.cgi?curator_id=$curator_id&action=Search&data_number=$joinkey\" target=\"new\">$joinkey</a></td>";
+    print "<td align=\"$alignment\"><a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/paper_editor.cgi?curator_id=$curator_id&action=Search&data_number=$joinkey\" target=\"new\">$joinkey</a></td>";
     print "<td align=\"$alignment\">$idents</td>";
     print "<td align=\"$alignment\">$pdfs</td>";
     print "<td align=\"$alignment\">$rnai_data</td>";
@@ -1806,9 +3132,9 @@ sub authorGeneDisplay {			# for Karen
   ($oop, my $curator_id) = &getHtmlVar($query, 'curator_id');
   unless ($curator_id) { print "ERROR NO CURATOR<br />\n"; return; }
   &updateCurator($curator_id);
-#   my $who = '';
-#   if ($curator_id eq 'two712') { $who = 'Karen Yook'; }
-#   if ($curator_id eq 'two1843') { $who = 'Kimberly Van Auken'; }
+  my $who = '';
+  if ($curator_id eq 'two712') { $who = 'Karen Yook'; }
+  if ($curator_id eq 'two1843') { $who = 'Kimberly Van Auken'; }
 
   my %data; tie %{ $data{when} }, "Tie::IxHash";
 
@@ -1862,8 +3188,7 @@ sub authorGeneDisplay {			# for Karen
       $inferred = join", ", sort keys %{ $data{inferred}{$joinkey} }; 
       if ($inferred =~ m/^(.{1000})/s) { $inferred = $1 . " ..."; } }
     print "<tr bgcolor='$blue'>\n";
-#     print "<td valign=\"top\" class=\"normal_odd\"><a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/wbpaper_editor.cgi?number=$joinkey&action=Number+%21&curator_name=$who\" target=\"new\">$joinkey</a></td>\n";
-    print "<td valign=\"top\" class=\"normal_odd\"><a href=\"paper_editor.cgi?data_number=$joinkey&action=Search&curator_id=$curator_id\" target=\"new\">$joinkey</a></td>\n";
+    print "<td valign=\"top\" class=\"normal_odd\"><a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/wbpaper_editor.cgi?number=$joinkey&action=Number+%21&curator_name=$who\" target=\"new\">$joinkey</a></td>\n";
     print "<td valign=\"top\" class=\"normal_odd\">$when</td>\n";
     print "<td valign=\"top\" class=\"normal_odd\">$inferred</td>\n";
     print "<td valign=\"top\" class=\"normal_odd\">$author</td>\n";
@@ -1970,12 +3295,11 @@ sub populateSingleMultiTableTypes {
   $multi{'contained_in'}++;
   $multi{'gene'}++;
   $multi{'identifier'}++;
-#   $multi{'ignore'}++;			# getting rid of this table  2011 05 27
+  $multi{'ignore'}++;
   $multi{'remark'}++;
   $multi{'erratum_in'}++;
   $multi{'internal_comment'}++;
   $multi{'curation_flags'}++;
-  $multi{'curation_done'}++;
   $multi{'electronic_path'}++;
   $multi{'author_possible'}++;
   $multi{'author_sent'}++;
@@ -1983,171 +3307,8 @@ sub populateSingleMultiTableTypes {
 } # sub populateSingleMultiTableTypes
 
 
-sub printHtmlHeader {
-  print "Content-type: text/html\n\n";
-  my $title = 'Paper Editor';
-  my $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><HTML><HEAD>';
-  $header .= "<title>$title</title>\n";
-
-  $header .= '<link rel="stylesheet" href="http://tazendra.caltech.edu/~azurebrd/stylesheets/jex.css" />';
-#   $header .= '<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.7.0/build/fonts/fonts-min.css" />';
-  $header .= "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://yui.yahooapis.com/2.7.0/build/autocomplete/assets/skins/sam/autocomplete.css\" />";
-
-
-  $header .= "<style type=\"text/css\">#forcedPersonAutoComplete { width:25em; padding-bottom:2em; } .div-autocomplete { padding-bottom:1.5em; }</style>";
-
-  $header .= '
-    <!-- always needed for yui -->
-    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/yahoo-dom-event/yahoo-dom-event.js"></script>
-
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/element/element-min.js"></script>-->
-
-    <!-- for autocomplete calls -->
-    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/datasource/datasource-min.js"></script>
-
-    <!-- OPTIONAL: Connection Manager (enables XHR for DataSource)	needed for Connect.asyncRequest -->
-    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/connection/connection-min.js"></script> 
-
-    <!-- Drag and Drop source file --> 
-    <script src="http://yui.yahooapis.com/2.7.0/build/dragdrop/dragdrop-min.js" ></script>
-
-    <!-- At least needed for drag and drop easing -->
-    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/animation/animation-min.js"></script>
-
-
-    <!-- OPTIONAL: JSON Utility (for DataSource) -->
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/json/json-min.js"></script>-->
-
-    <!-- OPTIONAL: Get Utility (enables dynamic script nodes for DataSource) -->
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/get/get-min.js"></script>-->
-
-    <!-- OPTIONAL: Drag Drop (enables resizeable or reorderable columns) -->
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/dragdrop/dragdrop-min.js"></script>-->
-
-    <!-- OPTIONAL: Calendar (enables calendar editors) -->
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/calendar/calendar-min.js"></script>-->
-
-    <!-- Source files -->
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/datatable/datatable-min.js"></script>-->
-
-    <!-- Resize not needed to resize data table, just change div height -->
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/resize/resize.js"></script> -->
-
-    <!-- autocomplete js -->
-    <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/autocomplete/autocomplete-min.js"></script>
-
-    <!-- container_core js -->
-    <!--<script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/container/container-min.js"></script>-->
-
-    <!-- form-specific js put this last, since it depends on YUI above -->
-    <script type="text/javascript" src="javascript/paper_editor.js"></script>
-
-  ';
-  $header .= "</head>";
-  $header .= '<body class="yui-skin-sam">';
-  print $header;
-} # printHtmlHeader
-
 
 __END__
-
-# DEPRECATED 
-#
-# moved to curation status form
-# sub flagFalsePositives {
-#   &printHtmlHeader();
-#   ($oop, my $curator_id) = &getHtmlVar($query, 'curator_id');
-#   unless ($curator_id) { print "ERROR NO CURATOR<br />\n"; return; }
-#   print "<form name='form1' method=\"post\" action=\"paper_editor.cgi\">\n";
-#   print "<input type=\"hidden\" name=\"curator_id\" id=\"curator_id\" value=\"$curator_id\">";
-#   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"flagFalsePositives\">";
-#   my ($arrayref) = &getFirstPassTables();
-#   my @fptables = @$arrayref; my %filter;
-#   foreach my $table (@fptables) { $filter{$table}++; }
-#   $filter{""}++; $filter{antibody}++; $filter{extvariation}++;
-#   print "Select a first pass type to mark as false positive : <select name=\"fptype\" size=1>\n";
-#   foreach my $table (sort keys %filter) { print "<option value=\"$table\">$table</option>\n"; }
-#   print "</select><br />\n";
-# 
-#   print "Enter WBPapers and comment (one each per line) : <br/>\n";
-#   print "<textarea name=\"false_positives\" rows=35 cols=80 value=\"\"></textarea><br/>\n";
-# #   print "<input type=\"submit\" name=\"action\" value=\"Enter False Positives\">\n";
-# #   print "<input type=\"submit\" name=\"action\" value=\"Show False Positives\"><br />\n";
-# 
-#   print "</form>\n";
-# 
-#   &printFooter();
-# } # sub flagFalsePositives
-
-# sub showFalsePositives {
-#   &printHtmlHeader();
-#   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"showFalsePositives\">";
-#   my ($var, $table) = &getHtmlVar($query, "fptype");
-#   print "using table $table<BR>\n";
-#   print "<table border=1>\n";
-#   my $result = $dbh->prepare( "SELECT * FROM cfp_$table WHERE cfp_$table ~ 'FALSE POSITIVE' ");
-#   $result->execute;
-#   while (my @row = $result->fetchrow) {
-#     foreach (@row) { $_ = "<td>$_</td>"; }
-#     print "<tr>@row</tr>\n"; 
-#   } # while (my @row = $result->fetchrow)
-#   print "</TABLE>\n";
-#   &printFooter();
-# } # sub showFalsePositives
-# 
-# sub enterFalsePositives {
-#   &populateCurators();						# for false positive comment
-#   &printHtmlHeader();
-#   ($oop, my $curator_id) = &getHtmlVar($query, 'curator_id');
-#   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"enterFalsePositives\">";
-#   my ($var, $table) = &getHtmlVar($query, "fptype");
-#   print "using table $table<BR>\n";
-# 
-#   ($var, my $data) = &getHtmlVar($query, "false_positives");
-#   my (@lines) = split/\n/, $data;
-#   foreach my $line (@lines) {
-#     my ($wbp, $comment) = ("", "no comment");
-#     if ($line =~ m/^\s*?(\S+)\s+(.*)$/) {
-#       ($wbp, $comment) = $line =~ m/^\s*?(\S+)\s+(.*)$/; }
-#     elsif ($line =~ m/^\s*?(\S+)$/) {
-#       ($wbp) = $line =~ m/^\s*?(\S+)$/; }
-#     $wbp = lc($wbp);
-#     my $paper = '';
-#     if ($wbp =~ m/wbpaper(\d+)/) { $paper = $1; }
-#     elsif ($wbp =~ m/^(\d+)$/) { $paper = $1; }
-#     else { print "<FONT COLOR=red>ERROR, line doesn't start with a WBPaper : $line</FONT>.<BR>\n"; next; }
-#     &postgresFalsePositive($table, $paper, $comment, $curator_id);
-#   } # foreach my $line (@lines)
-#   &printFooter();
-# } # sub enterFalsePositives
-# 
-# sub postgresFalsePositive {
-#   my ($table, $paper, $comment, $curator_id) = @_;
-#   ($comment) = &filterForPg($comment);                  # replace ' with ''
-#   my $result = $dbh->prepare( "SELECT * FROM cfp_$table WHERE joinkey = '$paper' ");
-#   $result->execute;
-#   my $pgcommand = '';
-#   my @row = $result->fetchrow();
-#   if ($row[0]) {
-#     $pgcommand = "UPDATE cfp_$table SET cfp_$table = '$row[1] is FALSE POSITIVE : $comment -- $curators{two}{$curator_id}' WHERE joinkey = '$paper'; ";
-#     $result = $dbh->prepare( $pgcommand );
-#     $result->execute;
-#     print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
-#     $pgcommand = "UPDATE cfp_$table SET cfp_timestamp = CURRENT_TIMESTAMP WHERE joinkey = '$paper'; ";
-#     $result = $dbh->prepare( $pgcommand );
-#     $result->execute;
-#     print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
-#     $pgcommand = "UPDATE cfp_$table SET cfp_curator = '$curator_id' WHERE joinkey = '$paper'; ";
-#     $result = $dbh->prepare( $pgcommand );
-#     $result->execute;
-#     print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
-#   } else {
-#     $pgcommand = "INSERT INTO cfp_$table VALUES ('$paper', 'FALSE POSITIVE : $comment -- $curators{two}{$curator_id}', '$curator_id'); ";
-#     $result = $dbh->prepare( $pgcommand );
-#     $result->execute;
-#     print "PAP $paper REASON $comment PSQL <FONT COLOR=green>$pgcommand</FONT><BR>\n";
-#   }
-# } # sub postgresFalsePositive
 
 use strict;
 use diagnostics;

@@ -14,6 +14,10 @@
 #
 # updated ID to 500000 and changed form to work like it did in mangolassi sandbox,
 # but with DBI instead of Pg.pm  2011 01 06
+#
+# make tickets have 2 extra zeros.  2012 02 23
+
+# WARNING : if changing the format of interaction IDs change the OA interaction ID assignment too.
 
 
 use CGI;
@@ -68,12 +72,14 @@ sub getTickets {
 
 sub padZeros {
   my $ticket = shift;
-  if ($ticket < 10) { $ticket = '000000' . $ticket; }
-    elsif ($ticket < 100) { $ticket = '00000' . $ticket; }
-    elsif ($ticket < 1000) { $ticket = '0000' . $ticket; }
-    elsif ($ticket < 10000) { $ticket = '000' . $ticket; }
-    elsif ($ticket < 100000) { $ticket = '00' . $ticket; }
-    elsif ($ticket < 1000000) { $ticket = '0' . $ticket; }
+  if ($ticket < 10) { $ticket = '00000000' . $ticket; }
+    elsif ($ticket < 100) { $ticket = '0000000' . $ticket; }
+    elsif ($ticket < 1000) { $ticket = '000000' . $ticket; }
+    elsif ($ticket < 10000) { $ticket = '00000' . $ticket; }
+    elsif ($ticket < 100000) { $ticket = '0000' . $ticket; }
+    elsif ($ticket < 1000000) { $ticket = '000' . $ticket; }
+    elsif ($ticket < 10000000) { $ticket = '00' . $ticket; }
+    elsif ($ticket < 100000000) { $ticket = '0' . $ticket; }
   return $ticket;
 } # sub padZeros
 

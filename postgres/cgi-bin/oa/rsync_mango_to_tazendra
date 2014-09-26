@@ -1,2 +1,4 @@
+rsync --progress -a /home/postgres/public_html/cgi-bin/oa/ postgres@tazendra.caltech.edu:/home/postgres/public_html/cgi-bin/oa/
+
 rsync --progress --delete-after -a /home/postgres/public_html/cgi-bin/oa/ postgres@tazendra.caltech.edu:/home/postgres/public_html/cgi-bin/oa/
 rsync --progress --delete-after -a /home/postgres/public_html/cgi-bin/oa/ postgres@tazendra.caltech.edu:/home/postgres/public_html/cgi-bin/oa_mangolassi/
