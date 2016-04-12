@@ -389,7 +389,7 @@ sub autocompleteXHR {						# when typing in an autocomplete field xhr call to th
 sub getGenericOboAutocomplete {
   my ($datatype, $field, $words) = @_;
   my $ontology_table = $fields{$datatype}{$field}{ontology_table};
-  my $max_results = 30; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my $max_results = 35; if ($words =~ m/^.{5,}/) { $max_results = 500; }
   if ($words =~ m/\'/) { $words =~ s/\'/''/g; }
   my @tabletypes = qw( name syn data );
   my %matches; tie %matches, "Tie::IxHash";			# sorted hash to filter results
@@ -589,7 +589,10 @@ sub getGenericOboIdToValue {			# convert generic obo values from postgres values
   my $original_data = $data;	
   my (@data) = split/,/, $data; my %results;
   foreach my $id (@data) {
-    if ($fieldIdToValue{$obotable}{$id}) { $results{$id} = $fieldIdToValue{$obotable}{$id}; }
+    if ($fieldIdToValue{$obotable}{$id}) { 
+      my $previousValue = $fieldIdToValue{$obotable}{$id}; 
+      if ( $fields{$datatype}{$field}{'type'} eq 'multiontology' ) { unless ($previousValue =~ m/^".*"$/) { $previousValue = '"' . $previousValue . '"'; } }
+      $results{$id} = $previousValue; }
     else {
       my $result = $dbh->prepare( "SELECT * FROM $obotable WHERE joinkey = '$id';" );
       $result->execute(); my @row = $result->fetchrow();
@@ -640,7 +643,7 @@ sub showMain {
   if ($datatypes{$datatype}{label}) { $datatypeLabel = uc($datatypes{$datatype}{label}); }
   print "<html>\n<head><title>$datatypeLabel Ontology Annotator</title></head>\n";
   print "<frameset id=\"frameset1\" rows=\"50%,50%\">\n";
-  print "  <frameset cols=\"55%,45%\">\n";
+  print "  <frameset cols=\"60%,40%\">\n";
   print "    <frame name=\"editor\" src=\"ontology_annotator.cgi?action=editorFrame&datatype=$datatype&curator_two=$curator_two&max_per_query=$max_per_query&batch_unsafe_flag=$batch_unsafe_flag\">\n";
   print "    <frame name=\"obo\" src=\"ontology_annotator.cgi?action=oboFrame\">\n";
   print "  </frameset>\n";

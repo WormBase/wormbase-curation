@@ -23,6 +23,16 @@
 # Converted from wpa to pap tables, even though they're not live yet.  2010 06 23
 #
 # Created  &readPhenOnt()  to get from CGI instead of deprecated  CVS.  2010 12 08 
+#
+# Added new Assay 'Optogenetic', made form get things from local server instead of 
+# always tazendra.  2015 01 29
+#
+# Was not escaping ' before writing to postgres.  2015 03 18
+#
+# In some cases, was not using correct $val after escaping ' to write to postgres.  2015 04 21
+#
+# Was sometimes escaping $val over and over while looping other values.  
+# Changed input size to 40, put Condition label above box.  2015 04 22
 
 
 use strict;
@@ -82,7 +92,8 @@ sub process {
 sub dumpAll {
   my $file = 'anat_func.ace';
   my $outfile = '/home/postgres/public_html/cgi-bin/data/' . $file;
-  my $url = 'http://tazendra.caltech.edu/~postgres/cgi-bin/data/' . $file;
+#   my $url = 'http://tazendra.caltech.edu/~postgres/cgi-bin/data/' . $file;
+  my $url = 'data/' . $file;
   print "Started dumping all .ace data to <A HREF=$url>$url</A>.<BR>";
   open (OUT, ">$outfile") or die "Cannot create $outfile : $!";
   my $result = $dbh->prepare( "SELECT wbb_wbbtf FROM wbb_wbbtf ORDER BY wbb_wbbtf DESC;" );
@@ -227,6 +238,7 @@ sub write {
   my $pg_val = ''; if ($row[1]) { $pg_val = $row[1]; }
   my $val = $theHash{$type}{html_value}; if ($val =~ m/^0+/) { $val =~ s/^0+//g; }
   if ($val ne $pg_val) { 
+    if ($val =~ m/\'/) { $val =~ s/\'/''/g; }
     $val = "'$val'";
     my $command = "INSERT INTO wbb_$type VALUES ('$joinkey', $val, CURRENT_TIMESTAMP)";
     my $result2 = $dbh->do( $command );
@@ -244,6 +256,8 @@ sub write {
     my $pg_val1 = ''; if ($row[2]) { $pg_val1 = $row[2]; }
     my $pg_val2 = ''; if ($row[3]) { $pg_val2 = $row[3]; }
     if ( ($val1 ne $pg_val1) || ($val2 ne $pg_val2) ) { 
+      if ($val1 =~ m/\'/) { $val1 =~ s/\'/''/g; }
+      if ($val2 =~ m/\'/) { $val2 =~ s/\'/''/g; }
       if ($val1) { $val1 = "'$val1'"; } else { $val1 = 'NULL'; }
       if ($val2) { $val2 = "'$val2'"; } else { $val2 = 'NULL'; }
       my $command = "INSERT INTO wbb_$type VALUES ('$joinkey', '$i', $val1, $val2, CURRENT_TIMESTAMP)";
@@ -254,6 +268,8 @@ sub write {
   my @anats = @phen_anatfunc; push @anats, 'none';
   $type = 'phenotype';
   my $val = $theHash{$type}{html_value}; 
+  if ($val =~ m/\'/) { $val =~ s/\'/''/g; }
+  if ($val) { $val = "'$val'"; } else { $val = 'NULL'; }
   foreach my $anat (@anats) {
     my $g_type_two = $type . '_' . $anat;
     my $g_type_one = $type . '_' . $anat . '_check';
@@ -268,7 +284,7 @@ sub write {
     if ( ($theHash{$type}{html_value} ne $pg_val) || ($evi_val ne $pg_evi_val) ) { 
 # print "V $val P $pg_val E<BR>\n";
 # print "EV $evi_val P $pg_evi_val E<BR>\n";
-      if ($val) { $val = "'$theHash{$type}{html_value}'"; } else { $val = 'NULL'; }
+      if ($evi_val =~ m/\'/) { evi_$val =~ s/\'/''/g; }
       if ($evi_val) { $evi_val = "'$evi_val'"; } else { $evi_val = 'NULL'; }
       my $command = "INSERT INTO wbb_$type VALUES ('$joinkey', $val, '$anat', $evi_val, CURRENT_TIMESTAMP)";
       my $result2 = $dbh->do( $command );
@@ -277,6 +293,8 @@ sub write {
   my @evi = @gene_evi; push @evi, 'none';
   $type = 'gene';
   my $val = $theHash{$type}{html_value}; 
+  if ($val =~ m/\'/) { $val =~ s/\'/''/g; }
+  if ($val) { $val = "'$val'"; } else { $val = 'NULL'; }
   foreach my $evi (@evi) {
     my $g_type_two = $type . '_' . $evi;
     my $evi_val = '';
@@ -287,7 +305,7 @@ sub write {
     my $pg_val = ''; if ($row[1]) { $pg_val = $row[1]; }
     my $pg_evi_val = ''; if ($row[3]) { $pg_evi_val = $row[3]; }
     if ( ($theHash{$type}{html_value} ne $pg_val) || ($evi_val ne $pg_evi_val) ) { 
-      if ($val) { $val = "'$theHash{$type}{html_value}'"; } else { $val = 'NULL'; }
+      if ($evi_val =~ m/\'/) { evi_$val =~ s/\'/''/g; }
       if ($evi_val) { $evi_val = "'$evi_val'"; } else { $evi_val = 'NULL'; }
       my $command = "INSERT INTO wbb_$type VALUES ('$joinkey', $val, '$evi', $evi_val, CURRENT_TIMESTAMP)";
       my $result2 = $dbh->do( $command );
@@ -300,6 +318,8 @@ sub write {
   for my $i (1 .. $theHash{$type}{html_value}) {
     my $g_type = $type . '_' . $i;
     my $val = $theHash{$g_type}{html_value}; 
+    if ($val =~ m/\'/) { $val =~ s/\'/''/g; }
+    if ($val) { $val = "'$val'"; } else { $val = 'NULL'; }
     foreach my $anat (@anats) {
       my $g_type_one = $type . '_' . $anat . '_' . $i . '_check';
       my $g_type_two = $type . '_' . $anat . '_' . $i;
@@ -312,7 +332,7 @@ sub write {
       my $pg_val = ''; if ($row[2]) { $pg_val = $row[2]; }
       my $pg_evi_val = ''; if ($row[4]) { $pg_evi_val = $row[4]; }
       if ( ($theHash{$g_type}{html_value} ne $pg_val) || ($evi_val ne $pg_evi_val) ) { 
-        if ($val) { $val = "'$theHash{$g_type}{html_value}'"; } else { $val = 'NULL'; }
+        if ($evi_val =~ m/\'/) { $evi_val =~ s/\'/''/g; }
         if ($evi_val) { $evi_val = "'$evi_val'"; } else { $evi_val = 'NULL'; }
         my $command = "INSERT INTO wbb_$type VALUES ('$joinkey', '$i', $val, '$anat', $evi_val, CURRENT_TIMESTAMP)";
         my $result2 = $dbh->do( $command );
@@ -320,10 +340,11 @@ sub write {
 
   @evi = @rem_evi; push @evi, 'none';
   $type = 'remark';
-  my $val = $theHash{$type}{html_value}; 
   for my $i (1 .. $theHash{$type}{html_value}) {
     my $g_type = $type . '_' . $i;
     my $val = $theHash{$g_type}{html_value}; 
+    if ($val =~ m/\'/) { $val =~ s/\'/''/g; }
+    if ($val) { $val = "'$val'"; } else { $val = 'NULL'; }
     foreach my $evi (@evi) {
       my $g_type2 = $type . '_' . $evi . '_' . $i;
       my $evi_val = '';
@@ -334,7 +355,7 @@ sub write {
       my $pg_val = ''; if ($row[2]) { $pg_val = $row[2]; }
       my $pg_evi_val = ''; if ($row[4]) { $pg_evi_val = $row[4]; }
       if ( ($theHash{$g_type}{html_value} ne $pg_val) || ($evi_val ne $pg_evi_val) ) { 
-        if ($val) { $val = "'$theHash{$g_type}{html_value}'"; } else { $val = 'NULL'; }
+        if ($evi_val =~ m/\'/) { evi_$val =~ s/\'/''/g; }
         if ($evi_val) { $evi_val = "'$evi_val'"; } else { $evi_val = 'NULL'; }
         my $command = "INSERT INTO wbb_$type VALUES ('$joinkey', '$i', $val, '$evi', $evi_val, CURRENT_TIMESTAMP)";
         my $result2 = $dbh->do( $command );
@@ -348,6 +369,7 @@ sub write {
   my $pg_val = ''; if ($row[1]) { $pg_val = $row[1]; }
   my $val = $theHash{$type}{html_value}; 
   if ($val ne $pg_val) {
+    if ($val =~ m/\'/) { $val =~ s/\'/''/g; }
     $val = "'$val'";
     my $command = "INSERT INTO wbb_$type VALUES ('$joinkey', $val, CURRENT_TIMESTAMP)";
     my $result2 = $dbh->do( $command );
@@ -357,7 +379,8 @@ sub write {
 } # sub write
 
 sub preview {
-  print "<FORM METHOD=\"POST\" ACTION=\"http://tazendra.caltech.edu/~postgres/cgi-bin/anatomy_function.cgi\">\n";
+#   print "<FORM METHOD=\"POST\" ACTION=\"http://tazendra.caltech.edu/~postgres/cgi-bin/anatomy_function.cgi\">\n";
+  print "<FORM METHOD=\"POST\" ACTION=\"anatomy_function.cgi\">\n";
   my $joinkey = &getHtmlValuesFromForm(); 		# populate %theHash and get joinkey
   my $joinkey = &getJoinkey($joinkey); 
   foreach my $key (sort keys %theHash) {
@@ -735,7 +758,7 @@ sub getHtmlValuesFromForm {	# read PGparameters value from html form, then displ
 #################  HTML SECTION #################
 
 sub printHtmlAssay {
-  my @ao_code = qw( Blastomere_isolation Expression_mosaic Genetic_ablation Genetic_mosaic Laser_ablation );
+  my @ao_code = qw( Blastomere_isolation Expression_mosaic Genetic_ablation Genetic_mosaic Laser_ablation Optogenetic );
   my $type = 'assay';
   print "<INPUT TYPE=\"HIDDEN\" NAME=\"html_value_main_$type\" VALUE=\"$theHash{$type}{html_value}\">\n";
   for my $i (1 ..  $theHash{$type}{html_value}) {
@@ -751,7 +774,7 @@ sub printHtmlAssay {
     foreach (@ao_code) { print "      <OPTION>$_</OPTION>\n"; }
     print "    </SELECT></TD>\n ";
     my $g_type2 = 'cond_' . $i;
-    print "<TD align=right>Condition</TD><TD><TEXTAREA NAME=\"html_value_main_$g_type2\" COLS=40 ROWS=3>$theHash{$g_type2}{html_value}</TEXTAREA></TD></TR>\n";
+    print "<TD align=left>Condition<br/><TEXTAREA NAME=\"html_value_main_$g_type2\" COLS=40 ROWS=3>$theHash{$g_type2}{html_value}</TEXTAREA></TD></TR>\n";
 #     print "<TD align=right>Condition</TD><TD><INPUT NAME=\"html_value_main_$g_type2\" VALUE=\"$theHash{$g_type2}{html_value}\"></TD></TR>\n";
   } # for my $1 (1 ..  $theHash{$type}{html_value})
   print "<TR><TD align=right><INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Add Assay !\"></TD></TR>\n";
@@ -878,7 +901,8 @@ sub printHtmlInputH {            # print html inputs
 sub printHtmlFormStart {        # beginning of form
   print <<"  EndOfText";
   <A NAME="form"><H1>Add your entries : </H1></A>
-  <FORM METHOD="POST" ACTION="http://tazendra.caltech.edu/~postgres/cgi-bin/anatomy_function.cgi">
+  <!--<FORM METHOD="POST" ACTION="http://tazendra.caltech.edu/~postgres/cgi-bin/anatomy_function.cgi">-->
+  <FORM METHOD="POST" ACTION="anatomy_function.cgi">
   <TABLE>
   <TR><TD COLSPAN=2> </TD></TR>
   <TR>
@@ -931,7 +955,7 @@ sub initializeHash {
   $theHash{reference}{html_label} = 'Reference';
 
   foreach my $type (@PGparameters) {
-    $theHash{$type}{html_size_main} = 20;
+    $theHash{$type}{html_size_main} = 40;
     $theHash{$type}{html_size_minor} = 1;
   } # foreach my $type (@PGparameters)
 

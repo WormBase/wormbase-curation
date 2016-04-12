@@ -50,6 +50,30 @@
 # okayed by Wen, Xiaodong, Karen.  2010 09 24
 #
 # added stuff for grg_ and int_ to show stuff for X + M.A.  2011 03 30
+#
+# changed phn_confirmed to have extra column phn_datatype with values 'form' 'rna' 'app' 
+# to account for new suggested terms through RNAi OA from rna_ tables.  
+# modified  &updateFinalname('Phenotype')  +  &confirm  +  &linePhenote  to handle rna_ 
+# data as well as app_ data.  2014 07 18
+#
+# rewriting all the Phenotype stuff to work with new phn_oadata table instead of old 
+# phn_ tables.  2014 10 24
+#
+# CREATE TABLE phn_oadata ( phenotype text, reject text, comment text, suggested text, suggested_definition text, placeholder text, child_of text, curator text, paper text, entity text, datatype text, pgids text, phn_timestamp timestamp with time zone DEFAULT "timestamp"('now'::text));
+# GRANT ALL ON TABLE phn_oadata TO acedb;
+# GRANT ALL ON TABLE phn_oadata TO apache;
+# GRANT ALL ON TABLE phn_oadata TO azurebrd;
+# GRANT ALL ON TABLE phn_oadata TO cecilia;
+# GRANT ALL ON TABLE phn_oadata TO "www-data";
+#
+# also store in postgres the placeholder term in app_term / rna_phenotype.
+# sort all tables by timestamp, but use jquery to make previous results sortable.
+# also email karen + chris each time gary confirms anything.
+# live on tazendra.  2014 10 31
+#
+# app_entity table removed, so removed from display.  2015 10 08
+
+
 
 
 
@@ -64,13 +88,33 @@ use DBI;
 my %curator;
 my %phobo;
 
+my %previouslySuggested;	# terms that were previously suggested and exist in phn_oadata
+
 my %pmids;
 
 my $query = new CGI;	# new CGI form
 my $dbh = DBI->connect ( "dbi:Pg:dbname=testdb", "", "") or die "Cannot connect to database!\n";
 
 
-&printHeader('New Objects Curation Form');	# normal form view
+# &printHeader('New Objects Curation Form');	# normal form view
+  print <<"EndOfText";
+Content-type: text/html\n\n
+
+<HTML>
+<HEAD>
+<LINK rel="stylesheet" type="text/css" href="http://minerva.caltech.edu/~azurebrd/stylesheets/wormbase.css">
+<title>New Objects Curation Form</title>
+  <script type="text/javascript" src="js/jquery-1.9.1.min.js"></script>
+  <script type="text/javascript" src="js/jquery.tablesorter.min.js"></script>
+  <script type="text/javascript">\$(function() { \$("table").tablesorter({widthFixed: true, widgets: ['zebra']}).tablesorterPager({container: \$("#pager")}); });</script>
+</HEAD>
+
+<BODY bgcolor=#aaaaaa text=#000000 link=cccccc alink=eeeeee vlink=bbbbbb>
+<HR>
+</body></html>
+
+EndOfText
+
 &process();
 &printFooter();
 
@@ -80,35 +124,12 @@ sub process {
   if ($action eq '') { &printHtmlMenu(); }		# Display form, first time, no action
   else { 						# Form Button
     print "ACTION : $action : ACTION<BR>\n"; 
-#     if ($action eq 'Update Transgene !') { &updateFinalname('Transgene'); }	# table of Transgene data for Wen
-#     elsif ($action eq 'Update Variation !') { &updateFinalname('Allele'); }	# table of Variation data for Mary Ann
-    if ($action eq 'Update Phenotype !') { &updateFinalname('Phenotype'); }	# table of Variation data for Mary Ann
-    elsif ($action eq 'Query Variation !') { &queryVariation(); }		# query for Variation data for Mary Ann
-    elsif ($action eq 'Confirm !') { &confirm(); }
-    elsif ($action eq 'Suggest !') { &suggest(); }
+    if ($action eq 'Update Phenotype !') {             &updateFinalname('Phenotype'); }	# table of Variation data for Mary Ann
+      elsif ($action eq 'Query Variation !') {         &queryVariation(); }		# query for Variation data for Mary Ann
+      elsif ($action eq 'Confirm !') {                 &confirm(); }
     print "ACTION : $action : ACTION<BR>\n"; 
   } # else # if ($action eq '') { &printHtmlForm(); }
 } # sub process
-
-sub suggest {
-  my ($oop, $suggested) = &getHtmlVar($query, 'suggested');
-  ($oop, my $definition) = &getHtmlVar($query, 'definition');
-  ($oop, my $childof) = &getHtmlVar($query, 'childof');
-  ($oop, my $curator) = &getHtmlVar($query, 'curator');
-  ($oop, my $evidence) = &getHtmlVar($query, 'evidence');
-  my $joinkey = 0;
-  my $result = $dbh->prepare( "SELECT joinkey FROM phn_suggested WHERE joinkey ~ '^0' ORDER BY joinkey DESC;" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  my @row = $result->fetchrow; if ($row[0]) { $joinkey = $row[0]; } $joinkey++;
-  ($joinkey) = &padZeros($joinkey);
-  if ($suggested) { my $pgcommand = "INSERT INTO phn_suggested VALUES ('$joinkey', '$suggested', CURRENT_TIMESTAMP);"; my $result2 = $dbh->do( $pgcommand ); }
-  if ($definition) { my $pgcommand = "INSERT INTO phn_definition VALUES ('$joinkey', '$definition', CURRENT_TIMESTAMP);"; my $result2 = $dbh->do( $pgcommand ); }
-  if ($childof) { my $pgcommand = "INSERT INTO phn_childof VALUES ('$joinkey', '$childof', CURRENT_TIMESTAMP);"; my $result2 = $dbh->do( $pgcommand ); }
-  if ($curator) { my $pgcommand = "INSERT INTO phn_curator VALUES ('$joinkey', '$curator', CURRENT_TIMESTAMP);"; my $result2 = $dbh->do( $pgcommand ); }
-  if ($evidence) { my $pgcommand = "INSERT INTO phn_evidence VALUES ('$joinkey', '$evidence', CURRENT_TIMESTAMP);"; my $result2 = $dbh->do( $pgcommand ); }
-#   print "J $joinkey S $suggested D $definition C $childof C $curator E $evidence END<BR>\n";
-  print "Entry $joinkey for term $suggested has been entered.  You can now see it under the section ``Data suggested through this CGI''.<BR>\n";
-} # sub suggest
 
 sub padZeros {
   my $joinkey = shift;
@@ -125,106 +146,110 @@ sub padZeros {
 
 sub confirm {
   my ($oop, $type) = &getHtmlVar($query, 'type');
-#   print "T $type T<BR>\n";
   if ($type eq 'Phenotype') {
+    print <<"    EndOfText";
+    <FORM METHOD="POST" ACTION="new_objects.cgi">
+    <TABLE border=0>
+    <TR>
+      <TD COLSPAN=3><B>Update Phenotype : </B></TD>
+      <TD><INPUT TYPE="submit" NAME="action" VALUE="Update Phenotype !"></TD>
+    <TR>
+    </table></form>
+    EndOfText
+    my $email_body = '';
     ($oop, my $tempname_count) = &getHtmlVar($query, 'tempname_count');
     my $error = 0;
+    my @pgcommands;
     for my $i (1 .. $tempname_count) {
-      ($oop, my $term) = &getHtmlVar($query, "term_$i"); 
-      if ($term) { unless ($term =~ m/WBPhenotype\:\d+/) { print "<FONT COLOR=red> ERROR line $i $term is not a valid phenotype</FONT><BR>\n"; $error++; } } }
-    last if $error;
-    for my $i (1 .. $tempname_count) {
-      ($oop, my $term) = &getHtmlVar($query, "term_$i");
-      ($oop, my $reject) = &getHtmlVar($query, "reject_$i");
-      if ($reject eq 'checked') { $term = 'rejected'; }
-      next unless $term;
-      ($oop, my $joinkey) = &getHtmlVar($query, "joinkey_$i");
-      ($oop, my $suggested) = &getHtmlVar($query, "suggested_$i");
-      ($oop, my $comment) = &getHtmlVar($query, "comment_$i");
-      my $email = ''; my %emails;
-      my @joinkeys; 
-      if ($joinkey) { push @joinkeys, $joinkey; }
-        else { 
-          my $result = $dbh->prepare( "SELECT * FROM app_suggested WHERE app_suggested = '$suggested';" );
-          $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-          my %filter; while (my @row = $result->fetchrow) { $filter{$row[0]}++; } foreach my $key (sort {$a<=>$b} keys %filter) { push @joinkeys, $key; } }
-      foreach my $joinkey (@joinkeys) {
-        print "J $joinkey Confirm $term Comment $comment END<BR>\n";
-        my @pgcommands;
-        my $pgcommand = "INSERT INTO phn_confirmed VALUES ('$joinkey', '$term', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand;
-        if ($comment) { $pgcommand = "INSERT INTO phn_comment VALUES ('$joinkey', '$comment', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand; }
-        if ($joinkey =~ m/^0/) { 		# from CGI, not phenote (send email)
-          my $result = $dbh->prepare( "SELECT * FROM two_email WHERE joinkey IN (SELECT phn_curator FROM phn_curator WHERE joinkey = '$joinkey'); ");		# had the joinkey set to 00000001 instead of $joinkey 2008 10 20
-          $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-          while (my @row = $result->fetchrow) { $emails{$row[2]}++; }
-        } # if ($joinkey =~ m/^0/) 		# from CGI, not phenote (send email)
-        else {					# from phenote, not CGI 
-          $pgcommand = "INSERT INTO app_suggested_hst VALUES ('$joinkey', NULL, CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand;
-          $pgcommand = "DELETE FROM app_suggested WHERE joinkey = '$joinkey'"; push @pgcommands, $pgcommand;
-          if ($term =~ m/WBPhenotype\:\d+/) {
-            my $result = $dbh->prepare( "SELECT * FROM app_term WHERE joinkey = '$joinkey';" );
-            $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-            my @row = $result->fetchrow(); 
-            if ($row[0]) {
-                $pgcommand = "UPDATE app_term SET app_term = '$term' WHERE joinkey = '$joinkey'"; push @pgcommands, $pgcommand;
-                $pgcommand = "UPDATE app_term SET app_timestamp = CURRENT_TIMESTAMP WHERE joinkey = '$joinkey'"; push @pgcommands, $pgcommand; }
-              else { $pgcommand = "INSERT INTO app_term VALUES ('$joinkey', '$term', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand; }
-            $pgcommand = "INSERT INTO app_term_hst VALUES ('$joinkey', '$term', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand; }
-        } # else # from phenote, not CGI
-        foreach my $pgcommand (@pgcommands) { 
-          print "<FONT COLOR=cyan SIZE=-2>$pgcommand<BR></FONT>\n"; 
-          my $result2 = $dbh->do( $pgcommand );
-        }
-      } # foreach my $joinkey (@joinkeys)
-      if ($joinkey =~ m/^0/) { my @emails = keys %emails; $email = join", ", @emails; }
-        else { ($oop, $email) = &getHtmlVar($query, "email_$i"); }
-      my $subject = "$term : suggested phenotype $suggested";
-      my $body = "Email : $email<BR>\nsuggested : $suggested<BR>\nterm : $term<BR>\ncomment : $comment";
-      print "$body<BR>\n"; $body =~ s/<BR>//g;
-      my $user = "new_objects.cgi";
-      if ($email) { &mailer($user, $email, $subject, $body); }
+# print "BLAH $i<br>";
+      my ($phenotype, $reject)   = ('', '');
+      ($oop, $phenotype)         = &getHtmlVar($query, "phenotype_$i");
+      ($oop, $reject)            = &getHtmlVar($query, "reject_$i");
+      ($oop, my $comment)        = &getHtmlVar($query, "comment_$i");
+      ($oop, my $suggested)      = &getHtmlVar($query, "suggested_$i");
+      ($oop, my $definition)     = &getHtmlVar($query, "suggested_definition_$i");
+      ($oop, my $placeholder)    = &getHtmlVar($query, "placeholder_$i");
+      ($oop, my $child_of)       = &getHtmlVar($query, "child_of_$i");
+      ($oop, my $curator)        = &getHtmlVar($query, "curator_$i");
+      ($oop, my $paper)          = &getHtmlVar($query, "paper_$i");
+      ($oop, my $entity)         = &getHtmlVar($query, "entity_$i");
+      ($oop, my $datatype)       = &getHtmlVar($query, "datatype_$i");
+      ($oop, my $pgids)          = &getHtmlVar($query, "pgids_$i");
+      if ($phenotype || $reject) { $email_body .= qq(<tr><td>$phenotype</td><td>$reject</td><td>$comment</td><td>$suggested</td><td>$definition</td><td>$placeholder</td><td>$child_of</td><td>$curator</td><td>$paper</td><td>$entity</td><td>$datatype</td><td>$pgids</td></tr>\n); }
+      my (@pgids)                = $pgids =~ m/(\d+)/g;
+      if ($pgids =~ m/\'/)       { $pgids      =~ s/\'/''/g; }
+      if ($comment =~ m/\'/)     { $comment    =~ s/\'/''/g; }
+      if ($suggested =~ m/\'/)   { $suggested  =~ s/\'/''/g; }
+      if ($definition =~ m/\'/)  { $definition =~ s/\'/''/g; }
+      if ($reject eq 'checked')  { $reject = 'rejected'; }
+      if ($phenotype && $reject) { $reject = ''; print "$i has $phenotype and rejected, approving with $phenotype\n"; }
+      next unless ($phenotype || $reject);
+      my $pgcommand;
+      if ($reject) {
+          my $pgTable = $datatype . '_suggested';
+          foreach my $joinkey (@pgids) { 
+            $pgcommand = "DELETE FROM $pgTable WHERE joinkey = '$joinkey'"; push @pgcommands, $pgcommand;
+            $pgcommand = "INSERT INTO ${pgTable}     VALUES ('$joinkey', 'REJECTED $suggested', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand;
+            $pgcommand = "INSERT INTO ${pgTable}_hst VALUES ('$joinkey', 'REJECTED $suggested', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand; } }
+        elsif ($phenotype) {
+          my $pgTable = 'app_term';
+          if ($datatype eq 'rna') { $phenotype = '"' . $phenotype . '"'; $pgTable = 'rna_phenotype'; }
+          foreach my $joinkey (@pgids) { 
+            $pgcommand = "DELETE FROM ${datatype}_suggested WHERE joinkey = '$joinkey'"; push @pgcommands, $pgcommand;
+            $pgcommand = "DELETE FROM $pgTable WHERE joinkey = '$joinkey'"; push @pgcommands, $pgcommand;
+            $pgcommand = "INSERT INTO ${pgTable}     VALUES ('$joinkey', '$phenotype', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand;
+            $pgcommand = "INSERT INTO ${pgTable}_hst VALUES ('$joinkey', '$phenotype', CURRENT_TIMESTAMP)"; push @pgcommands, $pgcommand; } }
+      if ($phenotype) { $phenotype = "'$phenotype'"; } else { $phenotype = 'NULL'; }
+      if ($reject) { $reject = "'$reject'"; } else { $reject = 'NULL'; }
+      if ($comment) { $comment = "'$comment'"; } else { $comment = 'NULL'; }
+      if ($suggested) { $suggested = "'$suggested'"; } else { $suggested = 'NULL'; }
+      if ($definition) { $definition = "'$definition'"; } else { $definition = 'NULL'; }
+      if ($placeholder) { $placeholder = "'$placeholder'"; } else { $placeholder = 'NULL'; }
+      if ($child_of) { $child_of = "'$child_of'"; } else { $child_of = 'NULL'; }
+      if ($curator) { $curator = "'$curator'"; } else { $curator = 'NULL'; }
+      if ($paper) { $paper = "'$paper'"; } else { $paper = 'NULL'; }
+      if ($entity) { $entity = "'$entity'"; } else { $entity = 'NULL'; }
+      if ($datatype) { $datatype = "'$datatype'"; } else { $datatype = 'NULL'; }
+      if ($pgids) { $pgids = "'$pgids'"; } else { $pgids = 'NULL'; }
+      $pgcommand = qq(INSERT INTO phn_oadata VALUES ($phenotype, $reject, $comment, $suggested, $definition, $placeholder, $child_of, $curator, $paper, $entity, $datatype, $pgids, CURRENT_TIMESTAMP)); 
+      push @pgcommands, $pgcommand;
     } # for my $i (1 .. $tempname_count)
-  }
-#   else {		# don't care about allele or transgene anymore  (xiaodong, wen, karen) 2010 09 24
-#     ($oop, my $tempname_count) = &getHtmlVar($query, 'tempname_count');
-#     for my $i (1 .. $tempname_count) {
-#       ($oop, my $checked) = &getHtmlVar($query, "checked_$i");
-#       ($oop, my $new) = &getHtmlVar($query, "new_$i");
-#       if ( ($new) || ($checked eq 'checked') ) {
-#         ($oop, my $tempname) = &getHtmlVar($query, "tempname_$i");
-#         if ($type eq 'Allele') { 
-#           my $pgcommand = "INSERT INTO ali_alleleinfo VALUES ('$tempname', NULL, NULL, CURRENT_TIMESTAMP);";
-# #           print "$pgcommand<BR>\n";
-#           my $result2 = $dbh->do( $pgcommand );
-#           $pgcommand = "INSERT INTO ali_yesmaryann VALUES ('$tempname', CURRENT_TIMESTAMP);";
-# #           print "$pgcommand<BR>\n";
-#           $result2 = $dbh->do( $pgcommand );
-#         } elsif ($type eq 'Transgene') { 
-#           if ($new) { 
-#             my $pgcommand = "UPDATE app_tempname SET app_tempname = '$new' WHERE app_tempname = '$tempname';";
-#             my $result2 = $dbh->do( $pgcommand );
-#             $pgcommand = "UPDATE app_tempname_hst SET app_tempname_hst = '$new' WHERE app_tempname_hst = '$tempname';";
-#             $result2 = $dbh->do( $pgcommand );
-#             $tempname = $new; }
-#           my $pgcommand = "INSERT INTO tra_transgeneinfo VALUES ('$tempname', NULL, NULL, CURRENT_TIMESTAMP);";
-# #           print "$pgcommand<BR>\n";
-#           my $result2 = $dbh->do( $pgcommand );
-#           $pgcommand = "INSERT INTO tra_yeswen VALUES ('$tempname', CURRENT_TIMESTAMP);";
-# #           print "$pgcommand<BR>\n";
-#           $result2 = $dbh->do( $pgcommand );
-#         }
-#         print "I $i C $checked T $tempname<BR>\n";
-#       }
-#     } # for my $i (1 .. $tempname_count)
-#     print "<FORM METHOD=\"POST\" ACTION=\"http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi\">\n";
-#     print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Update Variation !\"></TD><BR>\n";
-#     print "</FORM>\n";
-#   } # else # if ($type eq 'Phenotype')
+    if ($email_body) { 
+      $email_body = qq(<table border="1" style="empty-cells: show"><tr><th>phenotype</th><th>reject</th><th>comment</th><th>suggested</th><th>definition</th><th>placeholder</th><th>child_of</th><th>curator</th><th>paper</th><th>entity</th><th>datatype</th><th>pgids</th></tr>\n) . $email_body . qq(</table>\n);
+      print qq($email_body);
+      my $user    = 'new_objects.cgi';
+#       my $email   = 'azurebrd@tazendra.caltech.edu';
+#       my $email   = 'closertothewake@gmail.com';
+      my $email   = 'kyook@caltech.edu, cgrove@caltech.edu';
+      my $subject = 'new_object.cgi values confirmed / rejected';
+      &mail_simple($user, $email, $subject, $email_body);
+    } # if ($email_body)
+    foreach my $pgcommand (@pgcommands) {
+      print qq($pgcommand<br/>\n);
+# UNCOMMENT TO POPULATE
+      my $result = $dbh->do( $pgcommand );
+    } 
+  } # if ($type eq 'Phenotype')
 } # sub confirm
+
+sub mail_simple {
+  my ($user, $email, $subject, $body) = @_;
+  my $command = 'sendmail';
+  my $mailer = Mail::Mailer->new($command) ;
+  $mailer->open({ From    => $user,
+                  To      => $email,
+                  Subject => $subject,
+                  'MIME-Version' => '1.0',
+                "Content-type" => 'text/html; charset=ISO-8859-1',
+                })
+      or die "Can't open: $!\n";
+  print $mailer $body;
+  $mailer->close();
+} # sub mail_simple
 
 sub printHtmlMenu {		# show main menu page
   print <<"  EndOfText";
-  <FORM METHOD="POST" ACTION="http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi">
+  <FORM METHOD="POST" ACTION="new_objects.cgi">
   <TABLE border=0>
 <!-- no longer want transgene section for Wen or Xiaodong   2010 09 24
   <TR>
@@ -249,23 +274,13 @@ sub printHtmlMenu {		# show main menu page
   <TR>
   EndOfText
   print "</TABLE>\n";
-
-#   my %exists; my %curated;
-#   my $result = $dbh->prepare( "SELECT joinkey FROM ale_allele;" );
-#   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#   while (my @row = $result->fetchrow) { $exists{$row[0]}++; }
-#   $result = $dbh->prepare( "SELECT joinkey FROM ale_curated;" );
-#   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#   while (my @row = $result->fetchrow) { if ($exists{$row[0]}) { delete $exists{$row[0]}; } }
-#   if (scalar keys %exists) { print "<A HREF=\"http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi?action=See%20Submissions\">There are " . scalar(keys %exists) . " entries from allele submission form to curate.</A><BR>\n"; }
-
   print "</FROM>\n";
 } # sub printHtmlMenu
 
 
 sub queryVariation {
   my %hash; 
-  print "<a href=\"http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi\">return to query page</a><br/>\n";
+  print "<a href=\"new_objects.cgi\">return to query page</a><br/>\n";
   print "<br />\n";
 #   my $result = $dbh->prepare( "SELECT * FROM obo_name_app_variation;" ); 		# old tables  2011 03 30
   my $result = $dbh->prepare( "SELECT * FROM obo_name_variation;" ); 
@@ -426,322 +441,28 @@ sub updateFinalname {							# get list of $type data for curators to assign a fi
   my %good;		# good alleles are in the list
   my %bad;		# bad alleles are alleles that have a tempname and are not good
 
-  print "<FORM METHOD=\"POST\" ACTION=\"http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi\">\n";
+  print "<FORM METHOD=\"POST\" ACTION=\"new_objects.cgi\">\n";
+  print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Confirm !\"><br /><br />\n"; 
+
+  print qq(<a href="#oadata_rna">Jump to : RNAi-Phenotype data with Suggester Term and no WBPhenotype</a><br/>\n);
+  print qq(<a href="#oadata_app">Jump to : Allele-Phenotype data with Suggester Term and no WBPhenotype</a><br/>\n);
+  my @datatypes = qw( rna app );
+  foreach my $datatype (@datatypes) {
+    print qq(<a href="#prev_${datatype}_accepted">Jump to : previous data $datatype accepted</a><br/>\n);
+    print qq(<a href="#prev_${datatype}_rejected">Jump to : previous data $datatype rejected</a><br/>\n); }
+  print qq(<br/>);
 
   my $line_number = 0;
   if ($type eq 'Phenotype') {
     &populateCurators();
     &populatePhobo();
-
-    print "Suggest data through this CGI :<BR>\n";
-    print "<TABLE BORDER=1>\n"; 
-    print "<TR><TD>Suggested Term</TD><TD>Suggested Definition</TD><TD>Child Of</TD><TD>Curator</TD><TD>Evidence</TD></TR>\n";
-    print "<TD VALIGN=TOP><INPUT NAME=suggested SIZE=50></TD>";
-    print "<TD VALIGN=TOP><TEXTAREA ROWS=5 COLS=40 NAME=definition></TEXTAREA>";
-    print "<TD VALIGN=TOP><TEXTAREA ROWS=5 COLS=40 NAME=childof></TEXTAREA>";
-    print "<TD VALIGN=TOP><SELECT NAME=curator SIZE=6>";
-    foreach my $name (sort keys %{ $curator{name_to_joinkey} }) { print "<OPTION VALUE=$curator{name_to_joinkey}{$name}>$name</OPTION>"; }
-    print "</TD>";
-    print "<TD VALIGN=TOP><TEXTAREA ROWS=5 COLS=40 NAME=evidence></TEXTAREA>";
-    print "</TABLE>\n";
-    print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Suggest !\"><BR><P><BR>\n"; 
-
-    my %phn;
-    my $result = $dbh->prepare( "SELECT * FROM phn_confirmed;" ); 
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    while (my @row = $result->fetchrow) { $phn{'confirmed'}{$row[0]} = $row[1]; }
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    $result = $dbh->prepare( "SELECT * FROM phn_comment;" ); 
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    while (my @row = $result->fetchrow) { $phn{'comment'}{$row[0]} = $row[1]++; }
-    $result = $dbh->prepare( "SELECT * FROM phn_suggested;" ); 
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    while (my @row = $result->fetchrow) { $phn{'suggested'}{$row[0]} = $row[1]; }
-    $result = $dbh->prepare( "SELECT * FROM phn_definition;" ); 
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    while (my @row = $result->fetchrow) { $phn{'definition'}{$row[0]} = $row[1]; }
-    $result = $dbh->prepare( "SELECT * FROM phn_childof;" ); 
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    while (my @row = $result->fetchrow) { $phn{'childof'}{$row[0]} = $row[1]; }
-    $result = $dbh->prepare( "SELECT * FROM phn_curator;" ); 
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    while (my @row = $result->fetchrow) { $phn{'curator'}{$row[0]} = $row[1]; }
-    $result = $dbh->prepare( "SELECT * FROM phn_evidence;" ); 
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    while (my @row = $result->fetchrow) { $phn{'evidence'}{$row[0]} = $row[1]; }
-    print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Confirm !\"><BR>\n"; 
-    print "Data suggested through this CGI :<BR>\n";
-    print "<TABLE BORDER=1>\n"; 
-    print "<TR><TD>Confirm</TD><TD>Reject</TD><TD>Comment</TD><TD>Suggested</TD><TD>Suggested Definition</TD><TD>Child Of</TD><TD>Curator</TD><TD>Evidence</TD></TR>\n";
-    my $to_confirm_cgi = ''; my $confirmed_cgi = '';
-    foreach my $joinkey (sort keys %{ $phn{suggested} }) {
-      my ($suggested, $definition, $childof, $curator, $evidence);
-      if ($phn{suggested}{$joinkey}) { $suggested = $phn{suggested}{$joinkey}; }
-      if ($phn{definition}{$joinkey}) { $definition = $phn{definition}{$joinkey}; }
-      if ($phn{childof}{$joinkey}) { $childof = $phn{childof}{$joinkey}; }
-      if ($phn{curator}{$joinkey}) { $curator = $phn{curator}{$joinkey}; $curator =~ s/two/WBPerson/g; }
-      if ($phn{evidence}{$joinkey}) { $evidence = $phn{evidence}{$joinkey}; }
-      my $to_print = "<TR>";
-      if ($phn{'confirmed'}{$joinkey}) { 
-          $to_print .= "<TD VALIGN=TOP>$phn{confirmed}{$joinkey}</TD>\n";
-          $to_print .= "<TD VALIGN=TOP>$phn{comment}{$joinkey}</TD>\n"; }
-        else {
-          $line_number++;
-          $to_print .= "<TD VALIGN=TOP><INPUT NAME=\"term_$line_number\"></TD>\n";
-          $to_print .= "<INPUT TYPE=HIDDEN NAME=\"joinkey_$line_number\" VALUE=\"$joinkey\">\n";
-          $to_print .= "<TD VALIGN=TOP>$line_number<INPUT TYPE=checkbox NAME=\"reject_$line_number\" VALUE=checked></TD>\n";
-          $to_print .= "<TD VALIGN=TOP><TEXTAREA NAME=\"comment_$line_number\" ROWS=5 COLS=40></TEXTAREA></TD>\n"; }
-      $to_print .= "<TD VALIGN=TOP>$suggested</TD>\n";
-      $to_print .= "<INPUT TYPE=HIDDEN NAME=\"suggested_$line_number\" VALUE=\"$suggested\">\n";
-      $to_print .= "<TD VALIGN=TOP>$definition</TD>\n";
-      $to_print .= "<TD VALIGN=TOP>$childof</TD>\n";
-      $to_print .= "<TD VALIGN=TOP>$curator</TD>\n";
-      $to_print .= "<TD VALIGN=TOP>$evidence</TD>\n";
-      $to_print .= "</TR>\n";
-      if ($phn{'confirmed'}{$joinkey}) { $confirmed_cgi .= $to_print; } else { $to_confirm_cgi .= $to_print; }
-    } # foreach my $joinkey (sort keys %{ $phn{suggested} })
-    print $to_confirm_cgi;
-    print "</TABLE>\n";
-
-    print "<P>Allele-Phenotype curation data :<TABLE BORDER=1>\n"; 
-    print "<TR><TD>Confirm</TD><TD>Reject</TD><TD>Comment</TD><TD>Suggested</TD><TD>Suggested Definition</TD><TD>Child Of</TD><TD>Curator</TD><TD>Paper Evidence</TD><TD>Entity</TD></TR>\n";
-    ($line_number, my $to_print) = &linePhenote('app_suggested', $line_number);
-    print $to_print;
-    print "</TABLE><BR><P><BR>\n";
-
-    &showPhenoteTermNoDefinition();  
-
-    print "<P>Confirmed Allele-Phenotype curation data :<TABLE BORDER=1>\n"; 
-    print "<TR><TD>Confirm</TD><TD>Comment</TD><TD>Suggested</TD><TD>Suggested Definition</TD><TD>Child Of</TD><TD>Curator</TD><TD>Paper Evidence</TD><TD>Entity</TD></TR>\n";
-    ($line_number, my $to_print) = &linePhenote('phn_confirmed', $line_number);
-    print $to_print;
-    print "</TABLE><BR><P><BR>\n";
-
-    print "Confirmed data suggested through this CGI :<BR>\n";
-    print "<TABLE BORDER=1>\n"; 
-    print "<TR><TD>Confirm</TD><TD>Comment</TD><TD>Suggested</TD><TD>Suggested Definition</TD><TD>Child Of</TD><TD>Curator</TD><TD>Evidence</TD></TR>\n";
-    print $confirmed_cgi;
-    print "</TABLE>\n";
-
-#   } else {			# if $type eq Allele | Transgene # don't care about allele or transgene anymore  (xiaodong, wen, karen) 2010 09 24
-#        
-#     my %name_to_id;				# map to WBVarID for Jolene / Mary Ann  2010 05 12
-#     my $map_file = '/home/acedb/work/allele_phenotype/varIDs_pub_name';
-#     open (IN, "<$map_file") or die "Cannot open $map_file for variation ID to name mappings : $!";
-#     while (my $line = <IN>) { chomp $line; my ($id, $name) = split/\t/, $line; $name_to_id{$name} = $id; }
-#     close (IN) or die "Cannot close $map_file for variation ID to name mappings : $!";
-# 
-#     print "<P>Allele-Phenotype curation data :<TABLE BORDER=1>\n"; 
-#     if ($type eq 'Allele') {
-#       &populatePmids();
-#       my $result = $dbh->prepare( "SELECT * FROM ali_alleleinfo;" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $good{allele}{$row[0]}++; }
-#       $result = $dbh->prepare( "SELECT * FROM ali_yesmaryann;" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $good{allele}{$row[0]}++; $good{maryann}{$row[0]}++; }
-#       $result = $dbh->prepare( "SELECT * FROM app_tempname WHERE joinkey IN (SELECT joinkey FROM app_type WHERE app_type = 'Allele');" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { unless ($good{allele}{$row[1]}) { $bad{allele}{$row[1]}++; } }
-#       $result = $dbh->prepare( "SELECT * FROM app_tempname WHERE joinkey IN (SELECT joinkey FROM app_allele_status WHERE app_allele_status != '') ;" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { unless ($good{maryann}{$row[1]}) { $bad{allele}{$row[1]}++; } }
-#     } elsif ($type eq 'Transgene') {
-#       my $result = $dbh->prepare( "SELECT * FROM tra_transgeneinfo;" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $good{allele}{$row[0]}++; }
-#       $result = $dbh->prepare( "SELECT * FROM tra_yeswen;" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $good{allele}{$row[0]}++; }
-#       $result = $dbh->prepare( "SELECT * FROM app_tempname WHERE joinkey IN (SELECT joinkey FROM app_type WHERE app_type = 'Transgene');" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { unless ($good{allele}{$row[1]}) { $bad{allele}{$row[1]}++; } }
-#     }
-#     print "<TR><TD>Confirm</TD><TD>temp name</TD><TD>ID</TD><TD>WBPaper</TD><TD>WBPerson</TD><TD>Object Remark</TD><TD>Paper Remark</TD><TD>Allele Status</TD><TD>Curator</TD></TR>\n";
-#     foreach my $allele (sort keys %{ $bad{allele} }) {
-#       my $allele_info = '';
-#       $line_number++;
-#       $allele_info .= "<TR><TD><INPUT NAME=\"checked_$line_number\" TYPE=\"checkbox\" VALUE=\"checked\">";
-#       if ($type eq 'Transgene') { $allele_info .= "<INPUT NAME=\"new_$line_number\">"; }
-#       $allele_info .= "</TD><TD>$allele</TD>";
-#       my $obj_id = ''; if ($name_to_id{$allele}) { $obj_id = $name_to_id{$allele}; }
-#       $allele_info .= "<TD>$obj_id</TD>";
-#       my $result = $dbh->prepare( "SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele';" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       my @joinkeys; while (my @row = $result->fetchrow) { push @joinkeys; $row[0]; }
-#       my %app_data;
-# 
-#       $result = $dbh->prepare( "SELECT * FROM app_paper WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $app_data{paper}{$row[1]}++; }
-#       my @paper_data = keys %{ $app_data{paper} };
-#       foreach my $paper (@paper_data) { if ($pmids{$paper}) { $paper .= " ($pmids{$paper})"; } }
-#       my $paper_data = join", ", @paper_data; unless ($paper_data) { $paper_data = '&nbsp;'; }
-#       foreach my $paper (@paper_data) {
-#         $result = $dbh->prepare( "SELECT * FROM app_paper_remark WHERE joinkey = '$paper';" );
-#         $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#         while (my @row = $result->fetchrow) { $app_data{paper_remark}{$row[1]}++; } }
-#       my @paper_remark_data = keys %{ $app_data{paper_remark} };
-#       my $paper_remark_data = join"<BR>", @paper_remark_data; unless ($paper_remark_data) { $paper_remark_data = '&nbsp;'; }
-# 
-#       $result = $dbh->prepare( "SELECT * FROM app_person WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $app_data{person}{$row[1]}++; }
-#       my @person_data = keys %{ $app_data{person} };
-#       my $person_data = join", ", @person_data; unless ($person_data) { $person_data = '&nbsp;'; }
-#       $person_data =~ s/\"//g; $person_data =~ s/,/,<BR>/g;
-# 
-# #       $result = $dbh->prepare( "SELECT * FROM app_strain WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');" );
-# #       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-# #       while (my @row = $result->fetchrow) { $app_data{strain}{$row[1]}++; }
-# #       my @strain_data = keys %{ $app_data{strain} };
-# #       my $strain_data = join", ", @strain_data; unless ($strain_data) { $strain_data = '&nbsp;'; }
-# # 
-# #       $result = $dbh->prepare( "SELECT * FROM app_genotype WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');" );
-# #       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-# #       while (my @row = $result->fetchrow) { $app_data{genotype}{$row[1]}++; }
-# #       my @genotype_data = keys %{ $app_data{genotype} };
-# #       my $genotype_data = join", ", @genotype_data; unless ($genotype_data) { $genotype_data = '&nbsp;'; }
-# 
-#       $result = $dbh->prepare( "SELECT * FROM app_obj_remark WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $app_data{obj_remark}{$row[1]}++; }
-#       my @obj_remark_data = keys %{ $app_data{obj_remark} };
-#       my $obj_remark_data = join", ", @obj_remark_data; unless ($obj_remark_data) { $obj_remark_data = '&nbsp;'; }
-# 
-#       $result = $dbh->prepare( "SELECT * FROM app_allele_status WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $app_data{allele_status}{$row[1]}++; }
-#       my @allele_status_data = keys %{ $app_data{allele_status} };
-#       my $allele_status_data = join", ", @allele_status_data; unless ($allele_status_data) { $allele_status_data = '&nbsp;'; }
-# 
-#       $result = $dbh->prepare( "SELECT * FROM app_curator WHERE joinkey IN (SELECT joinkey FROM app_tempname WHERE app_tempname = '$allele');" );
-#       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#       while (my @row = $result->fetchrow) { $app_data{curator}{$row[1]}++; }
-#       my @curator_data = keys %{ $app_data{curator} };
-#       my $curator_data = join", ", @curator_data; unless ($curator_data) { $curator_data = '&nbsp;'; }
-#       $curator_data =~ s/\"//g;
-#       if ($curator_data =~ m/WBcurator(\d+)/) {	# append name or email to WBcurators for wen 2008 03 24
-#         my (@twos) = $curator_data =~ m/WBcurator(\d+)/g;
-#         foreach my $two (@twos) {
-#           my $result = $dbh->prepare( "SELECT * FROM two_email WHERE joinkey = 'two$two';" );
-#           $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#           my $emails; my %emails;
-#           while (my @row = $result->fetchrow) { $emails{$row[2]}++; $emails++; }
-#           if ($emails) { my @emails = keys %emails; $emails = join", ", @emails; }
-#             else {
-#               my $result = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey = 'two$two';" );
-#               $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#               while (my @row = $result->fetchrow) { $emails{$row[1]}++; $emails++; }
-#               if ($emails) { my @emails = keys %emails; $emails = join", ", @emails; } }
-#           $curator_data =~ s/(WBcurator$two)/$1 ($emails)/g; } }
-# 
-#       $allele_info .= "<INPUT TYPE=HIDDEN NAME=\"tempname_$line_number\" VALUE=\"$allele\">\n";
-#       $allele_info .= "<TD>$paper_data</TD>";
-#       $allele_info .= "<TD>$person_data</TD>";
-# #       $allele_info .= "<TD>$strain_data</TD>";
-# #       $allele_info .= "<TD>$genotype_data</TD>";
-#       $allele_info .= "<TD>$obj_remark_data</TD>";
-#       $allele_info .= "<TD>$paper_remark_data</TD>";
-#       $allele_info .= "<TD>$allele_status_data</TD>";
-#       $allele_info .= "<TD>$curator_data</TD>";
-#       $allele_info .= "</TR>\n";
-#       print "$allele_info\n";
-#     } # foreach my $allele (sort keys %{ $bad{allele} })
-# 
-#     if ($type eq 'Allele') { 	# check go data for alleles only
-#       my @got_types = qw(bio cell mol);
-#       my %got_data;
-#       foreach my $type (@got_types) {
-#         my $result = $dbh->prepare( "SELECT * FROM got_${type}_with ORDER BY got_timestamp;" );
-#         $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#         while (my @row = $result->fetchrow) { $got_data{$type}{$row[0]}{$row[1]} = $row[2]; }
-#       }
-#       foreach my $type (@got_types) {
-#         foreach my $wbgene (sort keys %{ $got_data{$type} }) {
-#           foreach my $order (sort keys %{ $got_data{$type}{$wbgene} }) {
-#             my $data = $got_data{$type}{$wbgene}{$order};
-#             if ($data =~ m/^WB:.*?([a-z]+\d+).*?/g) { 
-#               my @data;
-#               if ($data =~ m/\|/) { @data = split/\|/, $data; } else { push @data, $data; }
-#               foreach my $data (@data) {
-#                 if ($data =~ m/\b([a-z]+\d+)\b/) { my $allele = $1; 
-#                   unless ($good{allele}{$allele}) { $bad{fromgo}{$allele}{$type}{$wbgene}{$order}++; 
-# #                     print "T $type G $wbgene O $order D $allele<BR>\n";
-#                 } }
-#       } } } } }
-#       print "</TABLE>\n";
-# 
-#       print "<P>GO curation data :<TABLE BORDER=1>\n"; 
-#       print "<TR><TD>Confirm</TD><TD>temp name</TD><TD>WBGene</TD><TD>WBPaper</TD><TD>WBPerson</TD><TD>Curator</TD></TR>\n";
-#       foreach my $allele (sort keys %{ $bad{fromgo} }) {
-#         my %data; my %genes;
-#         foreach my $type (sort keys %{ $bad{fromgo}{$allele} }) {
-#           foreach my $gene (sort keys %{ $bad{fromgo}{$allele}{$type} }) {
-#             $genes{$gene}++;
-#             foreach my $order (sort keys %{ $bad{fromgo}{$allele}{$type}{$gene} }) {
-#               my $result = $dbh->prepare( "SELECT * FROM got_${type}_paper_evidence WHERE joinkey = '$gene' AND got_order = '$order' ORDER BY got_timestamp DESC;");
-#               $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#               my @row = $result->fetchrow();
-#               $data{paper}{$row[2]}++;
-#               $result = $dbh->prepare( "SELECT * FROM got_${type}_person_evidence WHERE joinkey = '$gene' AND got_order = '$order' ORDER BY got_timestamp DESC;");
-#               $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#               @row = $result->fetchrow();
-#               $data{person}{$row[2]}++;
-#               $result = $dbh->prepare( "SELECT * FROM got_${type}_curator_evidence WHERE joinkey = '$gene' AND got_order = '$order' ORDER BY got_timestamp DESC;");
-#               $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#               @row = $result->fetchrow();
-#               $data{curator}{$row[2]}++;
-#         } } }
-#         my @genes = keys %genes; 
-#         my $wbgene = join", ", @genes; unless ($wbgene) { $wbgene = '&nbsp;'; }
-#         my @curator_data = keys %{ $data{curator} };
-#         my $curator_data = join", ", @curator_data; unless ($curator_data) { $curator_data = '&nbsp;'; }
-#         my @person_data = keys %{ $data{person} };
-#         my $person_data = join", ", @person_data; unless ($person_data) { $person_data = '&nbsp;'; }
-#         my @paper_data = keys %{ $data{paper} };
-#         foreach my $paper (@paper_data) { if ($pmids{$paper}) { $paper .= " ($pmids{$paper})"; } }
-#         my $paper_data = join", ", @paper_data; unless ($paper_data) { $paper_data = '&nbsp;'; } $paper_data =~ s/,/<BR>/g;
-#         $line_number++;
-#         print "<TR><TD><INPUT NAME=\"checked_$line_number\" TYPE=\"checkbox\" VALUE=\"checked\">";
-#         print "<TD>$allele</TD><TD>$wbgene</TD>";
-#         print "<INPUT TYPE=HIDDEN NAME=\"tempname_$line_number\" VALUE=\"$allele\">\n";
-#         print "<TD>$paper_data</TD>";
-#         print "<TD>$person_data</TD>";
-#         print "<TD>$curator_data</TD>";
-#         print "</TR>\n";
-#       } 
-#       print "</TABLE>\n";
-# 
-#       my $infile = '/home/acedb/xiaodong/gene_regulation_new_objects/check_new_allele';
-#       $/ = '';
-#       open (IN, "<$infile") or die "Cannot open $infile : $!";
-#       while (my $entry = <IN>) {
-#         if ($entry =~ m/\nAllele\s+\"(.*)\"/) {
-#           my $allele = $1;
-#           unless ($good{allele}{$allele}) { 
-#             $bad{fromgenereg}{$allele}{object}++;
-#              if ($entry =~ m/\nTrans_regulated_gene\s+\"(.*)\"/) { $bad{fromgenereg}{$allele}{gene}{$1}++; }
-#              if ($entry =~ m/\nReference\s+\"(.*)\"/) { $bad{fromgenereg}{$allele}{paper}{$1}++; } } } }
-#       close (IN) or die "Cannot close $infile : $!";
-#       $/ = "\n";
-#       print "<P>Gene Regulation data :<TABLE BORDER=1>\n"; 
-#       print "<TR><TD>Confirm</TD><TD>temp name</TD><TD>WBGene</TD><TD>WBPaper</TD><TD>Curator</TD></TR>\n";
-#       foreach my $allele (sort keys %{ $bad{fromgenereg} }) {
-#         my @gene_data = keys %{ $bad{fromgenereg}{$allele}{gene} };
-#         my $gene_data = join", ", @gene_data; unless ($gene_data) { $gene_data = '&nbsp;'; }
-#         my @paper_data = keys %{ $bad{fromgenereg}{$allele}{paper} };
-#         foreach my $paper (@paper_data) { if ($pmids{$paper}) { $paper .= " ($pmids{$paper})"; } }
-#         my $paper_data = join", ", @paper_data; unless ($paper_data) { $paper_data = '&nbsp;'; }
-#         $line_number++;
-#         print "<TR><TD><INPUT NAME=\"checked_$line_number\" TYPE=\"checkbox\" VALUE=\"checked\">";
-#         print "<INPUT TYPE=HIDDEN NAME=\"tempname_$line_number\" VALUE=\"$allele\">\n";
-#         print "<TD>$allele</TD><TD>$gene_data</TD><TD>$paper_data</TD><TD>Xiaodong Wang</TD>\n";
-#         print "</TR>\n";
-#       } # foreach my $allele (sort keys %{ $bad{fromgenereg} })
-#       print "</TABLE>\n";
-#     } # if ($type eq 'Allele') 
-
+    my ($tableRna) = &getPhnOaData('rna');
+    my ($tableApp) = &getPhnOaData('app');
+    ($line_number) = &showOaTermNoWBPhenotype($line_number, 'rna');
+    ($line_number) = &showOaTermNoWBPhenotype($line_number, 'app');
+    print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Confirm !\"><br /><br />\n"; 
+    print $tableRna;
+    print $tableApp;
   } # else # if $type eq Allele | Transgene
 
   print "</TABLE>\n";
@@ -751,119 +472,126 @@ sub updateFinalname {							# get list of $type data for curators to assign a fi
   print "</FORM>\n";
 } # sub updateFinalname
 
-
-sub showPhenoteTermNoDefinition {
-  my %filter;
-  print "Allele-Phenotype data with Phenotype and no definition : <TABLE BORDER=1>\n"; 
-  print "<TR><TD>Term</TD><TD>Suggested Definition</TD><TD>Curator</TD><TD>Paper Evidence</TD><TD>Entity</TD></TR>\n";
-  my $result = $dbh->prepare( " SELECT app_term.joinkey, app_term.app_term, app_suggested_definition.app_suggested_definition FROM app_term, app_suggested_definition WHERE app_term.app_term IS NOT NULL AND app_suggested_definition.app_suggested_definition IS NOT NULL AND app_term.joinkey = app_suggested_definition.joinkey ; " );
+sub getPhnOaData {
+  my ($datatype) = @_;
+  my $table = '';
+  $table .= qq(<div id="prev_${datatype}_accepted">Previous data $datatype accepted : </div>);
+  $table .= qq(<TABLE BORDER="1" style="empty-cells: show">\n); 
+  $table .= qq(<thead><tr><th>Confirm</th><th>Reject</th><th>Comment</th><th>Suggested</th><th>Suggested Definition</th><th>Placeholder</th><th>Child Of</th><th>Curator</th><th>Paper Evidence</th><th>Entity</th><th>Datatype</th><th>PGIDs</th><th>timestamp</th></tr></thead><tbody>\n);
+  my $result = $dbh->prepare( "SELECT * FROM phn_oadata WHERE datatype = '$datatype' AND phenotype IS NOT NULL ORDER BY phn_timestamp" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) { $filter{$row[1]}{def}{$row[2]}++; $filter{$row[1]}{pgdbid}{$row[0]}++; }
-  foreach my $term (sort keys %filter) {
-    next if ($phobo{$term}{def});
-    my @defs; my @pgdbid;
+  while (my @row = $result->fetchrow) { 
+    my ($phenotype, $reject, $comment, $suggested, $definition, $child_of, $curator, $paper, $entity, $datatype, $pgids) = @row;
+    $previouslySuggested{$suggested}++;
+    my $row = join"</td><td>", @row;
+    $table .= qq(<tr><td>$row</td></tr>\n);
+  }
+  $table .= "</tbody></table><br/><br/>";
+  $table .= qq(<div id="prev_${datatype}_rejected">Previous data $datatype rejected : </div>);
+  $table .= qq(<TABLE BORDER="1" style="empty-cells: show">\n); 
+  $table .= qq(<thead><tr><th>Confirm</th><th>Reject</th><th>Comment</th><th>Suggested</th><th>Suggested Definition</th><th>Placeholder</th><th>Child Of</th><th>Curator</th><th>Paper Evidence</th><th>Entity</th><th>Datatype</th><th>PGIDs</th><th>timestamp</th></tr></thead><tbody>\n);
+  my $result = $dbh->prepare( "SELECT * FROM phn_oadata WHERE datatype = '$datatype' AND reject IS NOT NULL ORDER BY phn_timestamp" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { 
+    my ($phenotype, $reject, $comment, $suggested, $definition, $child_of, $curator, $paper, $entity, $datatype, $pgids) = @row;
+    $previouslySuggested{$suggested}++;
+    my $row = join"</td><td>", @row;
+    $table .= qq(<tr><td>$row</td></tr>\n);
+  }
+  $table .= "</tbody></table><br/><br/>";
+  return $table;
+} # sub getPhnOaData
+
+sub showOaTermNoWBPhenotype {
+  my ($line_number, $datatype) = @_;
+  my $query = '';
+  if ($datatype eq 'app') { 
+      print qq(<div id="oadata_app">Allele-Phenotype data with Suggester Term and no WBPhenotype : </div>\n<TABLE BORDER="1" style="empty-cells: show">\n); 
+#       print "<TR><TD>Confirm</TD><TD>Reject</TD><TD>Comment</TD><TD>Suggested</TD><TD>Suggested Definition</TD><TD>Placeholder</TD><TD>Child Of</TD><TD>Curator</TD><TD>Paper Evidence</TD><TD>Entity</TD><TD>Datatype</TD><TD>PGIDs</TD></TR>\n";
+      print "<TR><TD>Confirm</TD><TD>Reject</TD><TD>Comment</TD><TD>Suggested</TD><TD>Suggested Definition</TD><TD>Placeholder</TD><TD>Child Of</TD><TD>Curator</TD><TD>Paper Evidence</TD><TD>Datatype</TD><TD>PGIDs</TD></TR>\n";
+      $query = qq(SELECT app_suggested.joinkey, app_suggested.app_suggested, app_suggested_definition.app_suggested_definition, app_suggested.app_timestamp FROM app_suggested, app_suggested_definition WHERE app_suggested.app_suggested != '' AND app_suggested.app_suggested IS NOT NULL AND app_suggested_definition.app_suggested_definition IS NOT NULL AND app_suggested.joinkey = app_suggested_definition.joinkey AND app_suggested.app_suggested !~ 'REJECTED' ORDER BY app_suggested.app_timestamp;); }
+    elsif ($datatype eq 'rna') { 
+      print qq(<div id="oadata_rna">RNAi-Phenotype data with Suggester Term and no WBPhenotype : </div>\n<TABLE BORDER="1" style="empty-cells: show">\n); 
+      print "<TR><TD>Confirm</TD><TD>Reject</TD><TD>Comment</TD><TD>Suggested</TD><TD>Suggested Definition</TD><TD>Placeholder</TD><TD>Child Of</TD><TD>Curator</TD><TD>Paper Evidence</TD><TD>Datatype</TD><TD>PGIDs</TD></TR>\n";
+      $query = qq(SELECT rna_suggested.joinkey, rna_suggested.rna_suggested, rna_suggested_definition.rna_suggested_definition, rna_suggested.rna_timestamp FROM rna_suggested, rna_suggested_definition WHERE rna_suggested.rna_suggested != '' AND rna_suggested.rna_suggested IS NOT NULL AND rna_suggested_definition.rna_suggested_definition IS NOT NULL AND rna_suggested.joinkey = rna_suggested_definition.joinkey AND rna_suggested.rna_suggested !~ 'REJECTED' ORDER BY rna_suggested.rna_timestamp;); }
+    else { return; }
+  my %filter;
+#   my $result = $dbh->prepare( " SELECT app_term.joinkey, app_term.app_term, app_suggested_definition.app_suggested_definition FROM app_term, app_suggested_definition WHERE app_term.app_term IS NOT NULL AND app_suggested_definition.app_suggested_definition IS NOT NULL AND app_term.joinkey = app_suggested_definition.joinkey ; " );
+  my $result = $dbh->prepare( $query );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { $filter{$row[1]}{def}{$row[2]}++; $filter{$row[1]}{pgids}{$row[0]}++; $filter{$row[1]}{timestamp}{$row[3]}++; }
+#   foreach my $term (sort keys %filter) { # }			# sort by suggested name alphanumerically
+  foreach my $term (sort { $filter{$a}{timestamp} <=> $filter{$b}{timestamp} } keys %filter) {		# sort by most recent timestamp for a given suggested term
+#     next if ($phobo{$term}{def});
+    $line_number++;
+    print qq(<tr>);
+    print qq(<INPUT TYPE="hidden" NAME="datatype_$line_number" VALUE="$datatype">);
+    print qq(<TD VALIGN=TOP><INPUT NAME="phenotype_$line_number"></TD>\n);
+    print qq(<TD VALIGN=TOP>$line_number<INPUT TYPE=checkbox NAME="reject_$line_number" VALUE="checked"></TD>\n);
+    print qq(<TD VALIGN=TOP><TEXTAREA NAME="comment_$line_number" ROWS=5 COLS=40></TEXTAREA></TD>\n);
+    my @defs; my @pgids;
     foreach my $def (keys %{ $filter{$term}{def} }) { push @defs, $def; }
     my $def = join", ", @defs; 
-    foreach my $pgdbid (keys %{ $filter{$term}{pgdbid} }) { push @pgdbid, $pgdbid; }
-    my $pgdbid = join"', '", @pgdbid; $pgdbid = "'$pgdbid'";
-    next unless ($pgdbid); next unless ($def);
-    print "<TR><TD VALIGN=top>$term <FONT SIZE=-1>($phobo{$term}{name})</FONT></TD><TD VALIGN=top>$def</TD>\n";
-    my $result2 = $dbh->prepare( "SELECT * FROM app_curator WHERE joinkey IN ($pgdbid);" );
+    foreach my $pgids (sort keys %{ $filter{$term}{pgids} }) { push @pgids, $pgids; }
+    my $pgids = join"', '", @pgids; $pgids = "'$pgids'";
+    next unless ($pgids); next unless ($def);
+    my $exists = ''; 
+    if ($phobo{$term}{name}) { $exists .= ' <FONT SIZE=-1>(' . $phobo{$term}{name} . ')</FONT>'; }
+    if ($previouslySuggested{$term}) { $exists .= ' <FONT SIZE=-1>( already suggested )</FONT>'; }
+#     print "<TR><TD VALIGN=top>$term <FONT SIZE=-1>($phobo{$term}{name})</FONT></TD><TD VALIGN=top>$def</TD>\n";
+    print "<TD VALIGN=top>$term$exists</TD><TD VALIGN=top>$def</TD>\n";
+    print qq(<INPUT TYPE="hidden" NAME="suggested_$line_number" VALUE="$term">);
+    print qq(<INPUT TYPE="hidden" NAME="suggested_definition_$line_number" VALUE="$def">);
+    my $placeholderTable = 'term'; if ($datatype eq 'rna') { $placeholderTable = 'phenotype'; }
+    my $result2 = $dbh->prepare( "SELECT * FROM ${datatype}_${placeholderTable} WHERE joinkey IN ($pgids);" );
     $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    my %filter2 = (); while (my @row2 = $result2->fetchrow) { next unless ($row2[1] =~ m/\S/) ; $filter2{$row2[1]}++; } my %emails = (); my %twos = ();
-    foreach my $cur (sort keys %filter2) { if ($cur =~ m/WBcurator(\d+)/) { my $two = $1; $twos{$two}++; } }
-    my @twos = sort keys %twos; my $twos = join", WBPerson", @twos;
-    print "<TD VALIGN=TOP>WBPerson$twos</TD>";
-    $result2 = $dbh->prepare( "SELECT * FROM app_paper WHERE joinkey IN ($pgdbid);" );
+    my %filter2 = (); while (my @row2 = $result2->fetchrow) { next unless ($row2[1] =~ m/\S/) ; $filter2{$row2[1]}++; } 
+    my %placeholder = (); foreach my $cur (sort keys %filter2) { if ($cur =~ m/(WBPhenotype:\d+)/) { $placeholder{$1}++; } }
+    my @placeholder = sort keys %placeholder; my $placeholder = join", ", @placeholder;
+    print qq(<INPUT TYPE="hidden" NAME="placeholder_$line_number" VALUE="$placeholder">);
+    foreach my $placeholder (@placeholder) { $placeholder .= " <FONT SIZE=-1>($phobo{$placeholder}{name})</FONT>"; }
+    $placeholder = join", ", @placeholder;
+    print "<TD VALIGN=TOP>$placeholder</TD>";
+    $result2 = $dbh->prepare( "SELECT * FROM ${datatype}_child_of WHERE joinkey IN ($pgids);" );
+# print qq(<td>SELECT * FROM ${datatype}_child_of WHERE joinkey IN ($pgids);</td>);
+    $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+    my %filter2 = (); while (my @row2 = $result2->fetchrow) { next unless ($row2[1] =~ m/\S/) ; $filter2{$row2[1]}++; } 
+    my %child_of = (); foreach my $cur (sort keys %filter2) { if ($cur =~ m/(WBPhenotype:\d+)/) { $child_of{$1}++; } }
+    my @child_of = sort keys %child_of; my $child_of = join", ", @child_of;
+    print qq(<INPUT TYPE="hidden" NAME="child_of_$line_number" VALUE="$child_of">);
+    foreach my $child_of (@child_of) { $child_of .= " <FONT SIZE=-1>($phobo{$child_of}{name})</FONT>"; }
+    $child_of = join", ", @child_of;
+    print "<TD VALIGN=TOP>$child_of</TD>";
+    $result2 = $dbh->prepare( "SELECT * FROM ${datatype}_curator WHERE joinkey IN ($pgids);" );
+    $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+    %filter2 = (); while (my @row2 = $result2->fetchrow) { next unless ($row2[1] =~ m/\S/) ; $filter2{$row2[1]}++; } 
+    my %curator = (); foreach my $cur (sort keys %filter2) { if ($cur =~ m/(WBPerson\d+)/) { $curator{$1}++; } }
+    my @curator = sort keys %curator; my $curator = join", ", @curator;
+    print "<TD VALIGN=TOP>$curator</TD>";
+    print qq(<INPUT TYPE="hidden" NAME="curator_$line_number" VALUE="$curator">);
+    $result2 = $dbh->prepare( "SELECT * FROM ${datatype}_paper WHERE joinkey IN ($pgids);" );
     $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n";
     %filter2 = (); while (my @row2 = $result2->fetchrow) { next unless ($row2[1] =~ m/\S/) ; $filter2{$row2[1]}++; }
-    my @paper = sort keys %filter2; my $paper = join"<BR><BR>", @paper; 
+    my @paper = sort keys %filter2; my $paper = join", ", @paper; 
+    print qq(<INPUT TYPE="hidden" NAME="paper_$line_number" VALUE="$paper">);
     print "<TD VALIGN=TOP>$paper</TD>";
-    $result2 = $dbh->prepare( "SELECT * FROM app_entity WHERE joinkey IN ($pgdbid);" );
-    $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    %filter2 = (); while (my @row2 = $result2->fetchrow) { next unless ($row2[1] =~ m/\S/) ; $filter2{$row2[1]}++; }
-    my @entity = sort keys %filter2; my $entity = join"<BR><BR>", @entity; 
-    print "<TD VALIGN=TOP>$entity</TD>";
+#     my $entity = '';
+#     if ($datatype eq 'app') {
+#       $result2 = $dbh->prepare( "SELECT * FROM app_entity WHERE joinkey IN ($pgids);" );
+#       $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+#       %filter2 = (); while (my @row2 = $result2->fetchrow) { next unless ($row2[1] =~ m/\S/) ; $filter2{$row2[1]}++; }
+#       my @entity = sort keys %filter2; $entity = join", ", @entity;
+#       print "<TD VALIGN=TOP>$entity</TD>"; }
+#     print qq(<INPUT TYPE="hidden" NAME="entity_$line_number" VALUE="$entity">);
+    print "<TD VALIGN=TOP>$datatype</TD>";
+    print "<TD VALIGN=TOP>$pgids</TD>";
+    print qq(<INPUT TYPE="hidden" NAME="datatype_$line_number" VALUE="$datatype">);
+    print qq(<INPUT TYPE="hidden" NAME="pgids_$line_number" VALUE="$pgids">);
     print "</TR>\n";
   } # foreach my $term (sort keys %filter)
   print "</TABLE><BR><P><BR>\n";
-} # sub showPhenoteTermNoDefinition
-
-sub linePhenote {
-  my ($table, $line_number) = @_;
-  my %sug; my %filter; my $to_print = '';
-  my $result = $dbh->prepare( "SELECT * FROM $table WHERE joinkey !~ '^0' AND $table IS NOT NULL;" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) { $sug{$row[1]}++; }
-  foreach my $sug (sort keys %sug) {
-    next unless ($sug);
-    $to_print .= "<TR>";
-    if ($table eq 'app_suggested') {
-        $line_number++;
-        $to_print .= "<TD VALIGN=TOP><INPUT NAME=\"term_$line_number\"></TD>\n";
-        $to_print .= "<TD VALIGN=TOP>$line_number<INPUT TYPE=checkbox NAME=\"reject_$line_number\" VALUE=checked></TD>\n";
-        $to_print .= "<TD VALIGN=TOP><TEXTAREA NAME=\"comment_$line_number\" ROWS=5 COLS=40></TEXTAREA></TD>\n";
-        $to_print .= "<TD VALIGN=TOP>$sug</TD>";
-        $to_print .= "<INPUT TYPE=HIDDEN NAME=\"suggested_$line_number\" VALUE=\"$sug\">\n"; }
-      else {
-        $result = $dbh->prepare( "SELECT * FROM phn_confirmed WHERE joinkey IN (SELECT joinkey FROM $table WHERE joinkey !~ '^0' AND $table = '$sug');" );
-        $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-        %filter = (); while (my @row = $result->fetchrow) { next unless ($row[1] =~ m/\S/) ; $filter{$row[1]}++; }
-        my @confirmed = sort keys %filter; my $confirmed = join"<BR><BR>", @confirmed; 
-        $result = $dbh->prepare( "SELECT * FROM phn_comment WHERE joinkey IN (SELECT joinkey FROM $table WHERE joinkey !~ '^0' AND $table = '$sug');" );
-        $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-        %filter = (); while (my @row = $result->fetchrow) { next unless ($row[1] =~ m/\S/) ; $filter{$row[1]}++; }
-        my @comment = sort keys %filter; my $comment = join"<BR><BR>", @comment; 
-        $to_print .= "<TD VALIGN=TOP>$confirmed</TD>\n";
-        $to_print .= "<TD VALIGN=TOP>$comment</TD>\n";
-        $to_print .= "<TD VALIGN=TOP>$sug</TD>"; }
-    $result = $dbh->prepare( "SELECT * FROM app_suggested_definition WHERE joinkey IN (SELECT joinkey FROM $table WHERE joinkey !~ '^0' AND $table = '$sug');" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    %filter = (); while (my @row = $result->fetchrow) { next unless ($row[1] =~ m/\S/) ; $filter{$row[1]}++; }
-    my @sd = sort keys %filter; my $sugdef = join"<BR><BR>", @sd; 
-    $to_print .= "<TD VALIGN=TOP>$sugdef</TD>";
-    $result = $dbh->prepare( "SELECT * FROM app_child_of WHERE joinkey IN (SELECT joinkey FROM $table WHERE joinkey !~ '^0' AND $table = '$sug');" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    %filter = (); while (my @row = $result->fetchrow) { next unless ($row[1] =~ m/\S/) ; $filter{$row[1]}++; } my @co = ();
-    foreach my $co (sort keys %filter) {
-      my (@phen) = split/,/, $co;
-      foreach my $phen (@phen) { $phen =~ s/\"//g; $phen .= " <FONT SIZE=-1>($phobo{$phen}{name})</FONT>"; }
-      $co = join", ", @phen; push @co, $co; }
-    my $childof = join"<BR><BR>", @co; 
-    $to_print .= "<TD VALIGN=TOP>$childof</TD>";
-    $result = $dbh->prepare( "SELECT * FROM app_curator WHERE joinkey IN (SELECT joinkey FROM $table WHERE joinkey !~ '^0' AND $table = '$sug');" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    %filter = (); while (my @row = $result->fetchrow) { next unless ($row[1] =~ m/\S/) ; $filter{$row[1]}++; } my %emails = (); my %twos = ();
-    foreach my $cur (sort keys %filter) {
-      if ($cur =~ m/WBcurator(\d+)/) { 
-        my $two = $1; $twos{$two}++; my $result = $dbh->prepare( "SELECT * FROM two_email WHERE joinkey = 'two$two';" );
-        $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-        while (my @row = $result->fetchrow) { $emails{$row[2]}++; } } }
-    my @emails = sort keys %emails; my $emails = join", ", @emails;
-    my @twos = sort keys %twos; my $twos = join", WBPerson", @twos;
-    $to_print .= "<TD VALIGN=TOP>WBPerson$twos</TD>";
-#     if ($table eq 'app_suggested') { $to_print .= "<INPUT TYPE=HIDDEN NAME=\"email_$line_number\" VALUE=\"$emails\">\n"; }
-    $to_print .= "<INPUT TYPE=HIDDEN NAME=\"email_$line_number\" VALUE=\"$emails\">\n"; 
-    $result = $dbh->prepare( "SELECT * FROM app_paper WHERE joinkey IN (SELECT joinkey FROM $table WHERE joinkey !~ '^0' AND $table = '$sug');" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    %filter = (); while (my @row = $result->fetchrow) { next unless ($row[1] =~ m/\S/) ; $filter{$row[1]}++; }
-    my @paper = sort keys %filter; my $paper = join"<BR><BR>", @paper; 
-    $to_print .= "<TD VALIGN=TOP>$paper</TD>";
-    $result = $dbh->prepare( "SELECT * FROM app_entity WHERE joinkey IN (SELECT joinkey FROM $table WHERE joinkey !~ '^0' AND $table = '$sug');" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    %filter = (); while (my @row = $result->fetchrow) { next unless ($row[1] =~ m/\S/) ; $filter{$row[1]}++; }
-    my @entity = sort keys %filter; my $entity = join"<BR><BR>", @entity; 
-    $to_print .= "<TD VALIGN=TOP>$entity</TD>";
-    $to_print .= "</TR>\n";
-  } # foreach my $sug (sort keys %sug)
-  return ($line_number, $to_print);
-} # sub linePhenote
-
-sub populatePmids {
-  my $result = $dbh->prepare( "SELECT * FROM pap_identifier WHERE pap_identifier ~ 'pmid' ;" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) { my $key = 'WBPaper' . $row[0]; $pmids{$key} = $row[1]; }
-} # sub populatePmids
+  return $line_number;
+} # sub showOaTermNoWBPhenotype
 
 sub populatePhobo {
   my $obofile = get "http://tazendra.caltech.edu/~azurebrd/cgi-bin/forms/phenotype_ontology_obo.cgi";
@@ -875,22 +603,6 @@ sub populatePhobo {
     my ($def) = $para =~ m/def: \"(.*?)\"/;
     $phobo{$id}{name} = $name;
     $phobo{$id}{def} = $def; }
-#   my $directory = '/home/postgres/work/citace_upload/allele_phenotype/temp';
-#   chdir($directory) or die "Cannot go to $directory ($!)";
-#   `cvs -d /var/lib/cvsroot checkout PhenOnt`;
-#   my $file = $directory . '/PhenOnt/PhenOnt.obo';
-#   $/ = "";
-#   open (IN, "<$file") or die "Cannot open $file : $!";
-#   while (my $para = <IN>) { 
-#     next unless ($para =~ m/id:/);
-#     my ($id) = $para =~ m/id: (WBPhenotype:\d+)/;
-#     my ($name) = $para =~ m/name: (.*)\n/;
-#     my ($def) = $para =~ m/def: \"(.*?)\"/;
-#     $phobo{$id}{name} = $name;
-#     $phobo{$id}{def} = $def; }
-#   close (IN) or die "Cannot close $file : $!";
-#   $directory .= '/PhenOnt';
-#   `rm -rf $directory`;
 } # sub populatePhobo
 
 sub populateCurators {
@@ -938,86 +650,3 @@ sub populateCurators {
 
 __END__
 
-
-DEPRECATED
-
-sub getFinalnameLine {							# get a table row of type data
-  my ($tempname, $final, $paper, $line_number) = @_;
-#   my $line = "<FORM METHOD=POST ACTION=http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi>\n";
-  my $line = "<INPUT TYPE=HIDDEN NAME=\"tempname_$line_number\" VALUE=\"$tempname\">\n";
-  $line .= "<TR><TD>$tempname</TD><TD><INPUT NAME=\"final_$line_number\" VALUE=$final></TD>\n";
-  my $paper_link = $paper; if ($paper =~ m/(\d{8})/) { $paper_link = $1; }
-  if ($paper_link) { my $result = $dbh->prepare( "SELECT wpa_identifier FROM wpa_identifier WHERE joinkey ~ '$paper_link' AND wpa_identifier ~ 'pmid';" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-    my @row = $result->fetchrow; if ($row[0]) { $paper .= '(' . $row[0] . ')'; } }		# add pmid for Mary Ann  2005 11 22
-  $line .= "<TD><A HREF=http://tazendra.caltech.edu/~postgres/cgi-bin/wbpaper_display.cgi?action=Number+%21&number=$paper_link TARGET=new>$paper</A>&nbsp;</TD>\n";
-  $line .= "<TD><A HREF=http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi?action=Get+Data+%21&tempname=$tempname TARGET=new>Get Data</A></TD>\n";
-  $line .= "<TD><INPUT NAME=\"checked_$line_number\" TYPE=\"checkbox\" VALUE=\"checked\">";
-#   $line .= "<TD><INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Confirm Final Name !\"></TD></TR>\n"; 
-#   $line .= "</FORM>\n";
-  return $line;
-} # sub getFinalnameLine
-
-
-# from updateFinalname
-#   my ($var, $page) = &getHtmlVar($query, 'page');
-#   unless ($page) { $page = 0; } else { $page--; }			# subtract from page to count arrays from zero
-#   my %rnai; my %final; my %paper; my @rnai; my @final; my @nofinal;
-#   my $result = $dbh->prepare( "SELECT * FROM alp_type WHERE alp_type = '$type'; ");
-#     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#   while (my @row = $result->fetchrow) { $rnai{$row[0]}++; }
-#   $result = $dbh->prepare( "SELECT * FROM alp_finalname ORDER BY alp_timestamp; ");
-#     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#   while (my @row = $result->fetchrow) { $final{$row[0]} = $row[1]; }
-#   $result = $dbh->prepare( "SELECT * FROM alp_paper ORDER BY alp_timestamp; ");
-#     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#   while (my @row = $result->fetchrow) { if ($row[2]) { $paper{$row[0]} = $row[2]; } }
-#   print "<TABLE BORDER=1>\n";
-#   print "<TR><TD>temp name</TD><TD>final name</TD><TD>WBPaper</TD><TD>Get text data</TD><TD>Confirm final name</TD></TR>\n";
-#   my $withfinal = ''; my $withoutfinal = '';				# entries with finalname / without finalname for printing
-#   foreach my $tempname (sort { $paper{$a} <=> $paper{$b} } keys %rnai) {	# sort by papers for Mary Ann 2005 12 06
-#     if ($final{$tempname}) { push @final, $tempname; }			# store finals and no finals in an array
-#       else { push @nofinal, $tempname; } }
-#   if ($type eq 'Allele') { 	# for Mary Ann only show those without Final name in two groups, older than a day and recent 2006 10 23
-#     @final = (); 							# don't show final names for Variation for Mary Ann
-#     my %nofinal = ();  foreach my $nofinal (@nofinal) { $nofinal{$nofinal}++; }	# put in hash to check if should store them
-#     my @first; my @second; @nofinal = ();				# order nofinals in two groups for Mary Ann (one day recent, and older)
-#     $result = $dbh->prepare( " SELECT * FROM alp_type WHERE alp_type = 'Allele' AND alp_timestamp > ( SELECT date_trunc('second', now())-'1 days'::interval ) ORDER BY joinkey; " );
-#     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#     while (my @row = $result->fetchrow) { if ($nofinal{$row[0]}) { push @first, $row[0]; } }	# those recent than one day in alphabetical order
-#     $result = $dbh->prepare( " SELECT * FROM alp_type WHERE alp_type = 'Allele' AND alp_timestamp <= ( SELECT date_trunc('second', now())-'1 days'::interval ) ORDER BY joinkey; " );
-#     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#     while (my @row = $result->fetchrow) { if ($nofinal{$row[0]}) { push @second, $row[0]; } }	# those older than one day in alphabetical order
-#     foreach (@first) { push @nofinal, $_; } foreach (@second) { push @nofinal, $_; }	# put them back in nofinal array for display
-#   } # if ($type eq 'Allele') 
-#   my $nofinals = scalar(@nofinal);					# entries without a final name
-#   my $per_page = 20;							# entries per page
-#   my $pages = 1 + (scalar (@final) / $per_page) + (scalar (@nofinal) / $per_page);		# find out how many pages there are
-#   for (1 .. ($page * $per_page)) { if (@nofinal) { shift @nofinal; } else { shift @final; } }	# depending on the page, skip entries from nofinal and then from final
-#   for my $line_number (1 .. $per_page) {
-#     my $tempname;							# grab the tempname from nofinal or final as appropriate
-#     if (@nofinal) { $tempname = shift @nofinal; }
-#       elsif (@final) { $tempname = shift @final; }
-#       else { next; }
-#     my $line = &getFinalnameLine($tempname, $final{$tempname}, $paper{$tempname}, $line_number);	# generate the line
-#     if ($final{$tempname}) { $withfinal .= $line; }			# put it with final or without final as appropriate
-#       else { $withoutfinal .= $line; } }
-# 
-#   $page++;								# add back the subtracted one for displaying the page number counting from 1
-#   print "<FORM METHOD=POST ACTION=http://tazendra.caltech.edu/~postgres/cgi-bin/new_objects.cgi>\n";
-#   print "<INPUT TYPE=HIDDEN NAME=per_page VALUE=$per_page>\n";
-#   print "<INPUT TYPE=HIDDEN NAME=pages VALUE=$pages>\n";
-#   print "<INPUT TYPE=HIDDEN NAME=type VALUE=$type>\n";
-#   print "Select another page : <SELECT NAME=\"page\" SIZE=1>\n";
-#   foreach (1 .. $pages) { if ($_ == $page) { print "      <OPTION SELECTED>$_</OPTION>\n"; } else { print "      <OPTION>$_</OPTION>\n"; } }
-#   print "    </SELECT>\n";
-#   if ($type eq 'RNAi') { print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Update RNAi !\">\n"; }
-#   elsif ($type eq 'Transgene') { print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Update Trasgene !\">\n"; }
-#   elsif ($type eq 'Allele') { print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Update Variation !\">\n"; }
-#   print " (and click this button)<BR><BR>\n";
-#   print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Confirm Final Name !\"><BR>\n"; 
-#   print "$withoutfinal<TR><TD colspan=5><FONT COLOR=green>The following already have been curated and already have a final name.</FONT></TD></TR>$withfinal";
-#   print "</TABLE>\n";
-#   print "<INPUT TYPE=\"submit\" NAME=\"action\" VALUE=\"Confirm Final Name !\"><BR>\n"; 
-#   print "</FORM>\n";
-# end from updateFinalname

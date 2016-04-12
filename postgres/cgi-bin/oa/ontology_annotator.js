@@ -593,7 +593,7 @@ function resetButton() {
  * Create <oDS> as a new YUI XHRDataSource, passing in the URL ;  with data response of type text ;  delimiting records with newlines (\n) and fields with tabs (\t) ;  and enabling caching because autocomplete values don't change often.
  * All autocompletes force data to be in the ontology, so the container element is gotten from the editor frame html div element with id 'forced<field>Container'.  The input element from the editor frame html input element with id 'input_<field>'.
  * Create <forcedOAC> as a new YUI AutoComplete ;  passing in the <inputElement>, <containerElement>, and <oDS>.  Set 'queryQuestionMark' to 'false' because the URL has been built with other value and already has an '&'.  Set 'maxResultsDisplayed' to '500' because even though most results are limited to 20 by the CGI, some GO config ontology values have hundreds that match on some terms and curatos wants to look at hundreds of them.  Set 'forceSelection' to 'false' because it doesn't seem to work, so using  checkValueIsValidAndUpdate(field, newValue, selectedRows)  instead.
- * If the field is a 'dropdown' or 'multidropdown' also add a 'click' listener to the editor frame html span element with id 'type_<field>', so that when clicked it will focus on the <forcedOAC> input and send a query for blank, which returns all possible values for the field.  Set the 'minQueryLength' to 0 to allow blank queries which return all values.
+ * If the field is a 'dropdown' or 'multidropdown' or 'ontology' or 'multiontology' also add a 'click' listener to the editor frame html span element with id 'type_<field>', so that when clicked it will focus on the <forcedOAC> input and send a query for blank, which returns all possible values for the field.  Set the 'minQueryLength' to 0 to allow blank queries which return all values.
  * Subscribe a <forcedOAC> itemSelectEvent to call  onAutocompleteItemSelect  to update term information, input field, postgres, and dataTable.
  * Subscribe a <forcedOAC> selectionEnforceEvent to call  onAutocompleteSelectionEnforce  to give message in obo frame about what value was cleared.
  * Subscribe a <forcedOAC> itemArrowToEvent to call  onAutocompleteItemHighlight  to show the value's term info in the obo frame if it is an ontology-type field.
@@ -625,7 +625,9 @@ function setAutocompleteListeners() {				// for each ontology field, add autocom
          forcedOAC.queryQuestionMark = false;			// don't add a ? to the sUrl query since it's been built with some other values
          forcedOAC.maxResultsDisplayed = 500;
          forcedOAC.forceSelection = false;
-         if ( ( fieldsData[field]["type"] === "multidropdown" ) || ( fieldsData[field]["type"] === "dropdown" ) ) {	// dropdowns and multidropdowns should allow clicking to show all values
+//          if ( ( fieldsData[field]["type"] === "multidropdown" ) || ( fieldsData[field]["type"] === "dropdown" ) ) 	// dropdowns and multidropdowns should allow clicking to show all values
+         if ( ( fieldsData[field]["type"] === "multidropdown" ) || ( fieldsData[field]["type"] === "dropdown" ) ||	// dropdowns and multidropdowns should allow clicking to show all values
+              ( fieldsData[field]["type"] === "multiontology" ) || ( fieldsData[field]["type"] === "ontology" ) ) {	// ontologies and multiontologies also allow as some dropdowns have converted to obos for cross-form compatibility
              var oElement = top.frames['editor'].document.getElementById('type_'+field);
              YAHOO.util.Event.addListener(oElement, "click", function() { 
                  if (top.frames['editor'].document.getElementById("input_id").disabled !== true) {	// only change stuff if editor is not disabled (editor being represented by id field)

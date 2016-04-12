@@ -99,6 +99,12 @@
 #
 # added 'x' button next to number query field for Mary Ann, approved by Kimberly. 
 # 2014 06 19
+# 
+# added 'emailed_community_gene_descrip' as option for 'curation_flags'.  for Ranjana.
+# 2015 10 06
+#
+# added  pap_author_corresponding  and can edit those with a new
+#  makeToggleDoubleField  for Chris, Cecilia, Kimberly.  2015 11 17
 
 
 
@@ -118,6 +124,7 @@ use Jex;
 use DBI;
 use Tie::IxHash;
 use LWP::Simple;
+use POSIX qw(ceil);
 
 
 use lib qw( /home/postgres/work/pgpopulation/pap_papers/new_papers );
@@ -144,7 +151,7 @@ my %valid_paper_index;			# hash of papers that are valid
 my %month_index;				# hash of possible 7 types of paper
 &populateMonthIndex();	
 
-my @normal_tables = qw( status electronic_path pubmed_final identifier contained_in erratum_in title author affiliation journal abstract publisher editor pages volume year month day type fulltext_url remark gene curation_flags curation_done internal_comment primary_data );
+my @normal_tables = qw( status species electronic_path pubmed_final identifier contained_in erratum_in title author affiliation journal abstract publisher editor pages volume year month day type fulltext_url remark gene curation_flags curation_done internal_comment primary_data );
 # my @normal_tables = qw( gene status electronic_path pubmed_final identifier contained_in erratum_in title author affiliation journal abstract publisher editor pages volume year month day type fulltext_url remark curation_flags internal_comment primary_data );
 
 my %single; my %multi;			# whether tables are single value or multivalue
@@ -169,7 +176,9 @@ sub display {
 
   if ($action eq 'Search') { &search(); }
   elsif ($action eq 'Merge') { &displayMerge(); }
-  elsif ($action eq 'Enter New Papers') { &enterNewPapers(); }
+  elsif ($action eq 'Page') { &enterNewPapers('page'); }
+  elsif ($action eq 'Enter New Papers') { &enterNewPapers('wormbase'); }
+  elsif ($action eq 'Enter New Parasite Papers') { &enterNewPapers('parasite'); }
   elsif ($action eq 'Enter PMIDs') { &enterPmids(); }
   elsif ($action eq 'Enter non-PMID paper') { &enterNonPmids(); }
   elsif ($action eq 'Confirm Abstracts') { &confirmAbstracts(); }
@@ -182,6 +191,8 @@ sub display {
   elsif ($action eq 'Paper Author Person Group') { &paperAuthorPersonGroup(); }
   elsif ($action eq 'Author Gene Curation') { &authorGeneDisplay(); }			# for Karen
   elsif ($action eq 'updatePostgresTableField') { &updatePostgresTableField(); }
+  elsif ($action eq 'autocompleteXHR') { &autocompleteXHR(); }
+
 #   elsif ($action eq 'deletePostgresTableField') { &deletePostgresTableField(); }	# use blank &updatePostgresByTableJoinkeyNewvalue(); instead
 
 #   if ($action eq 'Number !') { &pickNumber(); }
@@ -189,6 +200,27 @@ sub display {
 #   elsif ($action eq 'Title !') { &pickTitle(); }
 #   else { 1; }
 } # sub display
+
+sub autocompleteXHR {		# made for pap_species, not really generalized
+  print "Content-type: text/plain\n\n";
+  (my $var, my $words) = &getHtmlVar($query, 'query');
+  ($var, my $order) = &getHtmlVar($query, 'order');
+  ($var, my $field) = &getHtmlVar($query, 'field');
+  my $table = 'two_' . $field; my $column = $table;
+  if ($field eq 'species') { $table = 'pap_species_index'; $column = 'joinkey'; }
+  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  ($words) = lc($words);                                        # search insensitively by lowercasing query and LOWER column values
+  my %matches; my $t = tie %matches, "Tie::IxHash";     # sorted hash to filter results
+  my $result = $dbh->prepare( "SELECT joinkey, $table FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
+#   print qq( "SELECT joinkey, $table FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] $row[0]"}++; }
+  $result = $dbh->prepare( "SELECT joinkey, $table FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) { $matches{"$row[1] $row[0]"}++; }
+  if (scalar keys %matches >= $max_results) { $t->Replace($max_results - 1, 'no value', 'more ...'); }
+  my $matches = join"\n", keys %matches; print $matches;
+} # sub autocompleteXHR
 
 sub stub {
   &printHtmlHeader();
@@ -537,6 +569,9 @@ sub enterPmids {
   &printHtmlHeader();
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"enterPmids\">";
   (my $oop, my $curator_id) = &getHtmlVar($query, 'curator_id');		# this is pointless, will be overridden by two10877 for pubmed
+  ($oop, my $wormbaseVsParasite) = &getHtmlVar($query, 'wormbaseVsParasite');
+  my $directory = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads';
+  if ($wormbaseVsParasite eq 'parasite') { $directory = '/home/postgres/work/pgpopulation/wpa_papers/pmid_parasite_downloads'; }
   unless ($curator_id) { print "ERROR NO CURATOR<br />\n"; return; }
   my $functional_flag = ''; my $primary_flag = ''; my $aut_per_priority = '';
   ($oop, $functional_flag) = &getHtmlVar($query, 'functional_flag');
@@ -550,7 +585,7 @@ sub enterPmids {
     push @pairs, "$pmid, $primary_flag, $aut_per_priority"; }
   my $list = join"\t", @pairs;
 
-  my ($link_text) = &processXmlIds($curator_id, $functional_flag, $list);
+  my ($link_text) = &processXmlIds($curator_id, $functional_flag, $list, $directory);
   $link_text =~ s/\n/<br \/>\n/g;
   print "<br/>$link_text<br/>\n";
   $list =~ s/\t/<br \/>/g;
@@ -561,10 +596,13 @@ sub enterPmids {
 sub confirmAbstracts {
   &printHtmlHeader();
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"confirmAbstracts\">";
-  my $rejected_file = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads/rejected_pmids';
-  my $removed_file = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads/removed_pmids';
+  my ($oop, $wormbaseVsParasite) = &getHtmlVar($query, 'wormbaseVsParasite');
   my $directory = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads';
-  my ($oop, $count) = &getHtmlVar($query, 'count');
+  if ($wormbaseVsParasite eq 'parasite') { $directory = '/home/postgres/work/pgpopulation/wpa_papers/pmid_parasite_downloads'; }
+  my $rejected_file = $directory . '/rejected_pmids';
+  my $removed_file  = $directory . '/removed_pmids';
+  
+  ($oop, my $count) = &getHtmlVar($query, 'count');
   my @process_list;
   my @move_queue;
   for my $i (0 .. $count - 1) {
@@ -588,9 +626,14 @@ sub confirmAbstracts {
         `mv -f ${directory}/xml/$pmid ${directory}/done/`; 
       }
       elsif ($choice eq 'approve') {
-        my $primary_flag = ""; ($oop, $primary_flag) = &getHtmlVar($query, "primary_$i");		
+        my $primary_flag     = ""; ($oop, $primary_flag)     = &getHtmlVar($query, "primary_$i");		
         my $aut_per_priority = ""; ($oop, $aut_per_priority) = &getHtmlVar($query, "author_person_priority_$i");		
-        push @process_list, "$pmid, $primary_flag, $aut_per_priority";
+        my @taxons;
+        for my $j (1 .. 10) { 
+          ($oop, my $species) = &getHtmlVar($query, "species_${i}_${j}");		
+          my ($taxon) = $species =~ m/(\d+)$/; if ($taxon) { push @taxons, $taxon; } }
+        my $taxons = join"|", @taxons;
+        push @process_list, "$pmid, $primary_flag, $aut_per_priority, $taxons";
 #         my ($link_text) = &processLocal($pmid, $curators{std}{$theHash{curator}}, '');
 # no longer move here, approved stuff gets into @process_list and moved by processXmlIds
 #         my $move = "mv -f ${directory}/xml/$pmid ${directory}/done/"; 	# need to force move in ubuntu
@@ -602,7 +645,7 @@ sub confirmAbstracts {
     ($oop, my $curator_id) = &getHtmlVar($query, 'curator_id');		# this is pointless, will be overridden by two10877 for pubmed
     my $functional_flag = '';
 #     &processStuff($list);
-    my ($link_text) = &processXmlIds($curator_id, $functional_flag, $list);
+    my ($link_text) = &processXmlIds($curator_id, $functional_flag, $list, $directory);
     $link_text =~ s/\n/<br \/>\n/g;
     print "<br/>$link_text<br/>\n";
     $list =~ s/\t/<br \/>/g;
@@ -613,6 +656,9 @@ sub confirmAbstracts {
 } # sub confirmAbstracts
 
 sub enterNewPapers {
+  my ($wormbaseVsParasite) = @_;
+  if ($wormbaseVsParasite eq 'page') { 
+    ($oop, $wormbaseVsParasite) = &getHtmlVar($query, 'wormbaseVsParasite'); }
   &printHtmlHeader();
   print "<form name='form1' method=\"post\" action=\"paper_editor.cgi\">\n";
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"mergePage\">";
@@ -622,7 +668,7 @@ sub enterNewPapers {
   print "You are $curator_id<br />\n";
   &showEnterPmidBox($curator_id);
   &showEnterNonpmidPaper($curator_id);
-  &showConfirmXmlTable($curator_id);
+  &showConfirmXmlTable($curator_id, $wormbaseVsParasite);
   print "</form>\n";
   &printFooter();
 }
@@ -657,16 +703,37 @@ sub showEnterNonpmidPaper {
 
 sub showConfirmXmlTable {
   print "<hr>\n";
-  my ($curator_id) = @_;
+  my ($curator_id, $wormbaseVsParasite) = @_;
+  ($oop, my $page) = &getHtmlVar($query, 'page');
+  ($oop, my $perpage) = &getHtmlVar($query, 'perpage');
+  unless ($page) { $page = 1; }
+  unless ($perpage) { $perpage = 20; }
+  
   my $directory = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads';
+  if ($wormbaseVsParasite eq 'parasite') { $directory = '/home/postgres/work/pgpopulation/wpa_papers/pmid_parasite_downloads'; }
   my $rejected_file = '/home/postgres/work/pgpopulation/wpa_papers/pmid_downloads/rejected_pmids';
   my @read_pmids = <$directory/xml/*>;
-  print "<input type=submit name=action value=\"Confirm Abstracts\">\n";
+  foreach (@read_pmids) { $_ =~ s|$directory/xml/||g; }
+  my @sorted_pmids = reverse sort {$a<=>$b} @read_pmids;
+  my $totalCount = scalar @sorted_pmids;
+  my $pageCount  = ceil($totalCount/$perpage);
+  print qq(There are $totalCount PMIDs in $pageCount pages<br/>);
+  print qq(<select name="page">);
+  for my $i (1 .. $pageCount) { 
+    my $selected = ''; if ($page == $i) { $selected = 'selected' } else { $selected = ''; }
+    print qq(<option $selected>$i</option>); }
+  print qq(</select>);
+  print qq(<input type=submit name=action value="Page">\n);
+  print qq(Entries per page <input name=perpage value="$perpage"><br/>\n);
+  print qq(<input type=submit name=action value="Confirm Abstracts">\n);
+  print qq(<input type="hidden" name="wormbaseVsParasite" value="$wormbaseVsParasite">\n);
   print "<table border=1>\n";
 #   print "<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td>Approve</td><td>primary</td></tr>\n";
-  print "<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td>Flags</td></tr>\n";
+  print qq(<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td width="300">Species</td><td>Flags</td></tr>\n);
   my $count = 0;
-  foreach my $infile (@read_pmids) {
+  for (2 .. $page) { for (1 .. $perpage) { shift @sorted_pmids; } }
+  foreach my $infilename (@sorted_pmids) {
+    my $infile = $directory . '/xml/' . $infilename;
     $/ = undef;
     open (IN, "<$infile") or die "Cannot open $infile : $!";
     my $file = <IN>;
@@ -679,6 +746,8 @@ sub showConfirmXmlTable {
         if ($ab =~ m/^.*\>/) { $ab =~ s/^.*\>//; } $abstract .= "$ab "; }
       if ($abstract) { if ($abstract =~ m/ +$/) { $abstract =~ s/ +$//; } } }
     my ($type) = $file =~ /\<PublicationType\>(.+?)\<\/PublicationType\>/i;
+    unless ($type) { 
+      ($type) = $file =~ /\<PublicationType UI=\".*?\"\>(.+?)\<\/PublicationType\>/i; }
     my ($journal) = $file =~ /\<MedlineTA\>(.+?)\<\/MedlineTA\>/i;	# show Journal to reject 
     my ($title) = $file =~ /\<ArticleTitle\>(.+?)\<\/ArticleTitle\>/i;	# show article Title to reject 
     my @authors = $file =~ /\<Author.*?\>(.+?)\<\/Author\>/isg;
@@ -702,15 +771,143 @@ sub showConfirmXmlTable {
     print "<td>$pmid</td><td>$title</td><td>$authors</td><td>$abstract</td>";
     print "<td>$type</td>";
     print "<td>$journal</td>";
+#     print "<td>"; for my $j (1 .. 10) { &printSpeciesDropdown($count, $j); } print "</td>";
+    &printSpeciesAutocompleteField($count);
+#     print "<td>species stub</td>";
     print "<input type=hidden name=pmid_$count value=$pmid>\n";
     print "$input_buttons\n";
     print "</tr>\n";
     $count++;
-  } # foreach my $infile (@read_pmids)
+    last if ($count >= $perpage);
+  } # foreach my $infile (@sorted_pmids)
   print "</table>\n";
-  print "<input type=hidden name=count value=$count>\n";
+  print "<input type=hidden name=count id=papersCount value=$count>\n";
   print "<input type=submit name=action value=\"Confirm Abstracts\">\n";
 } # sub showConfirmXmlTable
+
+
+sub printSpeciesDropdown {
+  my ($i, $j) = @_;
+  my %speciesParaShort;
+  $speciesParaShort{"Acanthocheilonema viteae"} = "6277";
+  $speciesParaShort{"Ancylostoma caninum"} = "29170";
+  $speciesParaShort{"Ancylostoma ceylanicum"} = "53326";
+  $speciesParaShort{"Ancylostoma duodenale"} = "51022";
+  $speciesParaShort{"Angiostrongylus cantonensis"} = "6313";
+  $speciesParaShort{"Angiostrongylus costaricensis"} = "334426";
+  $speciesParaShort{"Anisakis simplex"} = "6269";
+  $speciesParaShort{"Ascaris lumbricoides"} = "6252";
+  $speciesParaShort{"Ascaris suum"} = "6253";
+  $speciesParaShort{"Brugia malayi"} = "6279";
+  $speciesParaShort{"Brugia pahangi"} = "6280";
+  $speciesParaShort{"Brugia timori"} = "42155";
+  $speciesParaShort{"Bursaphelenchus xylophilus"} = "6326";
+  $speciesParaShort{"Caenorhabditis angaria"} = "860376";
+  $speciesParaShort{"Caenorhabditis brenneri"} = "135651";
+  $speciesParaShort{"Caenorhabditis briggsae"} = "6238";
+  $speciesParaShort{"Caenorhabditis elegans"} = "6239";
+  $speciesParaShort{"Caenorhabditis japonica"} = "281687";
+  $speciesParaShort{"Caenorhabditis remanei"} = "31234";
+  $speciesParaShort{"Caenorhabditis sinica"} = "1550068";
+  $speciesParaShort{"Caenorhabditis tropicalis"} = "1561998";
+  $speciesParaShort{"Cylicostephanus goldi"} = "71465";
+  $speciesParaShort{"Dictyocaulus viviparus"} = "29172";
+  $speciesParaShort{"Dirofilaria immitis"} = "6287";
+  $speciesParaShort{"Dracunculus medinensis"} = "318479";
+  $speciesParaShort{"Elaeophora elaphi"} = "1147741";
+  $speciesParaShort{"Enterobius vermicularis"} = "51028";
+  $speciesParaShort{"Globodera pallida"} = "36090";
+  $speciesParaShort{"Gongylonema pulchrum"} = "637853";
+  $speciesParaShort{"Haemonchus contortus"} = "6289";
+  $speciesParaShort{"Haemonchus placei"} = "6290";
+  $speciesParaShort{"Heligmosomoides polygyrus"} = "375939";
+  $speciesParaShort{"Heterorhabditis bacteriophora"} = "37862";
+  $speciesParaShort{"Litomosoides sigmodontis"} = "42156";
+  $speciesParaShort{"Loa loa"} = "7209";
+  $speciesParaShort{"Meloidogyne floridensis"} = "298350";
+  $speciesParaShort{"Meloidogyne hapla"} = "6305";
+  $speciesParaShort{"Meloidogyne incognita"} = "6306";
+  $speciesParaShort{"Necator americanus"} = "51031";
+  $speciesParaShort{"Nippostrongylus brasiliensis"} = "27835";
+  $speciesParaShort{"Oesophagostomum dentatum"} = "61180";
+  $speciesParaShort{"Onchocerca flexuosa"} = "387005";
+  $speciesParaShort{"Onchocerca ochengi"} = "42157";
+  $speciesParaShort{"Onchocerca volvulus"} = "6282";
+  $speciesParaShort{"Panagrellus redivivus"} = "6233";
+  $speciesParaShort{"Parascaris equorum"} = "6256";
+  $speciesParaShort{"Parastrongyloides trichosuri"} = "131310";
+  $speciesParaShort{"Pristionchus exspectatus"} = "1195656";
+  $speciesParaShort{"Pristionchus pacificus"} = "54126";
+  $speciesParaShort{"Rhabditophanes sp. KR3021"} = "114890";
+  $speciesParaShort{"Romanomermis culicivorax"} = "13658";
+  $speciesParaShort{"Soboliphyme baturini"} = "241478";
+  $speciesParaShort{"Steinernema carpocapsae"} = "34508";
+  $speciesParaShort{"Steinernema feltiae"} = "52066";
+  $speciesParaShort{"Steinernema glaseri"} = "37863";
+  $speciesParaShort{"Steinernema monticolum"} = "90984";
+  $speciesParaShort{"Steinernema scapterisci"} = "90986";
+  $speciesParaShort{"Strongyloides papillosus"} = "174720";
+  $speciesParaShort{"Strongyloides ratti"} = "34506";
+  $speciesParaShort{"Strongyloides stercoralis"} = "6248";
+  $speciesParaShort{"Strongyloides venezuelensis"} = "75913";
+  $speciesParaShort{"Strongylus vulgaris"} = "40348";
+  $speciesParaShort{"Syphacia muris"} = "451379";
+  $speciesParaShort{"Teladorsagia circumcincta"} = "45464";
+  $speciesParaShort{"Thelazia callipaeda"} = "103827";
+  $speciesParaShort{"Toxocara canis"} = "6265";
+  $speciesParaShort{"Trichinella nativa"} = "6335";
+  $speciesParaShort{"Trichinella spiralis"} = "6334";
+  $speciesParaShort{"Trichuris muris"} = "70415";
+  $speciesParaShort{"Trichuris suis"} = "68888";
+  $speciesParaShort{"Trichuris trichiura"} = "36087";
+  $speciesParaShort{"Wuchereria bancrofti"} = "6293";
+  $speciesParaShort{"Clonorchis sinensis"} = "79923";
+  $speciesParaShort{"Diphyllobothrium latum"} = "60516";
+  $speciesParaShort{"Echinococcus canadensis"} = "519352";
+  $speciesParaShort{"Echinococcus granulosus"} = "6210";
+  $speciesParaShort{"Echinococcus multilocularis"} = "6211";
+  $speciesParaShort{"Echinostoma caproni"} = "27848";
+  $speciesParaShort{"Fasciola hepatica"} = "6192";
+  $speciesParaShort{"Hydatigera taeniaeformis"} = "6205";
+  $speciesParaShort{"Hymenolepis diminuta"} = "6216";
+  $speciesParaShort{"Hymenolepis microstoma"} = "85433";
+  $speciesParaShort{"Hymenolepis nana"} = "102285";
+  $speciesParaShort{"Mesocestoides corti"} = "53468";
+  $speciesParaShort{"Opisthorchis viverrini"} = "6198";
+  $speciesParaShort{"Protopolystoma xenopodis"} = "117903";
+  $speciesParaShort{"Schistocephalus solidus"} = "70667";
+  $speciesParaShort{"Schistosoma curassoni"} = "6186";
+  $speciesParaShort{"Schistosoma haematobium"} = "6185";
+  $speciesParaShort{"Schistosoma japonicum"} = "6182";
+  $speciesParaShort{"Schistosoma mansoni"} = "6183";
+  $speciesParaShort{"Schistosoma margrebowiei"} = "48269";
+  $speciesParaShort{"Schistosoma mattheei"} = "31246";
+  $speciesParaShort{"Schistosoma rodhaini"} = "6188";
+  $speciesParaShort{"Schmidtea mediterranea"} = "79327";
+  $speciesParaShort{"Spirometra erinaceieuropaei"} = "99802";
+  $speciesParaShort{"Taenia asiatica"} = "60517";
+  $speciesParaShort{"Taenia solium"} = "6204";
+  $speciesParaShort{"Trichobilharzia regenti"} = "157069";
+  print qq(<select name="species_${i}_${j}" id="species_${i}_${j}"><option></option>);
+  foreach my $species (sort keys %speciesParaShort) { 
+    my $taxon = $speciesParaShort{$species};
+    print qq(<option value="$taxon">$species</option>);
+  } 
+  print qq(</select>);
+} # sub printSpeciesDropdown
+
+sub printSpeciesAutocompleteField {
+  my ($count) = (@_);
+  print qq(<td id="td_AutoComplete_species">);
+  for my $order (1 .. 10) { 
+    my $display = 'none'; if ($order < 2) { $display = ''; }
+    my $input_id = 'species_' . $count . '_' . $order;
+    print qq(<div id="div_AutoComplete_$input_id" class="div-autocomplete" style="display: $display; width: 98%;">
+    <input size="100" id="$input_id" name="$input_id" style="width: 98%">
+    <div id="div_Container_$input_id" width="98%"></div></div>);
+  }
+  print qq(</td>);
+} # sub printSpeciesAutocompleteField
 
 sub showEnterPmidBox {
   print "<hr>\n";
@@ -765,6 +962,7 @@ sub updatePostgresTableField {                          # if updating postgres t
   ($oop, my $newValue) = &getHtmlVar($query, 'newValue');
   ($oop, my $evi) = &getHtmlVar($query, 'evi');
   ($newValue) = &filterForPg($newValue);                  # replace ' with ''
+  if ($field eq 'species') { if ($newValue =~ m/(\d+)$/) { $newValue = $1; } }	# grab taxon from species fields
 
   my $isOk = 'NO';
 
@@ -1045,7 +1243,7 @@ sub makeSelectField {
       $data .= "<option value=\"$value\" $selected>$value</option>\n"; } }
   elsif ($table eq 'curation_flags') {
 #     my @curation_flags = qw( functional_annotation genestudied_done Phenotype2GO rnai_curation rnai_int_done );
-    my @curation_flags = qw( author_person non_nematode Phenotype2GO rnai_curation );	# got rid of rnai_int_done, not being used 2011 05 03  moved genestudied_done to curation_done as 'genestudied' 2011 05 18
+    my @curation_flags = qw( author_person emailed_community_gene_descrip non_nematode Phenotype2GO rnai_curation );	# got rid of rnai_int_done, not being used 2011 05 03  moved genestudied_done to curation_done as 'genestudied' 2011 05 18
     foreach my $value (@curation_flags) {
       my $selected = "";
       if ($current_value) { if ($current_value eq $value) { $selected = "selected=\"selected\""; $found_value++; } }
@@ -1130,6 +1328,13 @@ sub makeOntologyField {
   return ($input_id, $data);
 #   <input id=\"input_$table\" name=\"input_$table\" size=\"40\">
 } # sub makeOntologyField
+
+sub makeToggleDoubleField {
+  my ($current_value, $table, $joinkey, $order, $curator_id, $colspan, $rowspan, $class, $one, $two) = @_;
+  my $data = "<td class=\"$class\" rowspan=\"$rowspan\" colspan=\"$colspan\" onclick=\"toggleDivDoubleToggle('$table', '$joinkey', '$order', '$curator_id', '$one', '$two')\">
+  <div id=\"div_${table}_${joinkey}_$order\" name=\"div_${table}_${joinkey}_$order\" >$current_value</div></td>";
+  return $data;
+} # sub makeToggleDoubleField
 
 sub makeToggleTripleField {
   my ($current_value, $table, $joinkey, $order, $curator_id, $colspan, $rowspan, $class, $one, $two, $three) = @_;
@@ -1337,6 +1542,8 @@ sub displayNumber {
   print "<input type=\"hidden\" name=\"paper_joinkey\" id=\"paper_joinkey\" value=\"$joinkey\">";
   print "<input type=\"hidden\" name=\"curator_id\" id=\"curator_id\" value=\"$curator_id\">";
   my @authors; my %aid_data; my %author_list;
+  my $species_max_order = 0;			# amount of species fields to check
+  my @species_autocomplete_input_ids;
   my %display_data;
   my $header_bgcolor = '#dddddd'; my $header_color = 'black';
   if ($curator_id eq 'two1843') { $header_bgcolor = '#aaaaaa'; $header_color = 'white'; }
@@ -1382,22 +1589,40 @@ sub displayNumber {
 #           $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
 #           my @row2 = $result2->fetchrow(); $name = $row[2];
 #           $td_data = "WBGene$data ($row2[1])"; }
-        elsif ($table eq 'author') { 
+        elsif ($table eq 'author') {
           push @authors, $data;
+          my $result3 = $dbh->prepare( "SELECT * FROM pap_author_corresponding WHERE author_id = '$data'" );
+          $result3->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+          my @row3 = $result3->fetchrow();
+          $aid_data{$data}{corresponding} = $row3[1]; 
           my $result2 = $dbh->prepare( "SELECT * FROM pap_author_index WHERE author_id = '$data'" );
           $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
           my @row2 = $result2->fetchrow();
           $aid_data{$data}{index} = $row2[1]; 
 #           $data .= " ($row2[1])"; 
+          $author_list{$order}{corresponding} = $row3[1];
           $author_list{$order}{name} = $row2[1];
           $author_list{$order}{aid} = $data;
           $author_list{$order}{row_curator} = $row_curator;
           $author_list{$order}{timestamp} = $timestamp; }
+        elsif ($table eq 'species') {
+          my $result2 = $dbh->prepare( "SELECT * FROM pap_species_index WHERE joinkey = '$data';" );
+          $result2->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+          my @row = $result2->fetchrow(); 
+          if ($row[1]) { $data = $row[1] . ' - ' . $row[0]; }
+          ($td_data) = &makeInputField($data, $table, $joinkey, $order, $curator_id, '3', '1', '');
+          my $input_id = 'input_species_' . $joinkey . '_' . $order;
+          push @species_autocomplete_input_ids, $input_id;
+          $td_data = qq(<td rowspan="1" colspan="3"><div id="div_AutoComplete_$input_id" width="80%" class="div-autocomplete">
+          <input size="80" id="$input_id" name="$input_id" style="width: 98%;" value="$data" onblur="checkInputEmptyUpdatePg('$table', '$joinkey', '$order', '$curator_id')">
+          <div id="div_Container_$input_id" style="width: 98%;"></div></div></td>);
 
+          $species_max_order = $order;
+          $entry_data .= "<tr bgcolor=\"$blue\"><td>$table</td>$td_data<td>$order</td><td>$curator_id</td><td>$timestamp</td></tr>\n"; }
 #       my @data; foreach (@row) { if ($_) { push @data, $_; } else { push @data, ""; } }		# some data is undefined
 #       my $data = join"</td><td>", @data;
       if ( ($table eq 'type') || ($table eq 'curation_flags') || ($table eq 'curation_done') || ($table eq 'primary_data') 
-                              || ($table eq 'year') || ($table eq 'month') || ($table eq 'day') ) { 
+                              || ($table eq 'year') || ($table eq 'month') || ($table eq 'day') ) {
           ($td_data) = &makeSelectField($data, $table, $joinkey, $order, $curator_id); }
         elsif ( ($table eq 'electronic_path') || ($table eq 'pubmed_final') ) { 1; }
 #         elsif ( ($table eq 'title') || ($table eq 'gene') ) { ($td_data) = &makeTextareaField($data, $table, $joinkey, $order, $curator_id, "8", "80"); }
@@ -1407,9 +1632,10 @@ sub displayNumber {
         elsif ($table eq 'gene') { ($td_data) = &makeGeneDeleteField($data, $table, $joinkey, $order, $curator_id, $row[0]); }
         else { ($td_data) = &makeInputField($data, $table, $joinkey, $order, $curator_id, '3', '1', ''); }
 
-      unless ($table eq 'author') {
+      unless ( ($table eq 'author') || ($table eq 'species') ) {
         $entry_data .= "<tr bgcolor='$blue'><td>$table</td>$td_data<td>$order</td><td>$row_curator</td><td style=\"width:11em\">$timestamp</td></tr>\n"; }
     } # while (my @row = $result->fetchrow)
+
 
     if ( ($multi{$table}) || ($table_has_data == 0) ) {
 #       next if ($table eq 'author');				# do not allow new authors here
@@ -1435,13 +1661,25 @@ sub displayNumber {
         elsif ($table eq 'author') { 
           ($td_data) = &makeInputField("", 'author_new', $joinkey, $order, $curator_id, '3', '1', '');
           $entry_data .= "<tr bgcolor=\"white\"><td>$table</td>$td_data<td>$order</td><td>$curator_id</td><td>current</td></tr>\n"; }
+        elsif ($table eq 'species') { 
+          $species_max_order++;
+          my $input_id = 'input_species_' . $joinkey . '_' . $species_max_order;
+          push @species_autocomplete_input_ids, $input_id;
+          $td_data = qq(<td rowspan="1" colspan="3"><div id="div_AutoComplete_$input_id" width="80%" class="div-autocomplete">
+          <input size="80" id="$input_id" name="$input_id" style="width: 98%;" value="">
+          <div id="div_Container_$input_id" style="width: 98%;"></div></div></td>);
+          $entry_data .= "<tr bgcolor=\"white\"><td>$table</td>$td_data<td>$species_max_order</td><td>$curator_id</td><td>current</td></tr>\n"; }
         else { 
           ($td_data) = &makeInputField("", $table, $joinkey, $order, $curator_id, '3', '1', '');
           $entry_data .= "<tr bgcolor=\"white\"><td>$table</td>$td_data<td>$order</td><td>$curator_id</td><td>current</td></tr>\n"; }
     }
+    $entry_data .= qq(<input type="hidden" id="species_max_order" value="$species_max_order">);	# pass species fields to javascript
+#     $entry_data .= qq(<input type="hidden" id="papersCount" value="1">);			# using code from pmid entering which allows multiple papers
     if ($table eq 'author') { $entry_data = &getAuthorDisplay(\%author_list) . $entry_data; }
     $display_data{$table} = $entry_data;
   } # foreach my $table (@normal_tables)
+  my $species_input_ids = join", ",  @species_autocomplete_input_ids;		# ids of input fields for species autocomplete
+  print "<input type=\"hidden\" id=\"species_input_ids\" value=\"$species_input_ids\">";
 
 #   if ( ($curator_id eq 'two1823') || ($curator_id eq 'two1') ) { # }
   if ( $curator_id eq 'two1' ) {
@@ -1474,11 +1712,12 @@ sub displayAuthorPersonSection {
       $aid_data{$row[0]}{join}{$row[2]}{$table}{time} = $row[4]; 
       $aid_data{$row[0]}{join}{$row[2]}{$table}{data} = $row[1]; }
   } # foreach my $table (@aut_tables)
-  print "<tr bgcolor='$blue'><td class=\"normal_even\">aid</td><td class=\"normal_even\">author</td><td class=\"normal_even\">new</td><td class=\"normal_even\">join</td><td class=\"normal_even\">possible</td><td class=\"normal_even\">pos_time</td><td class=\"normal_even\">sent</td><td class=\"normal_even\">verified</td><td class=\"normal_even\">ver_time</td></tr>\n";
+  print "<tr bgcolor='$blue'><td class=\"normal_even\">aid</td><td class=\"normal_even\">author</td><td class=\"normal_even\">corresponding</td><td class=\"normal_even\">new</td><td class=\"normal_even\">join</td><td class=\"normal_even\">possible</td><td class=\"normal_even\">pos_time</td><td class=\"normal_even\">sent</td><td class=\"normal_even\">verified</td><td class=\"normal_even\">ver_time</td></tr>\n";
   foreach my $aid (@authors) {
     my @entries;
     my $class = 'normal_even';
-    my $author = ''; if ($aid_data{$aid}{index}) { $author = $aid_data{$aid}{index}; }
+    my $author = '';        if ($aid_data{$aid}{index})         { $author        = $aid_data{$aid}{index};         }
+    my $corresponding = ''; if ($aid_data{$aid}{corresponding}) { $corresponding = $aid_data{$aid}{corresponding}; }
     foreach my $join (sort {$a<=>$b} keys %{ $aid_data{$aid}{join} } ) {
       my $possible = ''; my $pos_time = ''; my $sent = ''; my $verified = ''; my $ver_time = '';
       if ($aid_data{$aid}{join}{$join}{possible}{data}) { $possible = $aid_data{$aid}{join}{$join}{possible}{data}; }
@@ -1510,10 +1749,9 @@ sub displayAuthorPersonSection {
     my $first_entry = shift @entries;
     my ($input_id, $td_author_possible_new) = &makeOntologyField('', 'author_possible', $aid, 'new', $curator_id, 1, $lines_count, $class);
     push @person_autocomplete_input_ids, $input_id;
-#   my ($current_value, $table, $joinkey, $order, $curator_id, $colspan, $rowspan, $class) = @_;
     my ($td_author_index) = &makeInputField($author, 'author_index', $aid, '', $curator_id, 1, $lines_count, $class); 
-#     print "<tr bgcolor='$blue'><td rowspan=\"$lines_count\" class=\"normal_even\">$aid</td>$td_author_index<td rowspan=\"$lines_count\" class=\"normal_even\"><input type=\"button\" value=\"new join\"></td>$first_entry</tr>";
-    print "<tr bgcolor='$blue'><td rowspan=\"$lines_count\" class=\"normal_even\">$aid</td>$td_author_index$td_author_possible_new$first_entry</tr>";
+    my ($td_author_corresponding) = &makeToggleDoubleField($corresponding, 'author_corresponding', $aid, '', $curator_id, 1, $lines_count, $class, 'corresponding', '');
+    print "<tr bgcolor='$blue'><td rowspan=\"$lines_count\" class=\"normal_even\">$aid</td>$td_author_index$td_author_corresponding$td_author_possible_new$first_entry</tr>";
     foreach my $entry (@entries) { print "<tr>$entry</tr>\n"; }
     
   } # foreach my $aid (@authors)
@@ -1544,11 +1782,12 @@ sub getAuthorDisplay {
   my $ul = "<ul id=\"author_list\" class=\"draglist\">";
   foreach my $order (sort {$a<=>$b} keys %author_list) {
     $highest_order = $order;
-    my $name = $author_list{$order}{name};
-    my $aid = $author_list{$order}{aid};
-    my $curator = $author_list{$order}{row_curator};
-    my $timestamp = $author_list{$order}{timestamp};
-    $ul .= "<li class=\"list1\" id=\"author_li_$order\" value=\"$aid\">$aid ($name)</li>";
+    my $corresponding = $author_list{$order}{corresponding} || '';
+    my $name          = $author_list{$order}{name}          || '';
+    my $aid           = $author_list{$order}{aid}           || '';
+    my $curator       = $author_list{$order}{row_curator}   || '';
+    my $timestamp     = $author_list{$order}{timestamp}     || '';
+    $ul .= "<li class=\"list1\" id=\"author_li_$order\" value=\"$aid\">$aid $corresponding ($name)</li>";
     push @other_row_data, "<td>$order</td><td>$curator</td><td>$timestamp</td>";
   }
   $ul .= "</ul>";
@@ -1640,7 +1879,7 @@ sub firstPage {
   my $result = $dbh->prepare( "SELECT * FROM two_curator_ip WHERE two_curator_ip = '$ip';" ); $result->execute; my @row = $result->fetchrow;
   if ($row[0]) { $curator_by_ip = $row[0]; }
 
-  my @curator_list = qw( two1823 two101 two1983 two8679 two2021 two2987 two3111 two324 two363 two1 two4055 two12028 two557 two567 two625 two2970 two1843 two736 two1760 two712 two9133 two480 two1847 two627 two4025 );
+  my @curator_list = qw( two1823 two101 two1983 two8679 two2021 two2987 two3111 two324 two363 two28994 two1 two4055 two12028 two557 two567 two625 two2970 two1843 two736 two1760 two712 two9133 two480 two1847 two627 two4025 );
 #   my @curator_list = ('', 'Juancarlos Chan', 'Wen Chen', 'Paul Davis', 'Ruihua Fang', 'Jolene S. Fernandes', 'Chris', 'Kevin Howe',  'Ranjana Kishore', 'Raymond Lee', 'Cecilia Nakamura', 'Michael Paulini', 'Gary C. Schindelman', 'Erich Schwarz', 'Paul Sternberg', 'Mary Ann Tuli', 'Kimberly Van Auken', 'Qinghua Wang', 'Xiaodong Wang', 'Karen Yook', 'Margaret Duesbury', 'Tuco', 'Anthony Rogers', 'Theresa Stiernagle', 'Gary Williams' );
   foreach my $joinkey (@curator_list) {                         # display curators in alphabetical (array) order, if IP matches existing ip record, select it
     my $curator = 0;
@@ -1670,7 +1909,7 @@ sub firstPage {
         my @values = ();
         if ($table eq 'status') { @values = qw( valid invalid ); }
         if ($table eq 'pubmed_final') { @values = qw( final not_final ); }
-        if ($table eq 'curation_flags') { @values = qw( author_person non_nematode Phenotype2GO rnai_curation ); }
+        if ($table eq 'curation_flags') { @values = qw( author_person emailed_community_gene_descrip non_nematode Phenotype2GO rnai_curation ); }
         if ($table eq 'curation_done') { @values = qw( author_person genestudied gocuration ); }
         if ($table eq 'primary_data') { @values = qw( primary not_primary not_designated ); }
         print "<td><select id=\"data_$table\" name=\"data_$table\">\n";
@@ -1688,6 +1927,7 @@ sub firstPage {
 
   print "<tr><td>&nbsp;</td></tr>\n";
   print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"Enter New Papers\"></td></tr>\n";
+  print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"Enter New Parasite Papers\"></td></tr>\n";
 #   print "<tr><td colspan=\"2\"><!-- This is LIVE --> <input type=\"submit\" name=\"action\" VALUE=\"Flag False Positives\"></td></tr>\n";
   print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"RNAi Curation\"></td></tr>\n";
   print "<tr><td colspan=\"2\"><input type=\"submit\" name=\"action\" VALUE=\"Find Dead Genes\"></td></tr>\n";
@@ -1962,6 +2202,7 @@ sub populateSingleMultiTableTypes {
   
   # multivalue tables :  editor type author affiliation fulltext_url contained_in gene identifier ignore remark erratum_in internal_comment curation_flags 
   
+  $multi{'species'}++;
   $multi{'editor'}++;
   $multi{'type'}++;
   $multi{'author'}++;
@@ -2929,6 +3170,8 @@ sub populateFromXml {		# POPULATE SOME REFERENCE FROM XML, not dealing with type
     my ($abstract) = $xml_data =~ /\<AbstractText\>(.+?)\<\/AbstractText\>/i;
 #     my ($affiliation) = $xml_data =~ /\<Affiliation\>(.+?)\<\/Affiliation\>/i;
     my (@types) = $xml_data =~ /\<PublicationType\>(.+?)\<\/PublicationType\>/gi;
+    unless ($types[0]) { 
+      (@types) = $xml_data =~ /\<PublicationType UI=\".*?\"\>(.+?)\<\/PublicationType\>/gi; }
     ($title) = &filterForPg($title);
     ($journal) = &filterForPg($journal);
     ($pages) = &filterForPg($pages);

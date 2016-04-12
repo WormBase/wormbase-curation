@@ -28,6 +28,15 @@
 # added  affiliations  from xml to author display when showing a paper.  2014 07 28
 #
 # xml paths could be in different locations.  2014 09 17
+#
+# added  &addressByTwos() + &displayAddressByTwos()  to display address + institution data by pasting two#s.  2015 01 15
+#
+# %author_xml data hashes by firstname + initial, but some papers like 00046310 have multiple authors with the same 'name', so mapping the hash values to arrays and shifting different author matches from it.  2015 01 22
+#
+# added  lab webpage comment  to set of fields that can be created in person from a paper.  2015 07 09
+#
+# added  oldpis  as new field for old PIs for Cecilia.  2015 07 12
+ 
 
 
 use strict;
@@ -60,7 +69,7 @@ my $thDot = qq(th align="center" style="border-style: dotted; border-color: #007
 
 my %curators;                           # $curators{two}{two#} = std_name ; $curators{std}{std_name} = two#
 
-my @normal_tables = qw( status firstname middlename lastname standardname aka_firstname aka_middlename aka_lastname email old_email old_email_date street city state post country institution old_institution old_inst_date mainphone labphone officephone otherphone fax pis lab oldlab orcid left_field unable_to_contact privacy webpage usefulwebpage wormbase_comment hide mergedinto acqmerge comment );
+my @normal_tables = qw( status firstname middlename lastname standardname aka_firstname aka_middlename aka_lastname email old_email old_email_date street city state post country institution old_institution old_inst_date mainphone labphone officephone otherphone fax pis oldpis lab oldlab orcid left_field unable_to_contact privacy webpage usefulwebpage wormbase_comment hide mergedinto acqmerge comment );
 
 my %type_input;				# all inputs are inputs, but usefulwebpage is a checkbox
 foreach ("number", @normal_tables) { $type_input{$_} = 'input'; } 
@@ -70,7 +79,7 @@ my %lineageDropdowns;
 
 my %order_type;
 my @single_order = qw( firstname middlename lastname standardname city state post country left_field unable_to_contact hide status mergedinto );
-my @multi_order = qw( street institution old_institution old_inst_date mainphone labphone officephone otherphone fax email old_email old_email_date pis lab oldlab orcid privacy aka_firstname aka_middlename aka_lastname webpage usefulwebpage wormbase_comment acqmerge comment );
+my @multi_order = qw( street institution old_institution old_inst_date mainphone labphone officephone otherphone fax email old_email old_email_date pis oldpis lab oldlab orcid privacy aka_firstname aka_middlename aka_lastname webpage usefulwebpage wormbase_comment acqmerge comment );
 foreach (@single_order) { $order_type{single}{$_}++; }
 foreach (@multi_order) { $order_type{multi}{$_}++; }
 
@@ -115,6 +124,8 @@ sub display {
   elsif ($action eq 'Checkout Papers') { &checkoutPapers(); }
   elsif ($action eq 'Create people from XML') { &createPeopleFromXml(); }
   elsif ($action eq 'Person Statistics') { &personStatistics(); }
+  elsif ($action eq 'Address by Twos') { &addressByTwos(); }
+  elsif ($action eq 'Display Address by Twos') { &displayAddressByTwos(); }
   elsif ($action eq 'generatePng') { &generatePng(); }
 } # sub display
 
@@ -791,7 +802,7 @@ sub createPeopleFromXml {
   ($var, my $max_institutions) = &getHtmlVar($query, "max_institutions");
   ($var, my $aids_to_check) = &getHtmlVar($query, "aids_to_check");
   my %inst; my %aids;
-  my @inst_tables = qw( institution street city state post country );
+  my @inst_tables = qw( institution street city state post country lab webpage comment );
   for my $i (1 .. $max_institutions) {
     foreach my $table (@inst_tables) {
       if ($table eq 'street') {
@@ -948,7 +959,9 @@ sub displayPaper {
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
     while (my @row = $result->fetchrow) { unless ($row[2]) { $row[2] = 1; } $pg_aid{$row[0]}{$table}{$row[2]} = $row[1]; } }
 
-  my $xmldata = ''; my $affiliation = ''; my %xml_authors; my %xml_authors_found;
+  my $xmldata = ''; my $affiliation = ''; 
+  my %xml_authors;			# data from authors by name
+  my %xml_authors_found;		# names found, to print ones not found
 
   if ($pmid) {
       $/ = undef;
@@ -975,7 +988,7 @@ sub displayPaper {
 
   my $max_institutions = 100;
   print "<input type=\"hidden\" id=\"max_institutions\" name=\"max_institutions\" value=\"$max_institutions\">\n";
-  my @affil_tables = qw( institution street city state post country );
+  my @affil_tables = qw( institution street city state post country lab webpage comment );
   for my $i (1 .. $max_institutions) { 
     &showInstitutionEditor($i, $curator_two, \@affil_tables, $affiliation, $max_institutions); }
   foreach my $table (@affil_tables) {
@@ -1012,10 +1025,14 @@ sub displayPaper {
       my $data = join"<br />", @data; $line .= "<td>$data</td>\n"; }
     my ($firstname, $middlename, $lastname, $standardname, $affiliation) = ('','','','','');
     if ($xml_authors{$aname}) {				# without this check, the subhash checks create the hash entry
-      if ($xml_authors{$aname}{affiliation}) { $affiliation = $xml_authors{$aname}{affiliation}; $xml_authors_found{$aname}++; }
-      if ($xml_authors{$aname}{lastname}) { $lastname = $xml_authors{$aname}{lastname}; $xml_authors_found{$aname}++; }
-      if ($xml_authors{$aname}{firstname}) { $firstname = $xml_authors{$aname}{firstname}; $xml_authors_found{$aname}++; }
-      if ($xml_authors{$aname}{standardname}) { $standardname = $xml_authors{$aname}{standardname}; $xml_authors_found{$aname}++; } }
+#       if ($xml_authors{$aname}{affiliation}) { $affiliation = $xml_authors{$aname}{affiliation}; $xml_authors_found{$aname}++; }
+#       if ($xml_authors{$aname}{lastname}) { $lastname = $xml_authors{$aname}{lastname}; $xml_authors_found{$aname}++; }
+#       if ($xml_authors{$aname}{firstname}) { $firstname = $xml_authors{$aname}{firstname}; $xml_authors_found{$aname}++; }
+#       if ($xml_authors{$aname}{standardname}) { $standardname = $xml_authors{$aname}{standardname}; $xml_authors_found{$aname}++; }
+      if ($xml_authors{$aname}{affiliation}) {  $affiliation  = shift @{ $xml_authors{$aname}{affiliation} };  $xml_authors_found{$aname}++; }
+      if ($xml_authors{$aname}{lastname}) {     $lastname     = shift @{ $xml_authors{$aname}{lastname} };     $xml_authors_found{$aname}++; }
+      if ($xml_authors{$aname}{firstname}) {    $firstname    = shift @{ $xml_authors{$aname}{firstname} };    $xml_authors_found{$aname}++; }
+      if ($xml_authors{$aname}{standardname}) { $standardname = shift @{ $xml_authors{$aname}{standardname} }; $xml_authors_found{$aname}++; } }
     print "<input type=\"hidden\" name=\"highest_join_$i\" value=\"$highest_join\">\n";
     $line .= "<td><input name=\"standardname_$i\" value=\"$standardname\"></td>";
     $line .= "<td><input name=\"firstname_$i\" value=\"$firstname\"></td>";
@@ -1047,9 +1064,9 @@ sub displayPaper {
   foreach my $aname (sort keys %xml_authors) {		# list all authors in xml that were not found in current paper
     next unless $aname; next if ($xml_authors_found{$aname});
     my ($firstname, $lastname, $initials) = ('','','','');
-    if ($xml_authors{$aname}{lastname}) { $lastname = $xml_authors{$aname}{lastname}; }
-    if ($xml_authors{$aname}{firstname}) { $firstname = $xml_authors{$aname}{firstname}; }
-    if ($xml_authors{$aname}{initials}) { $initials = $xml_authors{$aname}{initials}; }
+    if ($xml_authors{$aname}{lastname}) {  $lastname  = shift @{ $xml_authors{$aname}{lastname} };  }
+    if ($xml_authors{$aname}{firstname}) { $firstname = shift @{ $xml_authors{$aname}{firstname} }; }
+    if ($xml_authors{$aname}{initials}) {  $initials  = shift @{ $xml_authors{$aname}{initials} };  }
     print "XML author $aname has no match in paper Firstname : $firstname ; Lastname : $lastname ; Initials : $initials<br />\n"; }
 
   print "</form>\n";
@@ -1088,11 +1105,16 @@ sub getXmlAuthors {
     my ($initials) = $author_xml =~ /\<Initials\>(.+?)\<\/Initials\>/i;
     my ($forename) = $author_xml =~ /\<ForeName\>(.+?)\<\/ForeName\>/i;
     my $author = $lastname . " " . $initials;
-    $xml_authors{$author}{affiliation} = $affiliation;
-    $xml_authors{$author}{lastname} = $lastname;
-    $xml_authors{$author}{firstname} = $forename;
-    $xml_authors{$author}{initials} = $initials;
-    $xml_authors{$author}{standardname} = "$forename $lastname"; }
+#     $xml_authors{$author}{affiliation} = $affiliation;
+#     $xml_authors{$author}{lastname} = $lastname;
+#     $xml_authors{$author}{firstname} = $forename;
+#     $xml_authors{$author}{initials} = $initials;
+#     $xml_authors{$author}{standardname} = "$forename $lastname"; }
+    push @{ $xml_authors{$author}{affiliation} },  $affiliation;
+    push @{ $xml_authors{$author}{lastname} },     $lastname;
+    push @{ $xml_authors{$author}{firstname} },    $forename;
+    push @{ $xml_authors{$author}{initials} },     $initials;
+    push @{ $xml_authors{$author}{standardname} }, "$forename $lastname"; }
   return %xml_authors; 
 } # sub getXmlAuthors
 
@@ -1354,6 +1376,51 @@ sub generatePng {
 ### End Person Statistics Section ###
 
 
+### Address by pasting in two numbers Section ###
+
+sub addressByTwos {
+  &printHtmlHeader();
+  print "<form name='form1' method=\"get\" action=\"person_editor.cgi\">\n";
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"addressByTwosInput\">";
+  my ($curator_two) = &getCuratorFromForm();
+  print "<textarea name=\"twos\" rows=6 cols=60 value=\"\"></textarea></td>\n";
+  print "<input type=submit name=action value=\"Display Address by Twos\">\n";
+  print "</form>\n";
+  &printFooter();
+} # sub addressByTwos
+
+sub displayAddressByTwos {
+  &printHtmlHeader();
+  print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"displayAddressByTwosInput\">";
+  my ($curator_two) = &getCuratorFromForm();
+  (my $oop, my $twos)  = &getHtmlVar($query, 'twos' );
+  my (@twos) = $twos =~ m/(two\d+)/g; my $joinkeys = join"','", @twos;;
+  my @tables = qw( street city state post country institution );
+  my %data;
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT * FROM two_${table} WHERE joinkey IN ('$joinkeys') ORDER BY joinkey, two_order; " );
+#     print qq( "SELECT * FROM two_{$table} WHERE joinkey IN ('$joinkeys') ORDER BY joinkey, two_order; " );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+    while (my @row = $result->fetchrow) {
+#       print "<tr><td>$row[0]</td><td>$row[1]</td><td>$row[2]</td></tr>\n"; 
+      $data{$row[0]}{$table} .= "$row[2]<br/>";
+    } # while (my @row = $result->fetchrow)
+  } # foreach my $table (@tables)
+  print "<table border=0 cellspacing=5>\n";
+  foreach my $joinkey (sort keys %data) {
+    print qq(<tr><td><a href="person_editor.cgi?curator_two=two1823&paper_id=&action=Search&display_or_edit=edit&input_number_1=$joinkey">$joinkey</a></td>);
+    foreach my $table (@tables) {
+      print "<td>$data{$joinkey}{$table}</td>";
+    } # foreach my $table (@tables)
+    print "</tr>";
+  } # foreach my $joinkey (sort keys %data)
+  print "</table>\n";
+  &printFooter();
+} # sub displayAddressByTwos
+
+### End Address by pasting in two numbers Section ###
+
+
 sub firstPage {
   &printHtmlHeader();
   print "<input type=\"hidden\" name=\"which_page\" id=\"which_page\" value=\"firstPage\">";
@@ -1383,7 +1450,8 @@ sub firstPage {
   print "<tr>\n";
   print "<td colspan=\"3\">WBPaperID : <input id=\"paper_id\" name=\"paper_id\" size=\"10\" value=\"\"><input type=submit name=action value=\"Search Paper\">\n";
   print "<input type=submit name=action value=\"Checkout Papers\">\n";
-  print "<input type=submit name=action value=\"Person Statistics\"></td>\n";
+  print "<input type=submit name=action value=\"Person Statistics\">\n";
+  print "<input type=submit name=action value=\"Address by Twos\"></td>\n";
   print "<tr>\n";
   print "<td colspan=\"3\"><input type=submit name=action value=\"Create New Person\">\n";
   print "<input type=submit name=action value=\"Search\">\n";
@@ -1863,7 +1931,7 @@ sub displayPersonInfo {
   my %hash; my %all_lastnames; my %all_names;
   my @show_tables = qw( institution firstname middlename lastname aka_firstname aka_middlename aka_lastname );
   my %shown; foreach (@show_tables) { $shown{$_}++; }
-  my @tables = qw( firstname middlename lastname street city state post country institution mainphone labphone officephone otherphone fax email old_email pis lab oldlab orcid left_field unable_to_contact privacy aka_firstname aka_middlename aka_lastname apu_firstname apu_middlename apu_lastname webpage );
+  my @tables = qw( firstname middlename lastname street city state post country institution mainphone labphone officephone otherphone fax email old_email pis oldpis lab oldlab orcid left_field unable_to_contact privacy aka_firstname aka_middlename aka_lastname apu_firstname apu_middlename apu_lastname webpage );
   my @simple_tables = qw( comment );
   foreach my $table (@tables) {
     $result = $dbh->prepare( "SELECT * FROM two_$table WHERE joinkey = '$two_id';" );

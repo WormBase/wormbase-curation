@@ -83,7 +83,8 @@ sub ShowPgQuery {
   results per page (type all for all) <INPUT NAME="perpage" VALUE="20">
   <INPUT TYPE="submit" NAME="action" VALUE="Pg !">
   </FORM>
-  <BR>These are the names of the curation tables : <BR>
+  <BR>Look up the relevant table names in its wiki, or talk to Juancarlos<BR>
+<!--  <BR>These are the names of the curation tables : <BR>
   cur_ablationdata<BR>
   cur_antibody<BR>
   cur_associationequiv<BR>
@@ -128,7 +129,7 @@ sub ShowPgQuery {
   cur_synonym<BR>
   cur_transgene<BR>
   <BR>This sample query counts how many entries have data (for transgene) :
-  <BR>SELECT * FROM cur_transgene WHERE cur_transgene IS NOT NULL;<BR>
+  <BR>SELECT * FROM cur_transgene WHERE cur_transgene IS NOT NULL;<BR>-->
 
 EndOfText
 }

@@ -153,6 +153,18 @@
 # exclude rna_nodump when reading curated data from rna_ tables.  for Chris.  2014 09 10
 #
 # exclude non_nematode from curatable papers list.  2014 09 25
+#
+# added cur_strdata for textpresso search strings.  2014 11 05
+#
+# chemicals getting OA data from int_otheronetype and int_othertwotype , which have been
+# removed and query might need replacing.  2015 03 31
+#
+# oaData for chemical for interaction now being checked against int_moleculeone + int_moleculeone + int_moleculenondir
+# oaData for geneprod / geneint now dependent on int_type being physical / not-physical+not-predicted. 
+# for Chris 2015 04 02
+#
+# genereg object counts were coming from grg_name instead of grg_intid.  for Chris.  2015 02 04
+
 
 
 
@@ -192,6 +204,10 @@ my %valNeg;			# datatype-paper validated as negative         		$valNeg{$datatype
 my %curStats; tie %curStats, "Tie::IxHash";	# hash of curation statistics		$curStats{'cfp'}{'pos'}{$datatype}{papers}{$joinkey}++; $curStats{'cfp'}{'pos'}{$datatype}{'countPap'} = count; $curStats{'cfp'}{'pos'}{$datatype}{'ratio'}    = ratio;
 my %statsHashToLabel;		# curStats in array form to label name
 my %statsHashToDescription;	# curStats in array form to description of data
+my %strData;			# string results from cur_strdata tables		$strData{$datatype}{$joinkey} = $value;
+my %strFlagged;			# string has cur_strdata value for datatype-joinkey  	$strFlagged{$datatype}{$joinkey}++;
+my %strPos;			# string has cur_strdata value for datatype-joinkey	$strPos{$datatype}{$joinkey}++;
+my %strNeg;			# string has cur_strdata value for datatype-joinkey	$strNeg{$datatype}{$joinkey}++;
 my %cfpData;			# curator FP results from cfp_ tables			$cfpData{$datatype}{$joinkey} = $value;
 my %cfpFlagged;			# curator has cfp_curator value for datatype-joinkey  	$cfpFlagged{$datatype}{$joinkey}++;
 my %cfpPos;			# curator has cfp value for datatype-joinkey		$cfpPos{$datatype}{$joinkey}++;
@@ -369,6 +385,8 @@ sub printListCurationStatisticsPapers {
   if ($displayCfp) { &populateCfpData(); push @flaggingMethods, 'checkbox_cfp'; }
   ($oop, my $displayAfp) = &getHtmlVar($query, "checkbox_afp");
   if ($displayAfp) { &populateAfpData(); push @flaggingMethods, 'checkbox_afp'; }
+  ($oop, my $displayStr) = &getHtmlVar($query, "checkbox_str");
+  if ($displayStr) { &populateStrData(); push @flaggingMethods, 'checkbox_str'; }
   ($oop, my $displaySvm) = &getHtmlVar($query, "checkbox_svm");
   if ($displaySvm) { &populateSvmData(); push @flaggingMethods, 'checkbox_svm'; }
 
@@ -379,11 +397,17 @@ sub printListCurationStatisticsPapers {
     elsif ($method eq 'cfp') {			&getCurationStatisticsCfpFlagged(    \@datatypesToShow ); }
     elsif ($method =~ m/cfp neg/) {		&getCurationStatisticsCfpNeg(        \@datatypesToShow ); }
     elsif ($method =~ m/cfp pos/) {		&getCurationStatisticsCfpPos(        \@datatypesToShow ); }
+    elsif ($method eq 'str') {			&getCurationStatisticsStrFlagged(    \@datatypesToShow ); }
+    elsif ($method =~ m/str neg/) {		&getCurationStatisticsStrNeg(        \@datatypesToShow ); }
+    elsif ($method =~ m/str pos/) {		&getCurationStatisticsStrPos(        \@datatypesToShow ); }
     elsif ($method eq 'svmnotdone') {		&getCurationStatisticsSvmNd(         \@datatypesToShow ); }
     elsif ($method =~ m/^svm/) {		&getCurationStatisticsSvm(           \@datatypesToShow ); }
     elsif ( ($method =~ m/^any/) ||
             ($method =~ m/^int/) ) {		&getCurationStatisticsSvmNd(         \@datatypesToShow);
                                                 &getCurationStatisticsSvm(           \@datatypesToShow);
+                                                &getCurationStatisticsStrFlagged(    \@datatypesToShow);
+                                                &getCurationStatisticsStrPos(        \@datatypesToShow );
+                                                &getCurationStatisticsStrNeg(        \@datatypesToShow );
                                                 &getCurationStatisticsAfpEmailed(    \@datatypesToShow);
                                                 &getCurationStatisticsAfpFlagged(    \@datatypesToShow);
                                                 &getCurationStatisticsAfpPos(        \@datatypesToShow );
@@ -406,7 +430,7 @@ sub printListCurationStatisticsPapers {
   my @joinkeys;
   foreach my $joinkey (sort keys %{ $hash_ref->{$listDatatype}{'papers'} }) { 
     push @joinkeys, $joinkey;
-    my $link = "curation_status.cgi?select_curator=$curator&specific_papers=WBPaper$joinkey&checkbox_$listDatatype=$listDatatype&checkbox_filteron_primary=on&checkbox_svm=on&checkbox_cfp=on&checkbox_afp=on&checkbox_oa=on&checkbox_cur=on&papers_per_page=10&checkbox_journal=on&checkbox_pmid=on&checkbox_pdf=on&checkbox_primary=on&action=Get+Results";
+    my $link = "curation_status.cgi?select_curator=$curator&specific_papers=WBPaper$joinkey&checkbox_$listDatatype=$listDatatype&checkbox_filteron_primary=on&checkbox_svm=on&checkbox_str=on&checkbox_cfp=on&checkbox_afp=on&checkbox_oa=on&checkbox_cur=on&papers_per_page=10&checkbox_journal=on&checkbox_pmid=on&checkbox_pdf=on&checkbox_primary=on&action=Get+Results";
     print qq(<a href="$link" target="new">$joinkey</a> );
   }
   print qq(<br/><br/>);
@@ -471,6 +495,9 @@ sub printCurationStatisticsTable {
   ($oop, my $displayAfp) = &getHtmlVar($query, "checkbox_afp");                                     
   if ( ($displayAll) || ($displayAfp) ) { &populateAfpData();      push @flaggingMethods, 'checkbox_afp'; }
   if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "populateAfpData $diff<br>"; }
+  ($oop, my $displayStr) = &getHtmlVar($query, "checkbox_str");
+  if ( ($displayAll) || ($displayStr) ) { &populateStrData();      push @flaggingMethods, 'checkbox_str'; }
+  if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "populateStrData $diff<br>"; }
   ($oop, my $displaySvm) = &getHtmlVar($query, "checkbox_svm");                                     
   if ( ($displayAll) || ($displaySvm) ) { &populateSvmData();      push @flaggingMethods, 'checkbox_svm'; }
   if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "populateSvmData   $diff<br>"; }
@@ -503,6 +530,12 @@ sub printCurationStatisticsTable {
     &getCurationStatisticsSvmNd(            \@datatypesToShow );
     &getCurationStatisticsSvm(              \@datatypesToShow ); }
   if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "getStatsSvm   $diff<br>"; }
+
+  if ( ($displayAll) || ($displayStr) ) { 
+    &getCurationStatisticsStrFlagged(       \@datatypesToShow );
+    &getCurationStatisticsStrPos(           \@datatypesToShow );
+    &getCurationStatisticsStrNeg(           \@datatypesToShow ); }
+  if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "getStatsStr   $diff<br>"; }
 
   if ( ($displayAll) || ($displayAfp) ) { 
     &getCurationStatisticsAfpEmailed(       \@datatypesToShow );
@@ -548,6 +581,7 @@ sub recurseCurStats {					# recurse through %curStats to print row of stats
       if ($hash->{$key}{'allSame'}) { $colSpan = scalar @datatypesToShow; @datatypesHaveData = ( 'allSame' ); }	# if all datatypes have same data show once in big colspan
       foreach my $datatype (@datatypesHaveData) {	# for each chosen datatype that has individual data
         my $tdCellData = '0';
+
         my $count = $hash->{$key}{$datatype}{'countPap'}; 
         if ($count) { $tdCellData = qq(<a href="curation_status.cgi?action=listCurationStatisticsPapersPage&select_curator=$curator&listDatatype=$datatype&method=$labelKeys&$flaggingMethods" target="new">$count</a>); }
         my $ratio = $hash->{$key}{$datatype}{'ratio'} ; 
@@ -1256,6 +1290,177 @@ sub getCurationStatisticsAfpEmailed {
 } # sub getCurationStatisticsAfpEmailed
 
 
+sub getCurationStatisticsStrFlagged {
+  my ($datatypesToShow_ref) = @_;
+  my @datatypesToShow = @$datatypesToShow_ref;
+  my $countCuratablePapers = scalar keys %curatablePapers;
+  foreach my $datatype (sort keys %chosenDatatypes) {
+    my $countStrFlagged      = scalar keys %{ $strFlagged{$datatype} };
+    my $ratio = 0;
+    if ($countCuratablePapers > 0) { $ratio = $countStrFlagged / $countCuratablePapers * 100; $ratio = FormatSigFigs($ratio, 2); }
+    $curStats{'dividerstr'}{$datatype}{'countPap'} = 'blank';
+    foreach my $joinkey (keys %{ $strFlagged{$datatype} }) {
+      $curStats{'any'}{$datatype}{papers}{$joinkey}++;
+      $curStats{'str'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{$datatype}{'countPap'} = scalar keys %{ $strFlagged{$datatype} };
+    $curStats{'str'}{$datatype}{'ratio'}    = $ratio;
+  } # foreach my $datatype (sort keys %chosenDatatypes)
+} # sub getCurationStatisticsStrFlagged
+
+sub getCurationStatisticsStrPos {
+  my ($datatypesToShow_ref) = @_;
+  my @datatypesToShow = @$datatypesToShow_ref;
+  my %strPosNV; my %strPosVal; my %strPosFP; my %strPosTP; my %strPosTpCur; my %strPosTpNC; my %strPosNC;
+	# positive and : not validated, validated, false positive, true positive, TP curated, TP not curated, not curated minus validated negative OR not validated + TP not curated
+  foreach my $datatype (@datatypesToShow) {
+    foreach my $joinkey (sort keys %{ $strPos{$datatype} }) {
+      if ($valPos{$datatype}{$joinkey}) {      $strPosTP{$datatype}{$joinkey}++; $strPosVal{$datatype}{$joinkey}++;
+          if ($valCur{$datatype}{$joinkey}) {  $strPosTpCur{$datatype}{$joinkey}++; }
+            else                            {   $strPosTpNC{$datatype}{$joinkey}++; $strPosNC{$datatype}{$joinkey}++; } }
+        elsif ($valNeg{$datatype}{$joinkey}) { $strPosFP{$datatype}{$joinkey}++; $strPosVal{$datatype}{$joinkey}++; }
+        else {                                 $strPosNV{$datatype}{$joinkey}++; $strPosNC{$datatype}{$joinkey}++; } } }
+  tie %{ $curStats{'str'}{'pos'} }, "Tie::IxHash";
+  foreach my $datatype (@datatypesToShow) {
+    my $countStrFlagged = scalar keys %{ $strFlagged{$datatype} };
+    my $countStrPos = scalar keys %{ $strPos{$datatype} };
+    my $ratio = 0; 
+    if ($countStrFlagged > 0) { $ratio = $countStrPos / $countStrFlagged * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPos{$datatype} }) {      $curStats{'str'}{'pos'}{$datatype}{papers}{$joinkey}++; 
+							      $curStats{'any'}{'pos'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{$datatype}{'countPap'}                      = scalar keys %{ $strPos{$datatype} };
+    $curStats{'str'}{'pos'}{$datatype}{'ratio'}                         = $ratio;
+
+    my $countStrPosVal  = scalar keys %{ $strPosVal{$datatype} };
+    $ratio = 0;
+    if ($countStrPos > 0) { $ratio = $countStrPosVal / $countStrPos * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPosVal{$datatype} }) {   $curStats{'str'}{'pos'}{'val'}{$datatype}{papers}{$joinkey}++; 
+							      $curStats{'any'}{'pos'}{'val'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{'val'}{$datatype}{'countPap'}               = scalar keys %{ $strPosVal{$datatype} };
+    $curStats{'str'}{'pos'}{'val'}{$datatype}{'ratio'}                  = $ratio;
+
+    my $countStrPosTP  = scalar keys %{ $strPosTP{$datatype} };
+    $ratio = 0;
+    if ($countStrPosVal > 0) { $ratio = $countStrPosTP / $countStrPosVal * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPosTP{$datatype} }) {    $curStats{'str'}{'pos'}{'val'}{'tp'}{$datatype}{papers}{$joinkey}++;
+							      $curStats{'any'}{'pos'}{'val'}{'tp'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{'val'}{'tp'}{$datatype}{'countPap'}         = scalar keys %{ $strPosTP{$datatype} };
+    $curStats{'str'}{'pos'}{'val'}{'tp'}{$datatype}{'ratio'}            = $ratio;
+
+    my $countStrPosTpCur  = scalar keys %{ $strPosTpCur{$datatype} };
+    $ratio = 0;
+    if ($countStrPosTP > 0) { $ratio = $countStrPosTpCur / $countStrPosTP * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPosTpCur{$datatype} }) { $curStats{'str'}{'pos'}{'val'}{'tp'}{'cur'}{$datatype}{papers}{$joinkey}++;
+							      $curStats{'any'}{'pos'}{'val'}{'tp'}{'cur'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{'val'}{'tp'}{'cur'}{$datatype}{'countPap'} = scalar keys %{ $strPosTpCur{$datatype} };
+    $curStats{'str'}{'pos'}{'val'}{'tp'}{'cur'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrPosTpNC  = scalar keys %{ $strPosTpNC{$datatype} };
+    $ratio = 0;
+    if ($countStrPosTP > 0) { $ratio = $countStrPosTpNC / $countStrPosTP * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPosTpNC{$datatype} }) {  $curStats{'str'}{'pos'}{'val'}{'tp'}{'ncur'}{$datatype}{papers}{$joinkey}++;
+							      $curStats{'any'}{'pos'}{'val'}{'tp'}{'ncur'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{'val'}{'tp'}{'ncur'}{$datatype}{'countPap'} = scalar keys %{ $strPosTpNC{$datatype} };
+    $curStats{'str'}{'pos'}{'val'}{'tp'}{'ncur'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrPosFP  = scalar keys %{ $strPosFP{$datatype} };
+    $ratio = 0;
+    if ($countStrPosVal > 0) { $ratio = $countStrPosFP / $countStrPosVal * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPosFP{$datatype} }) {    $curStats{'str'}{'pos'}{'val'}{'fp'}{$datatype}{papers}{$joinkey}++; 
+							      $curStats{'any'}{'pos'}{'val'}{'fp'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{'val'}{'fp'}{$datatype}{'countPap'}         = scalar keys %{ $strPosFP{$datatype} };
+    $curStats{'str'}{'pos'}{'val'}{'fp'}{$datatype}{'ratio'}            = $ratio;
+
+    my $countStrPosNV  = scalar keys %{ $strPosNV{$datatype} };
+    $ratio = 0; 
+    if ($countStrPos > 0) { $ratio = $countStrPosNV / $countStrPos * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPosNV{$datatype} }) {    $curStats{'str'}{'pos'}{'nval'}{$datatype}{papers}{$joinkey}++; 
+							      $curStats{'any'}{'pos'}{'nval'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{'nval'}{$datatype}{'countPap'}              = scalar keys %{ $strPosNV{$datatype} };
+    $curStats{'str'}{'pos'}{'nval'}{$datatype}{'ratio'}                 = $ratio;
+
+    my $countStrPosNC  = scalar keys %{ $strPosNC{$datatype} };
+    $ratio = 0; 
+    if ($countStrPos > 0) { $ratio = $countStrPosNC / $countStrPos * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strPosNC{$datatype} }) {    $curStats{'str'}{'pos'}{'ncur'}{$datatype}{papers}{$joinkey}++; 
+							      $curStats{'any'}{'pos'}{'ncur'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'pos'}{'ncur'}{$datatype}{'countPap'}              = scalar keys %{ $strPosNC{$datatype} };
+    $curStats{'str'}{'pos'}{'ncur'}{$datatype}{'ratio'}                 = $ratio;
+  } # foreach my $datatype (@datatypesToShow)
+} # sub getCurationStatisticsStrPos
+
+sub getCurationStatisticsStrNeg {
+  my ($datatypesToShow_ref) = @_;
+  my @datatypesToShow = @$datatypesToShow_ref;
+  my %strNegNV; my %strNegVal; my %strNegTN; my %strNegFN; my %strNegFnCur; my %strNegFnNC; my %strNegNC;
+	# negative and : not validated, validated, true negative, false negative, FN curated, FN not curated, not curated minus validated negative OR not validated + FN not curated
+  foreach my $datatype (@datatypesToShow) {
+    foreach my $joinkey (sort keys %{ $strNeg{$datatype} }) {
+      if ($valNeg{$datatype}{$joinkey}) {      $strNegTN{$datatype}{$joinkey}++; $strNegVal{$datatype}{$joinkey}++; }
+        elsif ($valPos{$datatype}{$joinkey}) { $strNegFN{$datatype}{$joinkey}++; $strNegVal{$datatype}{$joinkey}++;
+          if ($valCur{$datatype}{$joinkey}) {  $strNegFnCur{$datatype}{$joinkey}++; }
+            else                            {   $strNegFnNC{$datatype}{$joinkey}++; $strNegNC{$datatype}{$joinkey}++; } }
+        else {                                 $strNegNV{$datatype}{$joinkey}++; $strNegNC{$datatype}{$joinkey}++; } } }
+  tie %{ $curStats{'str'}{'neg'} }, "Tie::IxHash";
+  foreach my $datatype (@datatypesToShow) {
+    my $countStrFlagged = scalar keys %{ $strFlagged{$datatype} };
+    my $countStrNeg = scalar keys %{ $strNeg{$datatype} };
+    my $ratio = 0; 
+    if ($countStrFlagged > 0) { $ratio = $countStrNeg / $countStrFlagged * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNeg{$datatype} }) { $curStats{'str'}{'neg'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{$datatype}{'countPap'} = scalar keys %{ $strNeg{$datatype} };
+    $curStats{'str'}{'neg'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrNegVal  = scalar keys %{ $strNegVal{$datatype} };
+    $ratio = 0;
+    if ($countStrNeg > 0) { $ratio = $countStrNegVal / $countStrNeg * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNegVal{$datatype} }) { $curStats{'str'}{'neg'}{'val'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{'val'}{$datatype}{'countPap'} = scalar keys %{ $strNegVal{$datatype} };
+    $curStats{'str'}{'neg'}{'val'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrNegTN  = scalar keys %{ $strNegTN{$datatype} };
+    $ratio = 0;
+    if ($countStrNegVal > 0) { $ratio = $countStrNegTN / $countStrNegVal * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNegTN{$datatype} }) { $curStats{'str'}{'neg'}{'val'}{'tn'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{'val'}{'tn'}{$datatype}{'countPap'} = scalar keys %{ $strNegTN{$datatype} };
+    $curStats{'str'}{'neg'}{'val'}{'tn'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrNegFN  = scalar keys %{ $strNegFN{$datatype} };
+    $ratio = 0;
+    if ($countStrNegVal > 0) { $ratio = $countStrNegFN / $countStrNegVal * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNegFN{$datatype} }) { $curStats{'str'}{'neg'}{'val'}{'fn'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{'val'}{'fn'}{$datatype}{'countPap'} = scalar keys %{ $strNegFN{$datatype} };
+    $curStats{'str'}{'neg'}{'val'}{'fn'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrNegFnCur  = scalar keys %{ $strNegFnCur{$datatype} };
+    $ratio = 0;
+    if ($countStrNegFN > 0) { $ratio = $countStrNegFnCur / $countStrNegFN * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNegFnCur{$datatype} }) { $curStats{'str'}{'neg'}{'val'}{'fn'}{'cur'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{'val'}{'fn'}{'cur'}{$datatype}{'countPap'} = scalar keys %{ $strNegFnCur{$datatype} };
+    $curStats{'str'}{'neg'}{'val'}{'fn'}{'cur'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrNegFnNC  = scalar keys %{ $strNegFnNC{$datatype} };
+    $ratio = 0;
+    if ($countStrNegFN > 0) { $ratio = $countStrNegFnNC / $countStrNegFN * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNegFnNC{$datatype} }) { $curStats{'str'}{'neg'}{'val'}{'fn'}{'ncur'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{'val'}{'fn'}{'ncur'}{$datatype}{'countPap'} = scalar keys %{ $strNegFnNC{$datatype} };
+    $curStats{'str'}{'neg'}{'val'}{'fn'}{'ncur'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrNegNV  = scalar keys %{ $strNegNV{$datatype} };
+    $ratio = 0; 
+    if ($countStrNeg > 0) { $ratio = $countStrNegNV / $countStrNeg * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNegNV{$datatype} }) { $curStats{'str'}{'neg'}{'nval'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{'nval'}{$datatype}{'countPap'} = scalar keys %{ $strNegNV{$datatype} };
+    $curStats{'str'}{'neg'}{'nval'}{$datatype}{'ratio'}    = $ratio;
+
+    my $countStrNegNC  = scalar keys %{ $strNegNC{$datatype} };
+    $ratio = 0; 
+    if ($countStrNeg > 0) { $ratio = $countStrNegNC / $countStrNeg * 100; $ratio = FormatSigFigs($ratio, 2); }
+    foreach my $joinkey (keys %{ $strNegNC{$datatype} }) { $curStats{'str'}{'neg'}{'ncur'}{$datatype}{papers}{$joinkey}++; }
+    $curStats{'str'}{'neg'}{'ncur'}{$datatype}{'countPap'} = scalar keys %{ $strNegNC{$datatype} };
+    $curStats{'str'}{'neg'}{'ncur'}{$datatype}{'ratio'}    = $ratio;
+  } # foreach my $datatype (@datatypesToShow)
+} # sub getCurationStatisticsStrNeg
+
 
 sub getCurationStatisticsCfpFlagged {
   my ($datatypesToShow_ref) = @_;
@@ -1584,6 +1789,7 @@ sub printCheckboxesCurationSources {
     print qq(<input type="checkbox" name="checkbox_cur"    checked="checked">Curator uploaded cur_curdata<br/>\n);
   } # if ($which_checkboxes_to_show eq 'all')
   print qq(<input type="checkbox" name="checkbox_svm"      checked="checked">svm flags cur_svmdata<br/>\n);
+  print qq(<input type="checkbox" name="checkbox_str"      checked="checked">str flags cur_strdata<br/>\n);
   print qq(<input type="checkbox" name="checkbox_afp"      checked="checked">author first pass afp_<br/>\n);
   print qq(<input type="checkbox" name="checkbox_cfp"      checked="checked">curator first pass cfp_<br/>\n);
   print qq(<br/>);
@@ -1678,6 +1884,7 @@ sub submitNewResults {
     $curatorData{$joinkey}{$datatype}{curator}    = $activeCurator;
     $curatorData{$joinkey}{$datatype}{donposneg}  = $curatorDonposneg;
     $curatorData{$joinkey}{$datatype}{selcomment} = $curatorSelComment;
+    if ($curatorTxtComment) { if ($curatorTxtComment =~ m/\'/) { $curatorTxtComment =~ s/\'/''/g; } }
     $curatorData{$joinkey}{$datatype}{txtcomment} = $curatorTxtComment;
   } # for my $i (1 .. $trAmount)
   my %pgData;
@@ -1937,14 +2144,17 @@ sub getResults {
   ($oop, my $displayCfp) = &getHtmlVar($query, "checkbox_cfp");   unless ($displayCfp) { $displayCfp = ''; }
   ($oop, my $displayAfp) = &getHtmlVar($query, "checkbox_afp");   unless ($displayAfp) { $displayAfp = ''; }
   ($oop, my $displaySvm) = &getHtmlVar($query, "checkbox_svm");   unless ($displaySvm) { $displaySvm = ''; }
+  ($oop, my $displayStr) = &getHtmlVar($query, "checkbox_str");   unless ($displayStr) { $displayStr = ''; }
   print qq(<input type="hidden" name="checkbox_oa"  value="$displayOa" >\n);
   print qq(<input type="hidden" name="checkbox_cfp" value="$displayCfp">\n);
   print qq(<input type="hidden" name="checkbox_afp" value="$displayAfp">\n);
   print qq(<input type="hidden" name="checkbox_svm" value="$displaySvm">\n);
+  print qq(<input type="hidden" name="checkbox_str" value="$displayStr">\n);
   if ($displayOa) {  &populateOaData();  }
   if ($displayCfp) { &populateCfpData(); }
   if ($displayAfp) { &populateAfpData(); }
   if ($displaySvm) { &populateSvmData(); }
+  if ($displayStr) { &populateStrData(); }
 
   ($oop, my $showJournal) = &getHtmlVar($query, "checkbox_journal");   unless ($showJournal) { $showJournal = ''; }
   ($oop, my $showPmid)    = &getHtmlVar($query, "checkbox_pmid");      unless ($showPmid) {    $showPmid = '';    }
@@ -1970,6 +2180,7 @@ sub getResults {
 
   my %allPaperData;			# hash of datatype - joinkey  for all posible queried data structures, to key off from this when there are no svm results for a data structure with data.
   foreach my $datatype (keys %svmData) { foreach my $joinkey (keys %{ $svmData{$datatype} }) { $allPaperData{$joinkey}{$datatype}++; } }
+  foreach my $datatype (keys %strData) { foreach my $joinkey (keys %{ $strData{$datatype} }) { $allPaperData{$joinkey}{$datatype}++; } }
   foreach my $datatype (keys %curData) { foreach my $joinkey (keys %{ $curData{$datatype} }) { $allPaperData{$joinkey}{$datatype}++; } }
   foreach my $datatype (keys %oaData)  { foreach my $joinkey (keys %{  $oaData{$datatype} }) { $allPaperData{$joinkey}{$datatype}++; } }
   foreach my $datatype (keys %cfpData) { foreach my $joinkey (keys %{ $cfpData{$datatype} }) { $allPaperData{$joinkey}{$datatype}++; } }
@@ -2007,6 +2218,12 @@ sub getResults {
         $svmResult = qq(<span style="background-color: $bgcolor">$svmResult</span>);
         push @dataRow, $svmResult; 
       } # if ($displaySvm)
+
+      if ($displayStr) {
+        my $strResult = '';
+        if ($strData{$datatype}{$joinkey}) { $strResult = $strData{$datatype}{$joinkey}; }
+        push @dataRow, $strResult; 
+      }
 
       if ($displayCfp) {
         my $cfpResult = '';
@@ -2088,6 +2305,7 @@ sub getResults {
   print qq(<table border="1">\n);
   push @headerRow, "datatype";
   if ($displaySvm)    { push @headerRow, "SVM Prediction"; }
+  if ($displayStr)    { push @headerRow, "String Match"; }
   if ($displayCfp)    { push @headerRow, "cfp value"; }
   if ($displayAfp)    { push @headerRow, "afp value"; }
   if ($displayOa)     { push @headerRow, "oa value";  }
@@ -2175,6 +2393,20 @@ sub populateSvmData {
       next unless ($curatablePapers{$row[0]});
       $svmData{$datatype}{$joinkey} = $svmdata; } }
 } # sub populateSvmData
+
+sub populateStrData {
+  $result = $dbh->prepare( "SELECT * FROM cur_strdata" );			# only single value ever stored per paper
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  while (my @row = $result->fetchrow) {
+    my $joinkey = $row[0]; my $datatype = $row[1]; my $strdata = $row[3];
+    next unless ($curatablePapers{$row[0]});
+    $strData{$datatype}{$joinkey} = $strdata; }
+  foreach my $datatype (sort keys %strData) {
+    foreach my $joinkey (sort keys %curatablePapers) {
+      $strFlagged{$datatype}{$joinkey}++; 
+      if ($strData{$datatype}{$joinkey}) { $strPos{$datatype}{$joinkey}++; }
+        else { $strNeg{$datatype}{$joinkey}++; } } }
+} # sub populateStrData
 
 sub populateAfpData {
   foreach my $datatype (sort keys %chosenDatatypes) { 
@@ -2292,25 +2524,31 @@ sub populateOaData {
       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
       foreach my $paper (@papers) {
         $oaData{'chemicals'}{$paper} = 'curated'; } }
-    $result = $dbh->prepare( "SELECT * FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_otheronetype WHERE int_otheronetype = 'Chemical')" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 	# only those with chemicals are chemical papers, but there are no objects for objects curated  2013 10 02
+    $result = $dbh->prepare( "SELECT * FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_moleculeone WHERE int_moleculeone IS NOT NULL) OR joinkey IN (SELECT joinkey FROM int_moleculetwo WHERE int_moleculetwo IS NOT NULL) OR joinkey IN (SELECT joinkey FROM int_moleculenondir WHERE int_moleculenondir IS NOT NULL)" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
     while (my @row = $result->fetchrow) {
       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
       foreach my $paper (@papers) {
         $oaData{'chemicals'}{$paper} = 'curated'; } }
-    $result = $dbh->prepare( "SELECT * FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_othertwotype WHERE int_othertwotype = 'Chemical')" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";  	# only those with chemicals are chemical papers, but there are no objects for objects curated  2013 10 02
-    while (my @row = $result->fetchrow) {
-      my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
-      foreach my $paper (@papers) {
-        $oaData{'chemicals'}{$paper} = 'curated'; } }
+#     $result = $dbh->prepare( "SELECT * FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_otheronetype WHERE int_otheronetype = 'Chemical')" );
+#     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 	# only those with chemicals are chemical papers, but there are no objects for objects curated  2013 10 02
+#     while (my @row = $result->fetchrow) {
+#       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
+#       foreach my $paper (@papers) {
+#         $oaData{'chemicals'}{$paper} = 'curated'; } }
+#     $result = $dbh->prepare( "SELECT * FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_othertwotype WHERE int_othertwotype = 'Chemical')" );
+#     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";  	# only those with chemicals are chemical papers, but there are no objects for objects curated  2013 10 02
+#     while (my @row = $result->fetchrow) {
+#       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
+#       foreach my $paper (@papers) {
+#         $oaData{'chemicals'}{$paper} = 'curated'; } }
   } # if ($chosenDatatypes{'chemicals'})
 
   if ($chosenDatatypes{'newmutant'}) {
     $result = $dbh->prepare( "SELECT * FROM app_variation" );
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) { $objsCurated{'newmutant'}{$row[1]}++; }
-    $result = $dbh->prepare( "SELECT * FROM app_paper" );
+    $result = $dbh->prepare( "SELECT * FROM app_paper WHERE joinkey NOT IN (SELECT joinkey FROM app_needsreview) AND joinkey NOT IN (SELECT joinkey FROM app_curator WHERE app_curator = 'WBPerson29819')" );
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) {
       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
@@ -2349,8 +2587,36 @@ sub populateOaData {
       foreach my $paper (@papers) {
         $oaData{'otherexpr'}{$paper} = 'curated'; } } }
 
+  if ($chosenDatatypes{'humandisease'}) {
+    $result = $dbh->prepare( "SELECT * FROM dis_wbgene" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) { $objsCurated{'humandisease'}{$row[1]}++; }
+    $result = $dbh->prepare( "SELECT * FROM dis_paperdisrel" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) {
+      my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
+      foreach my $paper (@papers) {
+        $oaData{'humandisease'}{$paper} = 'curated'; } }
+    $result = $dbh->prepare( "SELECT * FROM dis_paperexpmod" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) {
+      my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
+      foreach my $paper (@papers) {
+        $oaData{'humandisease'}{$paper} = 'curated'; } } }
+
+  if ($chosenDatatypes{'seqfeature'}) {
+    $result = $dbh->prepare( "SELECT * FROM sqf_name" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) { $objsCurated{'seqfeature'}{$row[1]}++; }
+    $result = $dbh->prepare( "SELECT * FROM sqf_paper" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) {
+      my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
+      foreach my $paper (@papers) {
+        $oaData{'seqfeature'}{$paper} = 'curated'; } } }
+
   if ($chosenDatatypes{'genereg'}) {
-    $result = $dbh->prepare( "SELECT * FROM grg_name" );
+    $result = $dbh->prepare( "SELECT * FROM grg_intid" );	# genereg object counts were coming from grg_name instead of grg_intid.  2015 02 04
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) { $objsCurated{'genereg'}{$row[1]}++; }
     $result = $dbh->prepare( "SELECT * FROM grg_paper" );
@@ -2360,22 +2626,35 @@ sub populateOaData {
       foreach my $paper (@papers) {
         $oaData{'genereg'}{$paper} = 'curated'; } } }
 
-  if ($chosenDatatypes{'geneint'}) {
-    $result = $dbh->prepare( "SELECT * FROM int_name" );
+  if ($chosenDatatypes{'geneint'}) {	# corresponds to int_type being genetic, meaning not physical nor predicted 2015 04 02
+    $result = $dbh->prepare( "SELECT * FROM int_name WHERE joinkey IN (SELECT joinkey FROM int_type WHERE int_type IS NOT NULL) AND joinkey NOT IN (SELECT joinkey FROM int_type WHERE int_type = 'Physical') AND joinkey NOT IN (SELECT joinkey FROM int_type WHERE int_type = 'Predicted')" );
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) { $objsCurated{'geneint'}{$row[1]}++; }
-    $result = $dbh->prepare( "SELECT * FROM int_paper" );
+    $result = $dbh->prepare( "SELECT * FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_type WHERE int_type IS NOT NULL) AND joinkey NOT IN (SELECT joinkey FROM int_type WHERE int_type = 'Physical') AND joinkey NOT IN (SELECT joinkey FROM int_type WHERE int_type = 'Predicted')" );
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) {
       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
       foreach my $paper (@papers) {
         $oaData{'geneint'}{$paper} = 'curated'; } } }
 
+  if ($chosenDatatypes{'geneprod'}) {	# corresponds to int_type being physical.  2015 04 02
+    $result = $dbh->prepare( "SELECT * FROM int_name WHERE joinkey IN (SELECT joinkey FROM int_type WHERE int_type = 'Physical')" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) { $objsCurated{'geneprod'}{$row[1]}++; }
+    $result = $dbh->prepare( "SELECT * FROM int_paper WHERE joinkey IN (SELECT joinkey FROM int_type WHERE int_type = 'Physical')" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) {
+      my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
+      foreach my $paper (@papers) {
+        $oaData{'geneprod'}{$paper} = 'curated'; } } }
+
   if ($chosenDatatypes{'rnai'}) {
     $result = $dbh->prepare( "SELECT * FROM rna_name WHERE joinkey NOT IN (SELECT joinkey FROM rna_nodump)" );
+#     $result = $dbh->prepare( "SELECT * FROM rna_name WHERE joinkey NOT IN (SELECT joinkey FROM rna_nodump) AND joinkey NOT IN (SELECT joinkey FROM rna_fromgenereg)" );
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) { $objsCurated{'rnai'}{$row[1]}++; }
-    $result = $dbh->prepare( "SELECT * FROM rna_paper WHERE joinkey NOT IN (SELECT joinkey FROM rna_nodump)" );
+    $result = $dbh->prepare( "SELECT * FROM rna_paper WHERE joinkey NOT IN (SELECT joinkey FROM rna_nodump) AND joinkey NOT IN (SELECT joinkey FROM rna_curator WHERE rna_curator = 'WBPerson29819')" );
+#     $result = $dbh->prepare( "SELECT * FROM rna_paper WHERE joinkey NOT IN (SELECT joinkey FROM rna_nodump) AND joinkey NOT IN (SELECT joinkey FROM rna_fromgenereg)" );
     $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
     while (my @row = $result->fetchrow) {
       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
@@ -2438,6 +2717,17 @@ sub populateOaData {
       my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
       foreach my $paper (@papers) {
         $oaData{'geneticmosaic'}{$paper} = 'curated'; } } }
+
+  if ($chosenDatatypes{'optogenetic'}) {
+    $result = $dbh->prepare( "SELECT * FROM wbb_wbbtf WHERE joinkey IN (SELECT joinkey FROM wbb_assay WHERE wbb_assay = 'Optogenetic')" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) { $objsCurated{'optogenetic'}{$row[1]}++; }
+    $result = $dbh->prepare( "SELECT * FROM wbb_reference WHERE joinkey IN (SELECT joinkey FROM wbb_assay WHERE wbb_assay = 'Optogenetic')" );
+    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+    while (my @row = $result->fetchrow) {
+      my (@papers) = $row[1] =~ m/WBPaper(\d+)/g;
+      foreach my $paper (@papers) {
+        $oaData{'optogenetic'}{$paper} = 'curated'; } } }
 
   if ($chosenDatatypes{'laserablation'}) {
     $result = $dbh->prepare( "SELECT * FROM wbb_wbbtf WHERE joinkey IN (SELECT joinkey FROM wbb_assay WHERE wbb_assay = 'Laser_ablation')" );
@@ -2516,7 +2806,7 @@ sub makeNcbiLinkFromPmid {
 
 
 sub populateDatatypes {
-  $result = $dbh->prepare( "SELECT DISTINCT(cur_datatype) FROM cur_svmdata " );
+  $result = $dbh->prepare( "SELECT DISTINCT(cur_datatype) FROM cur_svmdata" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) { $datatypesAfpCfp{$row[0]} = $row[0]; }
   $datatypesAfpCfp{'chemicals'}     = 'chemicals';		# added for Karen 2013 10 02
@@ -2527,6 +2817,11 @@ sub populateDatatypes {
   foreach my $datatype (keys %datatypesAfpCfp) { $datatypes{$datatype}++; }
   $datatypes{'geneticablation'}++;
   $datatypes{'picture'}++;			# for Daniela's pictures
+  $datatypes{'optogenetic'}++;			# for Raymond's anatomy but without afp / cfp
+  delete $datatypesAfpCfp{'catalyticact'};	# has svm but no afp / cfp
+  $result = $dbh->prepare( "SELECT DISTINCT(cur_datatype) FROM cur_strdata" );	# from string search data
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+  while (my @row = $result->fetchrow) { $datatypes{$row[0]} = $row[0]; }
 } # sub populateDatatypes
 
 sub populateDonPosNegOptions {
@@ -2541,6 +2836,7 @@ sub populateCurators {
   $curators{"two1823"}   = 'Juancarlos Chan';
   $curators{"two101"}    = 'Wen Chen';
   $curators{"two1983"}   = 'Paul Davis';
+  $curators{"two133"}    = 'John DeModena';
   $curators{"two2987"}   = 'Chris Grove';
   $curators{"two3111"}   = 'Kevin Howe';
   $curators{"two324"}    = 'Ranjana Kishore';
@@ -2649,6 +2945,24 @@ sub populateStatisticsHashToDescription {
   $statsHashToDescription{"svm neg nval"}        = 'Papers that have been flagged as negative for the indicated data type by the Support Vector Machine (SVM) and have not been confirmed by a curator either to have the indicated data type or not';
   $statsHashToDescription{"svm neg ncur"}        = 'Papers that have been flagged as negative for the indicated data type by the Support Vector Machine (SVM) and have not been curated (True negatives + Not validated)';
 
+  $statsHashToDescription{"str"}                 = 'Papers for which there is a text string match';
+  $statsHashToDescription{"str pos"}             = 'Papers that have been flagged as positive for the indicated data type by text string match';
+  $statsHashToDescription{"str pos val"}         = 'Papers that have been flagged as positive for the indicated data type by text string match and have been confirmed by a curator either to have the indicated data type or not';
+  $statsHashToDescription{"str pos val tp"}      = 'Papers that have been flagged as positive for the indicated data type by text string match and have been confirmed by a curator to have the data type and, hence, be a true positive';
+  $statsHashToDescription{"str pos val tp cur"}  = 'Papers that have been flagged as positive for the indicated data type by text string match, have been confirmed by a curator to have the data type and, hence, be a true positive, and have been curated';
+  $statsHashToDescription{"str pos val tp ncur"} = 'Papers that have been flagged as positive for the indicated data type by text string match, have been confirmed by a curator to have the data type and, hence, be a true positive, and have not yet been curated';
+  $statsHashToDescription{"str pos val fp"}      = 'Papers that have been flagged as positive for the indicated data type by text string match and have been confirmed by a curator to lack the data type and, hence, be a false positive';
+  $statsHashToDescription{"str pos nval"}        = 'Papers that have been flagged as positive for the indicated data type by text string match and have not been confirmed by a curator either to have the indicated data type or not';
+  $statsHashToDescription{"str pos ncur"}        = 'Papers that have been flagged as positive for the indicated data type by text string match and have not been curated (True positives, not curated + Not validated)';
+  $statsHashToDescription{"str neg"}             = 'Papers that have been flagged as negative for the indicated data type by text string match';
+  $statsHashToDescription{"str neg val"}         = 'Papers that have been flagged as negative for the indicated data type by text string match and have been confirmed by a curator either to have the indicated data type or not';
+  $statsHashToDescription{"str neg val tn"}      = 'Papers that have been flagged as negative for the indicated data type by text string match and have been confirmed by a curator to lack the data type and, hence, be a true negative';
+  $statsHashToDescription{"str neg val fn"}      = 'Papers that have been flagged as negative for the indicated data type by text string match and have been confirmed by a curator to have the data type and, hence, be a false negative';
+  $statsHashToDescription{"str neg val fn cur"}  = 'Papers that have been flagged as negative for the indicated data type by text string match, have been confirmed by a curator to have the data type and, hence, be a false negative, and have been curated';
+  $statsHashToDescription{"str neg val fn ncur"} = 'Papers that have been flagged as negative for the indicated data type by text string match, have been confirmed by a curator to have the data type and, hence, be a false negative, and have not yet been curated';
+  $statsHashToDescription{"str neg nval"}        = 'Papers that have been flagged as negative for the indicated data type by text string match and have not been confirmed by a curator either to have the indicated data type or not';
+  $statsHashToDescription{"str neg ncur"}        = 'Papers that have been flagged as negative for the indicated data type by text string match and have not been curated (True negatives + Not validated)';
+
   $statsHashToDescription{"afpemailed"}          = 'Papers for which authors have been e-mailed to request that they fill out the Author First Pass (AFP) form';
   $statsHashToDescription{"afp"}                 = 'Papers for which authors have filled out the Author First Pass (AFP) form';
   $statsHashToDescription{"afp pos"}             = 'Papers that have been flagged as positive for the indicated data type by Author First Pass (AFP)';
@@ -2720,6 +3034,25 @@ sub populateStatisticsHashToLabel {
   $statsHashToLabel{"int pos val fp"}      = 'Intersection positive validated false positive';
   $statsHashToLabel{"int pos nval"}        = 'Intersection positive not validated';
   $statsHashToLabel{"int pos ncur"}        = 'Intersection positive not curated';
+
+# TODO not sure these are useful/needed
+  $statsHashToLabel{"str"}                 = 'STR flagged';
+  $statsHashToLabel{"str neg"}             = 'STR negative';
+  $statsHashToLabel{"str neg val"}         = 'STR negative validated';
+  $statsHashToLabel{"str neg val tn"}      = 'STR negative validated true  negative';
+  $statsHashToLabel{"str neg val fn"}      = 'STR negative validated false negative';
+  $statsHashToLabel{"str neg val fn cur"}  = 'STR negative validated false negative curated';
+  $statsHashToLabel{"str neg val fn ncur"} = 'STR negative validated false negative not curated';
+  $statsHashToLabel{"str neg nval"}        = 'STR negative not validated';
+  $statsHashToLabel{"str neg ncur"}        = 'STR negative not curated';
+  $statsHashToLabel{"str pos"}             = 'STR positive';
+  $statsHashToLabel{"str pos val"}         = 'STR positive validated';
+  $statsHashToLabel{"str pos val tp"}      = 'STR positive validated true  positive';
+  $statsHashToLabel{"str pos val tp cur"}  = 'STR positive validated true  positive curated';
+  $statsHashToLabel{"str pos val tp ncur"} = 'STR positive validated true  positive not curated';
+  $statsHashToLabel{"str pos val fp"}      = 'STR positive validated false positive';
+  $statsHashToLabel{"str pos nval"}        = 'STR positive not validated';
+  $statsHashToLabel{"str pos ncur"}        = 'STR positive not curated';
 
   $statsHashToLabel{"svmnotdone"}          = 'SVM no svm processed';
   $statsHashToLabel{"svm"}                 = 'SVM has svm';
@@ -2806,6 +3139,7 @@ sub populateStatisticsHashToLabel {
   $statsHashToLabel{"dividerany"}     = '&nbsp;';
   $statsHashToLabel{"dividerint"}     = '&nbsp;';
   $statsHashToLabel{"dividersvm"}     = '&nbsp;';
+  $statsHashToLabel{"dividerstr"}     = '&nbsp;';
   $statsHashToLabel{"dividerafp"}     = '&nbsp;';
   $statsHashToLabel{"dividercfp"}     = '&nbsp;';
 } # sub populateStatisticsHashToLabel

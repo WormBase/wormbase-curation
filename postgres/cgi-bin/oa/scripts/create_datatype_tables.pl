@@ -23,6 +23,9 @@ my $datatype = 'tst';
 my @tables = qw( name animals dataflag datatext curator remark nodump person otherpersons date );
 
 foreach my $table (@tables) {
+  $dbh->do( "DELETE FROM oac_column_width    WHERE oac_datatype = '$datatype';" );
+  $dbh->do( "DELETE FROM oac_column_order    WHERE oac_datatype = '$datatype';" );
+  $dbh->do( "DELETE FROM oac_column_showhide WHERE oac_datatype = '$datatype';" );
   &dropTable($table); 
   &createTable($table); 
 }

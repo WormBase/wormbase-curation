@@ -34,7 +34,7 @@ foreach (@allowedSubdomains) { $allowedSubdomains{$_}++; }
 my $subDomains = join" | ", @allowedSubdomains;
 
 my %allowedDatatypes;
-my @allowedDatatypes = qw( app int pro prt rna trp );
+my @allowedDatatypes = qw( app cns int mop pro prt rna trp );
 foreach (@allowedDatatypes) { $allowedDatatypes{$_}++; }
 
 my %allowedCurators;
