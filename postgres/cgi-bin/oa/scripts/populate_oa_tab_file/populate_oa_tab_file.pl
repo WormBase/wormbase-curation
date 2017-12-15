@@ -34,11 +34,11 @@ foreach (@allowedSubdomains) { $allowedSubdomains{$_}++; }
 my $subDomains = join" | ", @allowedSubdomains;
 
 my %allowedDatatypes;
-my @allowedDatatypes = qw( app cns int mop pro prt rna trp );
+my @allowedDatatypes = qw( app cns grg int mop pro prt rna trp );
 foreach (@allowedDatatypes) { $allowedDatatypes{$_}++; }
 
 my %allowedCurators;
-my @allowedCurators = qw( 1823 2987 712 1843 12028 101 324 363 557 1760 2970 );
+my @allowedCurators = qw( 1823 2987 712 1843 12028 101 324 363 557 1760 2970 38423 );
 foreach (@allowedCurators) { $allowedCurators{$_}++; }
 
 my $usage = qq( ./populate_oa_tab_file.pl <server> <wbpersonID> <filename>\n);

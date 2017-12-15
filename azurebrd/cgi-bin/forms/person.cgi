@@ -526,7 +526,7 @@ sub populateLab {
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while(my @row = $result->fetchrow) { $names{middle}{$row[0]} = $row[2]; }
 
-  $result = $dbh->prepare( "SELECT * FROM two_pis" );
+  $result = $dbh->prepare( "SELECT * FROM two_pis WHERE two_pis ~ '[A-Z]'" );	# only letter labs for Cecilia 2016 10 26
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while(my @row = $result->fetchrow) { 
     my $two = $row[0]; my $lab = $row[2];

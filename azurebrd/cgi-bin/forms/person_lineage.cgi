@@ -358,9 +358,9 @@ sub process {			# see if anything clicked
       elsif ($action eq 'Display') {			# diplay the form as well as existing lineage
         (my $oop, my $number) = &getHtmlVar($query, 'number');
         print "Display $number data<BR>\n";
-        &displayTop(); 
         my $joinkey = $number; $joinkey =~ s/WBPerson/two/g;
-        print "<TR></TR> <TR></TR> <TR></TR> <TR></TR>\n <TR></TR> <TR></TR> <TR></TR> <TR></TR>\n <TR></TR> <TR></TR> <TR></TR> <TR></TR>\n <TR></TR> <TR></TR> <TR></TR> <TR></TR>\n";
+        &displayTop(); 
+        print "<TR><TD><BR/></TD></TR>\n";
         print "<TR><TD COLSPAN=6><FONT SIZE=+2><B>Existing Data</B></FONT>&nbsp;&nbsp;&nbsp;If any of these are not correct check the corresponding box.</FONT></TD></TR>\n";
         my %stdname; my %lastname; my %fullname;			# numbers to standardname and lastname (for display and sorting respectively)
         my $result = $dbh->prepare( "SELECT joinkey, two_standardname FROM two_standardname; " );
@@ -387,7 +387,8 @@ sub process {			# see if anything clicked
 #           my $fullname = "$row[1] $row[2]";
 #           if ($row[3]) { $fullname = "$row[1] $row[3] $row[2]"; }
 #           $fullname{$num} = $fullname; }		# map wbperson numbers to fullnames for display
-        $number =~ s/WBPerson//g;			# filter out WBPerson to get the proper stdname
+        $number =~ s/WBPerson//g;				# filter out 'two' to get the proper stdname
+        print "<TR><TD><BR/></TD></TR>\n";
         print "<TR><TD COLSPAN=6><FONT SIZE=+2 COLOR='blue'>$stdname{$number}'s current Lineage :</FONT></TD></TR>\n";
         $result = $dbh->prepare( "SELECT joinkey, two_lastname FROM two_lastname; " );
         $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
@@ -518,10 +519,7 @@ EndOfText
 
 sub displayBottom {			# show form as appropriate
   print <<"EndOfText";
-    <TR></TR> <TR></TR> <TR></TR> <TR></TR>
-    <TR></TR> <TR></TR> <TR></TR> <TR></TR>
-    <TR></TR> <TR></TR> <TR></TR> <TR></TR>
-    <TR></TR> <TR></TR> <TR></TR> <TR></TR>
+    <TR><TD><BR/></TD></TR>
     <TR><TD colspan=4><FONT SIZE=+2><B>LINEAGE CONNECTIONS WITH</B></FONT> (Please don't use titles)</TD></TR>
 EndOfText
 

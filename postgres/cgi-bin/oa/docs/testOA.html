@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>testOA - Config file for test OA configurations for test  MOD.</title>
+<title></title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <link rev="made" href="mailto:root@localhost" />
 </head>
@@ -10,194 +10,220 @@
 <body style="background-color: white">
 
 
-<!-- INDEX BEGIN -->
-<div name="index">
-<p><a name="__index__"></a></p>
 
-<ul>
-
-	<li><a href="#name">NAME</a></li>
-	<li><a href="#synopsis">SYNOPSIS</a></li>
-	<li><a href="#description">DESCRIPTION</a></li>
-	<ul>
-
-		<li><a href="#login_test">LOGIN TEST</a></li>
-		<li><a href="#initialize_test_fields">INITIALIZE TEST FIELDS</a></li>
-		<li><a href="#set_any_simple_autocomplete_values">SET ANY SIMPLE AUTOCOMPLETE VALUES</a></li>
-		<li><a href="#get_any_specific_autocomplete">GET ANY SPECIFIC AUTOCOMPLETE</a></li>
-		<li><a href="#get_any_specific_valid_value">GET ANY SPECIFIC VALID VALUE</a></li>
-		<li><a href="#get_any_specific_term_info">GET ANY SPECIFIC TERM INFO</a></li>
-		<li><a href="#get_any_specific_id_to_value">GET ANY SPECIFIC ID TO VALUE</a></li>
-	</ul>
-
+<ul id="index">
+  <li><a href="#NAME">NAME</a></li>
+  <li><a href="#SYNOPSIS">SYNOPSIS</a></li>
+  <li><a href="#DESCRIPTION">DESCRIPTION</a>
+    <ul>
+      <li><a href="#LOGIN-TEST">LOGIN TEST</a></li>
+      <li><a href="#INITIALIZE-TEST-FIELDS">INITIALIZE TEST FIELDS</a></li>
+      <li><a href="#SET-ANY-SIMPLE-AUTOCOMPLETE-VALUES">SET ANY SIMPLE AUTOCOMPLETE VALUES</a></li>
+      <li><a href="#GET-ANY-SPECIFIC-AUTOCOMPLETE">GET ANY SPECIFIC AUTOCOMPLETE</a></li>
+      <li><a href="#GET-ANY-SPECIFIC-VALID-VALUE">GET ANY SPECIFIC VALID VALUE</a></li>
+      <li><a href="#GET-ANY-SPECIFIC-TERM-INFO">GET ANY SPECIFIC TERM INFO</a></li>
+      <li><a href="#GET-ANY-SPECIFIC-ID-TO-VALUE">GET ANY SPECIFIC ID TO VALUE</a></li>
+    </ul>
+  </li>
 </ul>
 
-<hr name="index" />
-</div>
-<!-- INDEX END -->
+<h1 id="NAME">NAME</h1>
 
-<p>
-</p>
-<h1><a name="name">NAME</a></h1>
-<p>testOA - Config file for test OA configurations for test  MOD.</p>
-<p>
-</p>
-<hr />
-<h1><a name="synopsis">SYNOPSIS</a></h1>
+<p>testOA - Config file for test OA configurations for test MOD.</p>
+
+<h1 id="SYNOPSIS">SYNOPSIS</h1>
+
 <p>In ontology_annotator.cgi :</p>
+
 <ul>
-<li><strong><a name="add_use_testoa" class="item">add &quot;use testOA;&quot;</a></strong>
+
+<li><p>add &quot;use testOA;&quot;</p>
 
 </li>
-<li><strong><a name="add_my_configloaded_testoa" class="item">add &quot;my $configLoaded = 'testOA';&quot;</a></strong>
+<li><p>add &quot;my $configLoaded = &#39;testOA&#39;;&quot;</p>
 
 </li>
 </ul>
+
 <p>In this oa perl module file :</p>
+
 <ul>
-<li><strong><a name="if_creating_a_copy_of_this_perl_module_change_the_name_in_the_first_line_package_testoa" class="item">if creating a copy of this perl module change the name in the first line 'package testOA;'.</a></strong>
+
+<li><p>if creating a copy of this perl module change the name in the first line &#39;package testOA;&#39;.</p>
 
 </li>
-<li><strong><a name="customize_inittestfields_showtestlogin_setanysimpleautocompletevalues_getanyspecificautocomplete_getanyspecificvalidvalue_getanyspecificterminfo_getanyspecificidtovalue" class="item">customize  &amp;initTestFields  &amp;showTestLogin  &amp;setAnySimpleAutocompleteValues  &amp;getAnySpecificAutocomplete  &amp;getAnySpecificValidValue  &amp;getAnySpecificTermInfo  &amp;getAnySpecificIdToValue</a></strong>
+<li><p>customize &amp;initTestFields &amp;showTestLogin &amp;setAnySimpleAutocompleteValues &amp;getAnySpecificAutocomplete &amp;getAnySpecificValidValue &amp;getAnySpecificTermInfo &amp;getAnySpecificIdToValue</p>
 
 </li>
 </ul>
-<p>
-</p>
-<hr />
-<h1><a name="description">DESCRIPTION</a></h1>
-<p>ontology_annotator.cgi has the generic code for any kind of configuration.  Some subroutines need data that is specific to a given datatype / configuration, and modules like this one can be custom-written to appropriately get and display this data.  There are seven groups of subroutines that need to be written :</p>
+
+<h1 id="DESCRIPTION">DESCRIPTION</h1>
+
+<p>ontology_annotator.cgi has the generic code for any kind of configuration. Some subroutines need data that is specific to a given datatype / configuration, and modules like this one can be custom-written to appropriately get and display this data. There are seven groups of subroutines that need to be written :</p>
+
 <ul>
-<li><strong><a name="login_mod_switch_to_call_appropriate_login_related_subroutine" class="item">&amp;login&lt;Mod&gt;  switch to call appropriate login-related subroutine</a></strong>
+
+<li><p>&amp;login&lt;Mod&gt; switch to call appropriate login-related subroutine</p>
 
 </li>
-<li><strong><a name="init_mod_fields_initializes_the_appropriate_fields_and_datatypes_for_the_mod_s_chosen_datatype_and_curator" class="item">&amp;init&lt;Mod&gt;Fields  initializes the appropriate %fields and %datatypes for the MOD's chosen datatype and curator.</a></strong>
+<li><p>&amp;init&lt;Mod&gt;Fields initializes the appropriate %fields and %datatypes for the MOD&#39;s chosen datatype and curator.</p>
 
 </li>
-<li><strong><a name="setanysimpleautocompletevalues_set_values_of_dropdown_or_multidropdown_for_a_given_ontology_type" class="item">setAnySimpleAutocompleteValues  set values of dropdown or multidropdown for a given ontology_type.</a></strong>
+<li><p>setAnySimpleAutocompleteValues set values of dropdown or multidropdown for a given ontology_type.</p>
 
 </li>
-<li><strong><a name="getanyspecificautocomplete_for_something_that_a_curator_types_into_an_ontology_or_multiontology_field_get_autocomplete_values_that_correspond_to_it" class="item">getAnySpecificAutocomplete  for something that a curator types into an ontology or multiontology field, get autocomplete values that correspond to it.</a></strong>
+<li><p>getAnySpecificAutocomplete for something that a curator types into an ontology or multiontology field, get autocomplete values that correspond to it.</p>
 
 </li>
-<li><strong><a name="getanyspecificvalidvalue_for_a_value_that_a_curator_selects_in_an_ontology_or_multiontology_field_check_if_it_s_valid_and_return_true_or_false" class="item">getAnySpecificValidValue  for a value that a curator selects in an ontology or multiontology field, check if it's valid and return 'true' or 'false'.</a></strong>
+<li><p>getAnySpecificValidValue for a value that a curator selects in an ontology or multiontology field, check if it&#39;s valid and return &#39;true&#39; or &#39;false&#39;.</p>
 
 </li>
-<li><strong><a name="getanyspecificterminfo_for_a_value_that_a_curator_looks_at_in_an_ontology_or_multiontology_field_get_the_corresponding_term_information_for_the_oa_s_obo_frame" class="item">getAnySpecificTermInfo  for a value that a curator looks at in an ontology or multiontology field, get the corresponding term information for the OA's obo frame.</a></strong>
+<li><p>getAnySpecificTermInfo for a value that a curator looks at in an ontology or multiontology field, get the corresponding term information for the OA&#39;s obo frame.</p>
 
 </li>
-<li><strong><a name="names" class="item">getAnySpecificIdToValue  for some stored IDs in an ontology or multiontology field's corresponding postgres table, get the corresponding objects's names (and IDs) to display on the dataTable, as well as update %fieldIdToValue .</a></strong>
+<li><p>getAnySpecificIdToValue for some stored IDs in an ontology or multiontology field&#39;s corresponding postgres table, get the corresponding objects&#39;s names (and IDs) to display on the dataTable, as well as update %fieldIdToValue .</p>
 
 </li>
 </ul>
-<p>When creating a new MOD, must create  &amp;login&lt;Mod&gt;  and optional curator_ip table.</p>
-<p>When creating a new datatype, must create  &amp;init&lt;Mod&gt;Fields  and corresponding postgres tables.</p>
-<p>When creating a new dropdown / multidropdown, must set values in  &amp;setAnySimpleAutocompleteValues .</p>
-<p>When creating a new ontology / multiontology, must set  &amp;getAnySpecificAutocomplete  &amp;getAnySpecificValidValue  &amp;getAnySpecificTermInfo  &amp;getAnySpecificIdToValue  and create appropriate corresponding subroutine for each.</p>
-<p>NOTE : If using this as a template for a new MOD OA configuration, you will not have pap_ postgres tables, so the  &amp;getAnySpecific...  subroutines will not work because the tables will not exist.  Look at the wormOA.pm for more examples.</p>
-<p>
-</p>
-<h2><a name="login_test">LOGIN TEST</a></h2>
-<p>&amp;loginTest  is the main subroutine called from the ontology_annotator.cgi and calls the appropriate login-related subroutine.  The worm config stores the last IP used by any given curator, this is not necessary for other MODs.</p>
-<p>&amp;loginMod  is called by ontology_annotator.cgi  passing in a flag for which subroutine to call, an IP address, and optional curator_two.  It is a generalized function to call  &amp;loginTest  with the same parameters.</p>
-<p>&amp;loginTest  is called by  &amp;loginMod  passing in a flag for which subroutine to call, an IP address, and optional curator_two.  It calls  &amp;showTestLogin  or  &amp;updateTestCurator .</p>
-<p>&amp;showTestLogin  is called from ontology_annotator.cgi's  &amp;showLogin  passing in the IP of the user.  Displays a selection of curators and datatypes for that MOD, and a Login button 'Login !'.  A postgres table of curator IPs finds the last curator to use that IP and automatically select it ;  this is optional and only necessary is tracking curators by IP.</p>
-<p>&amp;updateTestCurator  is called from ontology_annotator.cgi's  &amp;showMain  passing in the IP of the user and the curator_two to update.  Update the postgres table two_curator_ip for this curator_two and IP.  Optional subroutine, unnecessary if not tracking curators by IP.</p>
-<p>
-</p>
-<h2><a name="initialize_test_fields">INITIALIZE TEST FIELDS</a></h2>
-<p>&amp;initTestFields  is the main subroutine called from the ontology_annotator.cgi and calls the appropriate datatype-appropriate initialization subroutine to set field and datatype values.</p>
-<p>&amp;initModFields  is called by ontology_annotator.cgi  passing in $datatype and $curator_two and returning values of $fieldsRef and $datatypesRef .  It is a generalized function to call  &amp;initTestFields  with the same parameters.</p>
-<p>&amp;initTestFields  is called by  &amp;initModFields  passing in $datatype and $curator_two and returning values of $fieldsRef and $datatypesRef .  A new datatype configuration calls  &amp;initTest&lt;datatype&gt;Fields  passing $datatype and $curator_two and returning values of $fieldsRef and $datatypesRef .</p>
-<p>&amp;initTest&lt;datatype&gt;Fields  exist for each specific datatype configuration.  It defines the %fields and %datatypes and returns them to the ontology_annotator.cgi .</p>
-<p>%datatypes  stores options for each datatype configuration as a whole, in the format  $datatypes{&lt;datatype&gt;}{&lt;option&gt;} .  It can have these options :</p>
+
+<p>When creating a new MOD, must create &amp;login&lt;Mod&gt; and optional curator_ip table.</p>
+
+<p>When creating a new datatype, must create &amp;init&lt;Mod&gt;Fields and corresponding postgres tables.</p>
+
+<p>When creating a new dropdown / multidropdown, must set values in &amp;setAnySimpleAutocompleteValues .</p>
+
+<p>When creating a new ontology / multiontology, must set &amp;getAnySpecificAutocomplete &amp;getAnySpecificValidValue &amp;getAnySpecificTermInfo &amp;getAnySpecificIdToValue and create appropriate corresponding subroutine for each.</p>
+
+<p>NOTE : If using this as a template for a new MOD OA configuration, you will not have pap_ postgres tables, so the &amp;getAnySpecific... subroutines will not work because the tables will not exist. Look at the wormOA.pm for more examples.</p>
+
+<h2 id="LOGIN-TEST">LOGIN TEST</h2>
+
+<p>&amp;loginTest is the main subroutine called from the ontology_annotator.cgi and calls the appropriate login-related subroutine. The worm config stores the last IP used by any given curator, this is not necessary for other MODs.</p>
+
+<p>&amp;loginMod is called by ontology_annotator.cgi passing in a flag for which subroutine to call, an IP address, and optional curator_two. It is a generalized function to call &amp;loginTest with the same parameters.</p>
+
+<p>&amp;loginTest is called by &amp;loginMod passing in a flag for which subroutine to call, an IP address, and optional curator_two. It calls &amp;showTestLogin or &amp;updateTestCurator .</p>
+
+<p>&amp;showTestLogin is called from ontology_annotator.cgi&#39;s &amp;showLogin passing in the IP of the user. Displays a selection of curators and datatypes for that MOD, and a Login button &#39;Login !&#39;. A postgres table of curator IPs finds the last curator to use that IP and automatically select it ; this is optional and only necessary is tracking curators by IP.</p>
+
+<p>&amp;updateTestCurator is called from ontology_annotator.cgi&#39;s &amp;showMain passing in the IP of the user and the curator_two to update. Update the postgres table two_curator_ip for this curator_two and IP. Optional subroutine, unnecessary if not tracking curators by IP.</p>
+
+<h2 id="INITIALIZE-TEST-FIELDS">INITIALIZE TEST FIELDS</h2>
+
+<p>&amp;initTestFields is the main subroutine called from the ontology_annotator.cgi and calls the appropriate datatype-appropriate initialization subroutine to set field and datatype values.</p>
+
+<p>&amp;initModFields is called by ontology_annotator.cgi passing in $datatype and $curator_two and returning values of $fieldsRef and $datatypesRef . It is a generalized function to call &amp;initTestFields with the same parameters.</p>
+
+<p>&amp;initTestFields is called by &amp;initModFields passing in $datatype and $curator_two and returning values of $fieldsRef and $datatypesRef . A new datatype configuration calls &amp;initTest&lt;datatype&gt;Fields passing $datatype and $curator_two and returning values of $fieldsRef and $datatypesRef .</p>
+
+<p>&amp;initTest&lt;datatype&gt;Fields exist for each specific datatype configuration. It defines the %fields and %datatypes and returns them to the ontology_annotator.cgi .</p>
+
+<p>%datatypes stores options for each datatype configuration as a whole, in the format $datatypes{&lt;datatype&gt;}{&lt;option&gt;} . It can have these options :</p>
+
 <ul>
-<li><strong><a name="highestpgidtables_required_array_of_tables_for_this_config_that_should_have_a_value_to_determine_the_highest_used_pgid_also_when_doing_a_jsonfieldquery_if_querying_by_id_use_these_tables_instead" class="item">highestPgidTables	REQUIRED	array of tables for this config that should have a value to determine the highest used pgid.  Also when doing a &amp;jsonFieldQuery if querying by id use these tables instead.</a></strong>
+
+<li><p>highestPgidTables REQUIRED array of tables for this config that should have a value to determine the highest used pgid. Also when doing a &amp;jsonFieldQuery if querying by id use these tables instead.</p>
 
 </li>
-<li><strong><a name="newrowsub_required_pointer_to_the_config_specific_sub_to_create_a_new_row_most_only_insert_to_postgres_table_of_curator_field_others_also_to_other_tables" class="item">newRowSub	REQUIRED	pointer to the config-specific sub to create a new row.  Most only insert to postgres table of _curator field, others also to other tables.</a></strong>
+<li><p>newRowSub REQUIRED pointer to the config-specific sub to create a new row. Most only insert to postgres table of _curator field, others also to other tables.</p>
 
 </li>
-<li><strong><a name="constraintsub_optional_pointer_to_the_config_specific_sub_for_checks_when_checking_data_called_by_ontology_annotator_cgi_by_checkdatabypgids_returns_ok_or_messages_with_specific_problems_for_specific_pgids" class="item">constraintSub	OPTIONAL	pointer to the config-specific sub for checks when checking data.  Called by ontology_annotator.cgi by  &amp;checkDataByPgids .  Returns 'OK' or messages with specific problems for specific pgids.</a></strong>
+<li><p>constraintSub OPTIONAL pointer to the config-specific sub for checks when checking data. Called by ontology_annotator.cgi by &amp;checkDataByPgids . Returns &#39;OK&#39; or messages with specific problems for specific pgids.</p>
 
 </li>
-<li><strong><a name="constrainttableshavedata_optional_array_of_tables_for_this_config_when_checking_data_these_tables_must_have_data_called_by_ontology_annotator_cgi_by_checkdatabypgids" class="item">constraintTablesHaveData	OPTIONAL	array of tables for this config.  When checking data, these tables must have data.  Called by ontology_annotator.cgi by  &amp;checkDataByPgids .</a></strong>
+<li><p>constraintTablesHaveData OPTIONAL array of tables for this config. When checking data, these tables must have data. Called by ontology_annotator.cgi by &amp;checkDataByPgids .</p>
 
 </li>
 </ul>
-<p>%fields  stores options for the datatype configuration's individual fields, in the format  $fields{&lt;datatype&gt;}{&lt;field_name&gt;}{&lt;option&gt;} .  It must have a field called 'id' used to store the dataTable's pgid / postgresTables's joinkey.  It must also have a field called 'curator' (or equivalent, such as 'curator_evidence').  It can have these options :</p>
+
+<p>%fields stores options for the datatype configuration&#39;s individual fields, in the format $fields{&lt;datatype&gt;}{&lt;field_name&gt;}{&lt;option&gt;} . It must have a field called &#39;id&#39; used to store the dataTable&#39;s pgid / postgresTables&#39;s joinkey. It must also have a field called &#39;curator&#39; (or equivalent, such as &#39;curator_evidence&#39;). It can have these options :</p>
+
 <ul>
-<li><strong><a name="type_required_the_type_of_field_possible_values_are_text_bigtext_dropdown_multidropdown_ontology_multiontology_toggle_toggle_text_queryonly" class="item">type	REQUIRED	the type of field.  Possible values are : text bigtext dropdown multidropdown ontology multiontology toggle toggle_text queryonly</a></strong>
+
+<li><p>type REQUIRED the type of field. Possible values are : text bigtext dropdown multidropdown ontology multiontology toggle toggle_text queryonly</p>
 
 </li>
-<li><strong><a name="label_required_text_that_shows_on_the_oa_editor_and_datatable_columns_editor_td_has_id_label_field_should_never_have_the_same_label_for_different_fields_because_js_columnreorderevent_uses_label_value_to_set_order" class="item">label	REQUIRED	text that shows on the OA editor and dataTable columns.  Editor td has id label_$field.  Should never have the same label for different fields because .js columnReorderEvent uses label value to set order.</a></strong>
+<li><p>label REQUIRED text that shows on the OA editor and dataTable columns. Editor td has id label_$field. Should never have the same label for different fields because .js columnReorderEvent uses label value to set order.</p>
 
 </li>
-<li><strong><a name="tab_required_which_editor_s_tab_displays_the_field_value_can_be_all_or_tab1_tab2_c" class="item">tab	REQUIRED	which editor's tab displays the field.  Value can be 'all' or 'tab1', 'tab2', &amp;c.</a></strong>
+<li><p>tab REQUIRED which editor&#39;s tab displays the field. Value can be &#39;all&#39; or &#39;tab1&#39;, &#39;tab2&#39;, &amp;c.</p>
 
 </li>
-<li><strong><a name="dropdown_type_dependent_required_for_fields_of_type_dropdown_or_multidropdown_to_specify_which_values_to_show_for_a_given_dropdown_multidropdown_field_used_by_ontology_annotator_cgi_for_getanysimplevalidvalue_setanysimpleautocomplete_getanysimpleautocomplete_idtovalue_conversion" class="item">dropdown_type	DEPENDENT	required for fields of type dropdown or multidropdown.  To specify which values to show for a given dropdown / multidropdown field.  Used by ontology_annotator.cgi for  &amp;getAnySimpleValidValue  &amp;setAnySimpleAutocomplete  &amp;getAnySimpleAutocomplete   IdToValue conversion.</a></strong>
+<li><p>dropdown_type DEPENDENT required for fields of type dropdown or multidropdown. To specify which values to show for a given dropdown / multidropdown field. Used by ontology_annotator.cgi for &amp;getAnySimpleValidValue &amp;setAnySimpleAutocomplete &amp;getAnySimpleAutocomplete IdToValue conversion.</p>
 
 </li>
-<li><strong><a name="generic" class="item">ontology_type	DEPENDENT	required for fields of type ontology or multiontology.  For ontology subroutines to know what type of data to use for an ontology / multiontology.  Can be generic (value 'obo') and use 'obo_' tables, or can be specific and have custom subroutines (e.g. WBGene, WBPerson, WBPaper, Transgene, &amp;c.).  A given ontology_type can be used in different datatypes and/or multiple times in the same datatype.</a></strong>
+<li><p>ontology_type DEPENDENT required for fields of type ontology or multiontology. For ontology subroutines to know what type of data to use for an ontology / multiontology. Can be generic (value &#39;obo&#39;) and use &#39;obo_&#39; tables, or can be specific and have custom subroutines (e.g. WBGene, WBPerson, WBPaper, Transgene, &amp;c.). A given ontology_type can be used in different datatypes and/or multiple times in the same datatype.</p>
 
 </li>
-<li><strong><a name="ontology_table_dependent_required_for_fields_of_type_ontology_or_multiontology_that_also_have_ontology_type_value_obo_this_determines_the_specific_obo_table_to_get_values_from" class="item">ontology_table	DEPENDENT	required for fields of type ontology or multiontology that also have ontology_type value 'obo', this determines the specific obo_ table to get values from.</a></strong>
+<li><p>ontology_table DEPENDENT required for fields of type ontology or multiontology that also have ontology_type value &#39;obo&#39;, this determines the specific obo_ table to get values from.</p>
 
 </li>
-<li><strong><a name="inline_dependent_required_for_fields_that_have_multiple_fields_in_the_same_row_can_hold_the_value_of_the_corresponding_field_that_follows_or_begin_with_inside_when_doing_showeditor_values_with_inside_get_skipped_values_that_are_toggle_text_show_the_toggle_field_and_then_the_corresponding_text_field" class="item">inline	DEPENDENT	required for fields that have multiple fields in the same row.  Can hold the value of the corresponding field that follows, or begin with 'INSIDE_'.  When doing &amp;showEditor, values with 'INSIDE_' get skipped ;  values that are 'toggle_text' show the toggle field and then the corresponding text field.</a></strong>
+<li><p>inline DEPENDENT required for fields that have multiple fields in the same row. Can hold the value of the corresponding field that follows, or begin with &#39;INSIDE_&#39;. When doing &amp;showEditor, values with &#39;INSIDE_&#39; get skipped ; values that are &#39;toggle_text&#39; show the toggle field and then the corresponding text field.</p>
 
 </li>
-<li><strong><a name="queryonlysub_dependent_required_for_fields_of_type_queryonly_pointer_to_the_datatype_field_specific_sub_to_create_a_custom_postgres_query_for_queryonly_fields_that_returns_joinkeys" class="item">queryonlySub  DEPENDENT		required for fields of type queryonly.  Pointer to the datatype-field-specific sub to create a custom postgres query for queryonly fields that returns joinkeys.</a></strong>
+<li><p>queryonlySub DEPENDENT required for fields of type queryonly. Pointer to the datatype-field-specific sub to create a custom postgres query for queryonly fields that returns joinkeys.</p>
 
 </li>
-<li><strong><a name="edited" class="item">noteditable	OPTIONAL	flag.  Field can't be edited (affects ontology_annotator.js only).  Values in bigtext field will toggle into the input field, so the editor will change, but values will not update in the datatable, nor change in postgres.</a></strong>
+<li><p>noteditable OPTIONAL flag. Field can&#39;t be edited (affects ontology_annotator.js only). Values in bigtext field will toggle into the input field, so the editor will change, but values will not update in the datatable, nor change in postgres.</p>
 
 </li>
-<li><strong><a name="input_size_optional_integer_html_input_tag_has_this_size_on_editor" class="item">input_size	OPTIONAL	integer.  Html input tag has this size on editor.</a></strong>
+<li><p>input_size OPTIONAL integer. Html input tag has this size on editor.</p>
 
 </li>
-<li><strong><a name="placeholder_optional_fake_field_to_set_the_order_in_the_tied_hash_fields_on_editor_show_in_order_they_were_entered_in_the_tied_fields_hash_this_only_serves_to_set_the_order" class="item">placeholder	OPTIONAL	fake field to set the order in the tied hash.  Fields on editor show in order they were entered in the tied %fields hash, this only serves to set the order.</a></strong>
+<li><p>placeholder OPTIONAL fake field to set the order in the tied hash. Fields on editor show in order they were entered in the tied %fields hash, this only serves to set the order.</p>
 
 </li>
-<li><strong><a name="columnwidth_optional_integer_value_to_hard_set_the_width_in_pixels_of_the_value_s_datatable_column" class="item">columnWidth	OPTIONAL	integer.  Value to hard-set the width in pixels of the value's dataTable column.</a></strong>
+<li><p>columnWidth OPTIONAL integer. Value to hard-set the width in pixels of the value&#39;s dataTable column.</p>
 
 </li>
-<li><strong><a name="columnorder_optional_integer_value_to_hard_set_the_array_order_of_the_columns_in_the_datatable_never_set_multiple_fields_to_the_same_columnorder_or_one_will_not_show" class="item">columnOrder	OPTIONAL	integer.  Value to hard-set the array order of the columns in the dataTable.  Never set multiple fields to the same columnOrder or one will not show.</a></strong>
+<li><p>columnOrder OPTIONAL integer. Value to hard-set the array order of the columns in the dataTable. Never set multiple fields to the same columnOrder or one will not show.</p>
 
 </li>
 </ul>
-<p>
-</p>
-<h2><a name="set_any_simple_autocomplete_values">SET ANY SIMPLE AUTOCOMPLETE VALUES</a></h2>
-<p>&amp;setAnySimpleAutocompleteValues  is the only subroutine called from the ontology_annotator.cgi and sets the dropdown values for the appropriate datatype.  Necessary when creating a new dropdown or multidropdown ontology type.</p>
-<p>&amp;setAnySimpleAutocompleteValues  is called by ontology_annotator.cgi  passing in the ontology_type and returning a pointer to %data.  Creates a tied %data hash which has all dropdown values in order entered for the given ontology_type.</p>
-<p>%data  stores dropdown values for a given ontology_type, in the format  ''$data{&lt;ontology_type&gt;}{name}{&lt;name&gt;} = &lt;value_to_display&gt;''.  value_to_display  can have two formats : ''&lt;name_of_value&gt; ( &lt;id_of_value&gt; ) '' or ''&lt;value&gt;'' depending on whether the ontology_type stores IDs or not, respectively.</p>
-<p>
-</p>
-<h2><a name="get_any_specific_autocomplete">GET ANY SPECIFIC AUTOCOMPLETE</a></h2>
-<p>&amp;getAnySpecificAutocomplete  is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to get the matching Autocomplete values for that ontology_type.  Used when a curator types full or partial terms into an ontology / multiontology field.  Necessary when creating a new ontology or multiontology type.</p>
-<p>&amp;getAnySpecificAutocomplete  is called by ontology_annotator.cgi  passing in the ontology_type and words to autocomplete on, and returning the corresponding matches.  Calls  &amp;getAny&lt;ontology_type&gt;Autocomplete  passing in words to autocomplete on, and returning the corresponding matches.</p>
-<p>&amp;getAny&lt;ontology_type&gt;Autocomplete  exists for each specific ontology_type.  It queries the appropriate postgres tables to find corresponding values.  Most of these subroutines return 20 ontology values, but if there are 5 or more characters to search the results expands to 500.  Most also search for a case-insensitive match beginning with the search terms, then if there aren't yet max_results it appends results from a case-insensitive match of the search terms where the terms do not match at the beginning.  If there are more than max_results values, the last results is replaced with 'more ...'.  Results are joined by a newline and returned.  Most tables searched are the appropriate name table for the ontology_type, but it could also be an ID field or synonym field or anything else.  The format of each autocomplete value can be  ''&lt;value&gt;'' if it can only match on a value, or ''&lt;name_of_value&gt; ( &lt;id_of_value&gt; ) '' if it can match on a name or an ID, or ''&lt;name_of_match&gt; ( &lt;id_of_value&gt; ) [name_of_id]'' if it can match on a synonym, ID, or name of term.</p>
-<p>
-</p>
-<h2><a name="get_any_specific_valid_value">GET ANY SPECIFIC VALID VALUE</a></h2>
-<p>&amp;getAnySpecificValidValue  is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to check that a value is valid for that ontology_type.  Used when a curator selects a value in an ontology or multiontology field.  Necessary when creating a new ontology or multiontology type.</p>
-<p>&amp;getAnySpecificValidValue  is called by ontology_annotator.cgi  passing in the ontology_type and userValue to check validity on, and returning 'true' or 'false' as appropriate.  Calls  &amp;getAny&lt;ontology_type&gt;ValidValue  passing in the userValue and returning 'true' or 'false'.</p>
-<p>&amp;getAny&lt;ontology_type&gt;ValidValue  exists for each specific ontology_type.  It queries the appropriate postgres tables to check if the userValue is a valid value for the ontology_type.  If it is valid, returns 'true', otherwise returns 'false'.</p>
-<p>
-</p>
-<h2><a name="get_any_specific_term_info">GET ANY SPECIFIC TERM INFO</a></h2>
-<p>&amp;getAnySpecificTermInfo  is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to get the term information for the given ontology value, to display in the OA's obo frame.  Used when a curator clicks, mouses over, or arrows to a value from an ontology / multiontology field.  Necessary when creating a new ontology or multiontology type.</p>
-<p>&amp;getAnySpecificTermInfo  is called by ontology_annotator.cgi  passing in the ontology_type and userValue to get term info of, and returning a variable containing the term information to display in the OA's obo frame.  Calls  &amp;getAny&lt;ontology_type&gt;TermInfo  passing in the userValue, and returning the term information to display.</p>
-<p>&amp;getAny&lt;ontology_type&gt;TermInfo  exists for each specific ontology_type.  It queries the appropriate postgres tables (or flatfiles) to get the term information to display.  Most information has a tag name and colon in a bold html span, followed by the information.  As appropriate there might be html hr dividers.  Any type of html links or embedded images or practically any html could be displayed here.</p>
-<p>
-</p>
-<h2><a name="get_any_specific_id_to_value">GET ANY SPECIFIC ID TO VALUE</a></h2>
-<p>&amp;getAnySpecificIdToValue  is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to add to the %fieldIdToValue hash, which converts ID into  ''name&lt;span style='display: none'&gt;id&lt;/span&gt;''.  Used when displaying dataTable data from a postgres query of &amp;jsonFieldQuery in the main CGI.  Necessary when creating a new ontology or multiontology type.</p>
-<p>&amp;getAnySpecificIdToValue  is called by ontology_annotator.cgi  passing in the ontology_type, %fields's type, pointer to existing %fieldIdToValue, and IDs from postgres table data from which to get the id to value mappings ;  and returning a variable containing the display values of each of the ontology_type's passed IDs, and a pointer to the updated %fieldIdToValue .  Calls &amp;getAny&lt;ontology_type&gt;IdToValue, passing in the ontology_type, %fields's type, pointer to %fieldIdToValue hash, IDs from postgres table data ;  and returning a variable with the display values of the corresponding IDs, and a pointer to the updated %fieldIdToValue .</p>
-<p>&amp;getAny&lt;ontology_type&gt;IdToValue  exists for each specific ontology_type.  It splits the postgres data table's values into separate IDs, and for each ID, it checks against the %fieldIdToValue hash.  If it already exists, it adds it to the %results hash.  If it doesn't, it queries against the appropriate postgres tables and generates a new value to display, adding it to %results and to $fieldIdToValue{$ontology_type}.  %results values are joined by commas into a $data variable to return.  If the %fields's type is ontology, the leading and trailing doublequotes are stripped (doublequotes are necessary for multiontology).  $data and a pointer to the updated %fieldIdToValue are returned.  The format of %results is  ''$results{&lt;joinkey&gt;} = &quot;&lt;display_value&gt;&lt;span style='display: none'&gt;&lt;id&gt;&lt;/span&gt;&quot;''  where &lt;span&gt; tags are html tags, and &lt;display_value&gt; and &lt;id&gt; are real values.</p>
+
+<h2 id="SET-ANY-SIMPLE-AUTOCOMPLETE-VALUES">SET ANY SIMPLE AUTOCOMPLETE VALUES</h2>
+
+<p>&amp;setAnySimpleAutocompleteValues is the only subroutine called from the ontology_annotator.cgi and sets the dropdown values for the appropriate datatype. Necessary when creating a new dropdown or multidropdown ontology type.</p>
+
+<p>&amp;setAnySimpleAutocompleteValues is called by ontology_annotator.cgi passing in the ontology_type and returning a pointer to %data. Creates a tied %data hash which has all dropdown values in order entered for the given ontology_type.</p>
+
+<p>%data stores dropdown values for a given ontology_type, in the format &#39;&#39;$data{&lt;ontology_type&gt;}{name}{&lt;name&gt;} = &lt;value_to_display&gt;&#39;&#39;. value_to_display can have two formats : &#39;&#39;&lt;name_of_value&gt; ( &lt;id_of_value&gt; ) &#39;&#39; or &#39;&#39;&lt;value&gt;&#39;&#39; depending on whether the ontology_type stores IDs or not, respectively.</p>
+
+<h2 id="GET-ANY-SPECIFIC-AUTOCOMPLETE">GET ANY SPECIFIC AUTOCOMPLETE</h2>
+
+<p>&amp;getAnySpecificAutocomplete is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to get the matching Autocomplete values for that ontology_type. Used when a curator types full or partial terms into an ontology / multiontology field. Necessary when creating a new ontology or multiontology type.</p>
+
+<p>&amp;getAnySpecificAutocomplete is called by ontology_annotator.cgi passing in the ontology_type and words to autocomplete on, and returning the corresponding matches. Calls &amp;getAny&lt;ontology_type&gt;Autocomplete passing in words to autocomplete on, and returning the corresponding matches.</p>
+
+<p>&amp;getAny&lt;ontology_type&gt;Autocomplete exists for each specific ontology_type. It queries the appropriate postgres tables to find corresponding values. Most of these subroutines return 20 ontology values, but if there are 5 or more characters to search the results expands to 500. Most also search for a case-insensitive match beginning with the search terms, then if there aren&#39;t yet max_results it appends results from a case-insensitive match of the search terms where the terms do not match at the beginning. If there are more than max_results values, the last results is replaced with &#39;more ...&#39;. Results are joined by a newline and returned. Most tables searched are the appropriate name table for the ontology_type, but it could also be an ID field or synonym field or anything else. The format of each autocomplete value can be &#39;&#39;&lt;value&gt;&#39;&#39; if it can only match on a value, or &#39;&#39;&lt;name_of_value&gt; ( &lt;id_of_value&gt; ) &#39;&#39; if it can match on a name or an ID, or &#39;&#39;&lt;name_of_match&gt; ( &lt;id_of_value&gt; ) [name_of_id]&#39;&#39; if it can match on a synonym, ID, or name of term.</p>
+
+<h2 id="GET-ANY-SPECIFIC-VALID-VALUE">GET ANY SPECIFIC VALID VALUE</h2>
+
+<p>&amp;getAnySpecificValidValue is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to check that a value is valid for that ontology_type. Used when a curator selects a value in an ontology or multiontology field. Necessary when creating a new ontology or multiontology type.</p>
+
+<p>&amp;getAnySpecificValidValue is called by ontology_annotator.cgi passing in the ontology_type and userValue to check validity on, and returning &#39;true&#39; or &#39;false&#39; as appropriate. Calls &amp;getAny&lt;ontology_type&gt;ValidValue passing in the userValue and returning &#39;true&#39; or &#39;false&#39;.</p>
+
+<p>&amp;getAny&lt;ontology_type&gt;ValidValue exists for each specific ontology_type. It queries the appropriate postgres tables to check if the userValue is a valid value for the ontology_type. If it is valid, returns &#39;true&#39;, otherwise returns &#39;false&#39;.</p>
+
+<h2 id="GET-ANY-SPECIFIC-TERM-INFO">GET ANY SPECIFIC TERM INFO</h2>
+
+<p>&amp;getAnySpecificTermInfo is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to get the term information for the given ontology value, to display in the OA&#39;s obo frame. Used when a curator clicks, mouses over, or arrows to a value from an ontology / multiontology field. Necessary when creating a new ontology or multiontology type.</p>
+
+<p>&amp;getAnySpecificTermInfo is called by ontology_annotator.cgi passing in the ontology_type and userValue to get term info of, and returning a variable containing the term information to display in the OA&#39;s obo frame. Calls &amp;getAny&lt;ontology_type&gt;TermInfo passing in the userValue, and returning the term information to display.</p>
+
+<p>&amp;getAny&lt;ontology_type&gt;TermInfo exists for each specific ontology_type. It queries the appropriate postgres tables (or flatfiles) to get the term information to display. Most information has a tag name and colon in a bold html span, followed by the information. As appropriate there might be html hr dividers. Any type of html links or embedded images or practically any html could be displayed here.</p>
+
+<h2 id="GET-ANY-SPECIFIC-ID-TO-VALUE">GET ANY SPECIFIC ID TO VALUE</h2>
+
+<p>&amp;getAnySpecificIdToValue is the main subroutine called from the ontology_annotator.cgi and calls the ontology_type-appropriate subroutine to add to the %fieldIdToValue hash, which converts ID into &#39;&#39;name&lt;span style=&#39;display: none&#39;&gt;id&lt;/span&gt;&#39;&#39;. Used when displaying dataTable data from a postgres query of &amp;jsonFieldQuery in the main CGI. Necessary when creating a new ontology or multiontology type.</p>
+
+<p>&amp;getAnySpecificIdToValue is called by ontology_annotator.cgi passing in the ontology_type, %fields&#39;s type, pointer to existing %fieldIdToValue, and IDs from postgres table data from which to get the id to value mappings ; and returning a variable containing the display values of each of the ontology_type&#39;s passed IDs, and a pointer to the updated %fieldIdToValue . Calls &amp;getAny&lt;ontology_type&gt;IdToValue, passing in the ontology_type, %fields&#39;s type, pointer to %fieldIdToValue hash, IDs from postgres table data ; and returning a variable with the display values of the corresponding IDs, and a pointer to the updated %fieldIdToValue .</p>
+
+<p>&amp;getAny&lt;ontology_type&gt;IdToValue exists for each specific ontology_type. It splits the postgres data table&#39;s values into separate IDs, and for each ID, it checks against the %fieldIdToValue hash. If it already exists, it adds it to the %results hash. If it doesn&#39;t, it queries against the appropriate postgres tables and generates a new value to display, adding it to %results and to $fieldIdToValue{$ontology_type}. %results values are joined by commas into a $data variable to return. If the %fields&#39;s type is ontology, the leading and trailing doublequotes are stripped (doublequotes are necessary for multiontology). $data and a pointer to the updated %fieldIdToValue are returned. The format of %results is &#39;&#39;$results{&lt;joinkey&gt;} = &quot;&lt;display_value&gt;&lt;span style=&#39;display: none&#39;&gt;&lt;id&gt;&lt;/span&gt;&quot;&#39;&#39; where &lt;span&gt; tags are html tags, and &lt;display_value&gt; and &lt;id&gt; are real values.</p>
+
 
 </body>
 
 </html>
+
+

@@ -270,7 +270,7 @@ Construct a URL for AJAX autocomplete query to the CGI with action 'autocomplete
 Create &lt;oDS&gt; as a new YUI XHRDataSource, passing in the URL ;  with data response of type text ;  delimiting records with newlines (\n) and fields with tabs (\t) ;  and enabling caching because autocomplete values don't change often.<br />
 All autocompletes force data to be in the ontology, so the container element is gotten from the editor frame html div element with id 'forced&lt;field&gt;Container'.  The input element from the editor frame html input element with id 'input_&lt;field&gt;'.<br />
 Create &lt;forcedOAC&gt; as a new YUI AutoComplete ;  passing in the &lt;inputElement&gt;, &lt;containerElement&gt;, and &lt;oDS&gt;.  Set 'queryQuestionMark' to 'false' because the URL has been built with other value and already has an '&'.  Set 'maxResultsDisplayed' to '500' because even though most results are limited to 20 by the CGI, some GO config ontology values have hundreds that match on some terms and curatos wants to look at hundreds of them.  Set 'forceSelection' to 'false' because it doesn't seem to work, so using  checkValueIsValidAndUpdate(field, newValue, selectedRows)  instead.<br />
-If the field is a 'dropdown' or 'multidropdown' also add a 'click' listener to the editor frame html span element with id 'type_&lt;field&gt;', so that when clicked it will focus on the &lt;forcedOAC&gt; input and send a query for blank, which returns all possible values for the field.  Set the 'minQueryLength' to 0 to allow blank queries which return all values.<br />
+If the field is a 'dropdown' or 'multidropdown' or 'ontology' or 'multiontology' also add a 'click' listener to the editor frame html span element with id 'type_&lt;field&gt;', so that when clicked it will focus on the &lt;forcedOAC&gt; input and send a query for blank, which returns all possible values for the field.  Set the 'minQueryLength' to 0 to allow blank queries which return all values.<br />
 Subscribe a &lt;forcedOAC&gt; itemSelectEvent to call  onAutocompleteItemSelect  to update term information, input field, postgres, and dataTable.<br />
 Subscribe a &lt;forcedOAC&gt; selectionEnforceEvent to call  onAutocompleteSelectionEnforce  to give message in obo frame about what value was cleared.<br />
 Subscribe a &lt;forcedOAC&gt; itemArrowToEvent to call  onAutocompleteItemHighlight  to show the value's term info in the obo frame if it is an ontology-type field.<br />
@@ -424,42 +424,33 @@ Update postgres tables and dataTable by directing to the default or batch more f
 @param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
 The &lt;displayValue&gt; is the value to display in the dataTable, and it is the same as the userValue to pass through AJAX, but converts URL escapes to normal characters.<br />
 Get whether the user wants to use normal mode or the batch unsafe mode (which updates postgres, but does not update the dataTable because changing a lot of values is slow) by getting the editor frame html hidden input element with id 'batchUnsafeFlag'.<br />
-If the batch unsafe flag is selected (originally from the front page of the ontology_annotator.cgi) make changes to postgres tables (only) with an AJAX call by calling  batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .<br />
-If the batch unsafe flag is not selected (default mode) make changes to postgres tables and dataTable with an AJAX call by calling  normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .<br />
+If the batch unsafe flag is selected (originally from the front page of the ontology_annotator.cgi) make changes to postgres tables (only) with an AJAX call by calling  batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, 'noDataTable') .<br />
+//  * If the batch unsafe flag is not selected (default mode) make changes to postgres tables and dataTable with an AJAX call by calling  normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .<br />
+If the batch unsafe flag is not selected (default mode) make changes to postgres tables and dataTable with an AJAX call by calling  normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, 'yesDataTable') .<br />
 </p>
 
 <p>
-batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)<br />
+batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, dataTableFlag)<br />
 Fast and 'unsafe' mode to batch update data from a lot of &lt;selectedRows&gt; in postgres tables with a single AJAX call, but unsafe because dataTable is not updated and there is a single error message for all errors instead of individual error messages per field-pgid-value update.<br />
 @param {String} field  is the field whose value should be updated.<br />
 @param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
 @param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)<br />
 @param {String} displayValue  is the same new value, but in dataTable display format.  Deprecated -- It is not used because the dataTable is not being updated because  myDataTable.updateCell(record, field, displayValue)  seems to happen quickly, but then the browser hangs for many selected rows.  Kept here in case a future update makes it faster.<br />
-Get all ids from dataTable selected rows and put them in an array &lt;arrPgidsToChange&gt; and hash &lt;idHash&gt;.  Deprecated -- &lt;idHash&gt; is not used, but kept here in case a future update makes updating dataTable cells faster.<br />
+@param {String} dataTableFlag  is whether or not to do dataTable updates (noDataTable|yesDataTable), which are slow when doing an batchUnsafe, but good when doing normal curation<br />
+Get all ids from dataTable selected rows and put them in an array &lt;arrPgidsToChange&gt; and hash &lt;hashPgidsChanged&gt;.  <br />
 If there are pgids to update, join them with comma and update postgres tables and dataTable by calling  updatePostgresTableField(pgidsToChange, field, newValue) .<br />
-Deprecated -- For each selected row, if the pgid is in &lt;idHash&gt; get the record and update the dataTable cell to have the &lt;displayValue&gt;.<br />
+In regular curation mode, for each selected row, if the pgid is in &lt;hashPgidsChanged&gt; get the record and update the dataTable cell to have the &lt;displayValue&gt;.<br />
 </p>
 
 <p>
-normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)<br />
-Safe and default mode to update data from &lt;selectedRows&gt; one by one with individual AJAX calls to update postgres tables and update dataTable.<br />
-@param {String} field  is the field whose value should be updated.<br />
-@param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
-@param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)<br />
-@param {String} displayValue  is the same new value, but in dataTable display format.<br />
-Get all ids from dataTable selected rows, and if the &lt;newValue&gt; is different from the corresponding dataTable value:<br />
-- Call  updatePostgresTableField(pgidsToChange, field, newValue) to update postgres tables.<br />
-- Update the dataTable cell to show the &lt;displayValue&gt;.  It's possible for this to happen even if  updatePostgresTableField  fails, but a failure there will give an error message for users to check data.<br />
-- Get the html div elements corresponding to this dataTable record.<br />
-- Add or remove the red_square.jpg to those html div elements depending on whether there's too much data in the cell or not (respectively) by calling  colorMoreCells(divArray) .<br />
-</p>
-
-<p>
-updatePostgresTableField(pgid, field, newValue)<br />
+updatePostgresTableField(pgid, field, newValue, dataTableFlag, selectedRows, hashPgidsChanged)<br />
 Update data in postgres data tables with an AJAX call, alerting of any errors.<br />
 @param {String} pgid  are the comma-separated pgids that should be updated.<br />
 @param {String} field  is the field whose value should be updated.<br />
 @param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)<br />
+@param {String} dataTableFlag  is whether or not to do dataTable updates (noDataTable|yesDataTable), which are slow when doing an batchUnsafe, but good when doing normal curation<br />
+@param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.<br />
+@param {Object} hashPgidsChanged  is a hash of pgids that changed in postgres that need changing in dataTable<br />
 Disable the form if appropriate by calling  disableForm() .<br />
 Define callbacks action for AJAX return.<br />
 Call  convertDisplayToUrlFormat(newValue)  to replace any characters to escape with html URL escape characters.<br />
@@ -471,7 +462,7 @@ If the value to update is over 2000 characters, make a YAHOO.util.Connect.asyncR
 <p>
 callbacks from updatePostgresTableField<br />
 Get back AJAX response of 'OK' or error message.  Undisable form if appropriate and warn of any errors in an alert window. <br />
-On successful return undisable the form by calling  undisableForm() .  If the response is not 'OK' make an alert window with the &lt;newValue&gt;, &lt;pgid&gt;, &lt;field&gt;, and &lt;o.responseText&gt;.<br />
+On successful return undisable the form by calling  undisableForm() .  If the response is not 'OK' make an alert window with the &lt;newValue&gt;, &lt;pgid&gt;, &lt;field&gt;, and &lt;o.responseText&gt;.  If the response is 'OK' call  updateDataTableDisplay  to change display of values in dataTable.<br />
 On failure return undisable the form by calling  undisableForm()  and make an alert window with the &lt;newValue&gt;, &lt;pgid&gt;, &lt;field&gt;, and &lt;o.statusText&gt;.<br />
 </p>
 

@@ -36,7 +36,7 @@ sub printForm {
   my ($restQuery) = @_;
   unless ($restQuery) { $restQuery = ''; }
   print qq(<form method="get">);
-  print qq(<textarea rows="8" cols="100"  name="restQuery" id="restQuery">$restQuery</textarea><br/>);
+  print qq(<textarea rows="18" cols="100"  name="restQuery" id="restQuery">$restQuery</textarea><br/>);
   print qq(<input type="submit" name="action" value="datomic query">);
   print qq(</form><br/>);
 }
@@ -51,11 +51,20 @@ sub restQuery {
   my $encodedQuery = &url_encode($restQuery);
 #   print qq(ERQ $encodedQuery ERQ<br/>);
 
+# old
 #   my $url = 'http://localhost:8000/api/query?q=' . $encodedQuery . '&args=%5B%7B%3Adb%2Falias%20%22dev%2FWS252%22%7D%5D';
-  my $url = 'http://ec2-23-20-57-180.compute-1.amazonaws.com/cgi-bin/azurebrd/datomic.cgi?restQuery=' . $encodedQuery . '&action=datomic+query';
+#   my $url = 'http://ec2-23-20-57-180.compute-1.amazonaws.com/cgi-bin/azurebrd/datomic.cgi?restQuery=' . $encodedQuery . '&action=datomic+query';
+
+# To use datomic cgi from aws machine
+#   my $url = 'http://ec2-52-90-214-72.compute-1.amazonaws.com/cgi-bin/azurebrd/datomic.cgi?restQuery=' . $encodedQuery . '&action=datomic+query';
+#   my $awsResult = get $url;
+#   my ($restResult) = $awsResult =~ m/REST (.*?) RESULT/ms;
+
+# To use the datomic rest api from aws machine
+  my $url = 'http://ec2-52-90-214-72.compute-1.amazonaws.com:8000/api/query?q=' . $encodedQuery . '&args=%5B%7B%3Adb%2Falias%20%22dev%2FWS254%22%7D%5D';	# 2016 07 19
+  my $restResult = get $url;
+
 #   print qq(URL $url URL<br/>);
-  my $awsResult = get $url;
-  my ($restResult) = $awsResult =~ m/REST (.*?) RESULT/ms;
   $restResult =~ s/^\[+//;
   $restResult =~ s/\]+$//;
   my (@entries) = split/\]\s+\[/, $restResult;

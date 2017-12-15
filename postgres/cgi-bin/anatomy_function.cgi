@@ -33,6 +33,8 @@
 #
 # Was sometimes escaping $val over and over while looping other values.  
 # Changed input size to 40, put Condition label above box.  2015 04 22
+#
+# Split dumping Anatomy into the term and separately the remark.  2017 11 09
 
 
 use strict;
@@ -64,6 +66,15 @@ my @inv_anatfunc = qw( Sufficient Necessary Remark );
 my @not_anatfunc = qw( Insufficient Unnecessary Remark );
 # my %evidence;		# the evidence hash tags
 # my @anatfunc;		# the anatomy function info tags
+
+my %remark;
+$remark{"Autonomous"}      = "Autonomous_remark";
+$remark{"Nonautonomous"}   = "Autonomous_remark";
+$remark{"Sufficient"}      = "Sufficient_remark";
+$remark{"Insufficient"}    = "Sufficient_remark";
+$remark{"Necessary"}       = "Necessary_remark";
+$remark{"Unnecessary"}     = "Necessary_remark";
+$remark{"Remark"}          = "Remark";
 
 my $action;
 
@@ -489,7 +500,8 @@ sub getAceFromHash {		# create and return a .ace file based on data in %theHash
           my (@lines) = split/\n/, $theHash{$g_type_two}{html_value};
           foreach my $line (@lines) {
             if ($line =~ m/\s+$/) { $line =~ s/\s+$//g; }
-            $acefile .= "Phenotype\t\"$phenotype\"\t$anat\t\"$line\"\n"; $has_data++; } }
+            $acefile .= "Phenotype\t\"$phenotype\"\t$remark{$anat}\t\"$line\"\n";
+            $acefile .= "Phenotype\t\"$phenotype\"\t$anat\n"; $has_data++; } }
         elsif ($theHash{$g_type_one}{html_value}) { $acefile .= "Phenotype\t\"$phenotype\"\t$anat\n"; $has_data++; } }
     unless ($has_data) { $acefile .= "Phenotype\t\"$phenotype\"\n"; } }
 
@@ -525,7 +537,8 @@ sub getAceFromHash {		# create and return a .ace file based on data in %theHash
               my (@lines) = split/\n/, $theHash{$g_type_two}{html_value};
               foreach my $line (@lines) {
                 if ($line =~ m/\s+$/) { $line =~ s/\s+$//g; }
-                $acefile .= "$tag\t\"$val\"\t$anat\t\"$line\"\n"; $has_data++; } }
+                $acefile .= "$tag\t\"$val\"\t$remark{$anat}\t\"$line\"\n";
+                $acefile .= "$tag\t\"$val\"\t$anat\n"; $has_data++; } }
             elsif ($theHash{$g_type_one}{html_value}) { $acefile .= "$tag\t\"$val\"\t$anat\n"; $has_data++; } }
         unless ($has_data) { $acefile .= "$tag\t\"$val\"\n"; } } } }
 

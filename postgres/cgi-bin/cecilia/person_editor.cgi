@@ -36,6 +36,8 @@
 # added  lab webpage comment  to set of fields that can be created in person from a paper.  2015 07 09
 #
 # added  oldpis  as new field for old PIs for Cecilia.  2015 07 12
+#
+# added  Mary Ann  for Cecilia.  2017 04 04
  
 
 
@@ -1436,7 +1438,7 @@ sub firstPage {
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; my @row = $result->fetchrow;
   if ($row[0]) { $curator_by_ip = $row[0]; }
 #   my @curator_list = ('Juancarlos Chan', 'Cecilia Nakamura');
-  my @curator_list = ('two1823', 'two1', 'two12028', 'two712');
+  my @curator_list = ('two1823', 'two1', 'two12028', 'two712', 'two2970');
   foreach my $joinkey (@curator_list) {                         # display curators in alphabetical (array) order, if IP matches existing ip record, select it
     my $curator = $joinkey;
     if ($curators{two}{$curator}) { $curator = $curators{two}{$curator}; }

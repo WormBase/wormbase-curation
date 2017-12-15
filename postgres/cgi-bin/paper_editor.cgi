@@ -105,6 +105,12 @@
 #
 # added  pap_author_corresponding  and can edit those with a new
 #  makeToggleDoubleField  for Chris, Cecilia, Kimberly.  2015 11 17
+#
+# added  pap_type_index  Micropublication for Daniela and Kimberly to form and to 
+# postgres.  2016 10 13
+#
+# added  species  field to section for entering PMIDs.  
+# made 'priority' default and removed blank option.  2016 10 18
 
 
 
@@ -577,12 +583,17 @@ sub enterPmids {
   ($oop, $functional_flag) = &getHtmlVar($query, 'functional_flag');
   ($oop, $primary_flag) = &getHtmlVar($query, 'primary_flag');
   ($oop, $aut_per_priority) = &getHtmlVar($query, 'author_person_priority_flag');
+  my @taxons;
+  for my $j (1 .. 10) { 
+    ($oop, my $species) = &getHtmlVar($query, "species_0_${j}");		
+    my ($taxon) = $species =~ m/(\d+)$/; if ($taxon) { push @taxons, $taxon; } }
+  my $taxons = join"|", @taxons;
 
   ($oop, my $pmids) = &getHtmlVar($query, 'pmids');
   my (@pmids) = $pmids =~ m/(\d+)/g;
   my @pairs; 
   foreach my $pmid (@pmids) { 
-    push @pairs, "$pmid, $primary_flag, $aut_per_priority"; }
+    push @pairs, "$pmid, $primary_flag, $aut_per_priority, $taxons"; }
   my $list = join"\t", @pairs;
 
   my ($link_text) = &processXmlIds($curator_id, $functional_flag, $list, $directory);
@@ -730,7 +741,7 @@ sub showConfirmXmlTable {
   print "<table border=1>\n";
 #   print "<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td>Approve</td><td>primary</td></tr>\n";
   print qq(<tr><td>pmid</td><td>title</td><td>authors</td><td>abstract</td><td>type</td><td>journal</td><td width="300">Species</td><td>Flags</td></tr>\n);
-  my $count = 0;
+  my $count = 1;	# use count zero for pmid species, but include zero for total count for javascript
   for (2 .. $page) { for (1 .. $perpage) { shift @sorted_pmids; } }
   foreach my $infilename (@sorted_pmids) {
     my $infile = $directory . '/xml/' . $infilename;
@@ -917,8 +928,11 @@ sub showEnterPmidBox {
   print "16061202<br />16055504<br />16055082<br />\n";
   print "<td><textarea name=\"pmids\" rows=6 cols=60 value=\"\"></textarea></td>\n";
   print "<td align=left><input name=\"functional_flag\" type=checkbox value=\"non_nematode\">non_nematode flag<br />\n";
-  print "<select size=1 name=\"primary_flag\"><option value=\"\" selected=\"selected\"></option><option value=\"primary\">primary</option><option value=\"not_primary\">not_primary</option><option value=\"not_designated\">not_designated</option></select><br />\n";
+  print "<select size=1 name=\"primary_flag\"><option value=\"primary\" selected=\"selected\">primary</option><option value=\"not_primary\">not_primary</option><option value=\"not_designated\">not_designated</option></select><br />\n";
   print "author-person : <select size=1 name=\"author_person_priority_flag\"><option value=\"author_person\" selected=\"selected\">priority</option><option value=\"\">not_priority</option></select><br />\n";
+  print qq(<table><tr><td width="300">species :</td></tr>);
+  print qq(<tr>); &printSpeciesAutocompleteField(0); print qq(</tr>);	# use count zero for pmids
+  print qq(</table>);
   print "<input type=\"submit\" name=\"action\" value=\"Enter PMIDs\"></td></tr>\n";
   print "</table>\n";
 } # sub showEnterPmidBox
@@ -1879,7 +1893,7 @@ sub firstPage {
   my $result = $dbh->prepare( "SELECT * FROM two_curator_ip WHERE two_curator_ip = '$ip';" ); $result->execute; my @row = $result->fetchrow;
   if ($row[0]) { $curator_by_ip = $row[0]; }
 
-  my @curator_list = qw( two1823 two101 two1983 two8679 two2021 two2987 two3111 two324 two363 two28994 two1 two4055 two12028 two557 two567 two625 two2970 two1843 two736 two1760 two712 two9133 two480 two1847 two627 two4025 );
+  my @curator_list = qw( two1823 two101 two1983 two8679 two2021 two2987 two3111 two324 two363 two28994 two1 two4055 two12028 two36183 two557 two567 two625 two2970 two1843 two736 two1760 two712 two9133 two480 two1847 two627 two4025 );
 #   my @curator_list = ('', 'Juancarlos Chan', 'Wen Chen', 'Paul Davis', 'Ruihua Fang', 'Jolene S. Fernandes', 'Chris', 'Kevin Howe',  'Ranjana Kishore', 'Raymond Lee', 'Cecilia Nakamura', 'Michael Paulini', 'Gary C. Schindelman', 'Erich Schwarz', 'Paul Sternberg', 'Mary Ann Tuli', 'Kimberly Van Auken', 'Qinghua Wang', 'Xiaodong Wang', 'Karen Yook', 'Margaret Duesbury', 'Tuco', 'Anthony Rogers', 'Theresa Stiernagle', 'Gary Williams' );
   foreach my $joinkey (@curator_list) {                         # display curators in alphabetical (array) order, if IP matches existing ip record, select it
     my $curator = 0;
@@ -1949,7 +1963,7 @@ sub makePdfLinkFromPath {
 sub makeNcbiLinkFromPmid {
   my $pmid = shift;
   my ($id) = $pmid =~ m/(\d+)/;
-  my $link = 'http://www.ncbi.nlm.nih.gov/pubmed/' . $id; 
+  my $link = 'https://www.ncbi.nlm.nih.gov/pubmed/' . $id; 
   my $data = "<a href=\"$link\" target=\"new\">$pmid</a>"; return $data; }
 
 sub rnaiCuration {
@@ -3104,6 +3118,7 @@ sub populateFromXml {		# POPULATE SOME REFERENCE FROM XML, not dealing with type
   $month_to_num{Dec} = '12';
 
   my %type_index;		# type to type_index mapping
+  tie %type_index, "Tie::IxHash";     # sorted hash to filter results
   $type_index{"Journal_article"} = '1';  
   $type_index{"Review"} = '2';  
   $type_index{"Meeting_abstract"} = '3';  
@@ -3128,8 +3143,11 @@ sub populateFromXml {		# POPULATE SOME REFERENCE FROM XML, not dealing with type
   $type_index{"Interactive_tutorial"} = '22'; 
   $type_index{"Biography"} = '23'; 
   $type_index{"Directory"} = '24'; 
+  $type_index{"Retraction_of_publication"} = '25'; 
+  $type_index{"Micropublication"} = '26'; 
 
   my %specific_type;		# types that don't become "Other" and aren't only Journal_article
+  tie %specific_type, "Tie::IxHash";     # sorted hash to filter results
   $specific_type{2} = 'Review';
   $specific_type{6} = 'News';
   $specific_type{9} = 'Historical_article';
@@ -3146,6 +3164,7 @@ sub populateFromXml {		# POPULATE SOME REFERENCE FROM XML, not dealing with type
   $specific_type{22} = 'Interactive_tutorial';
   $specific_type{23} = 'Biography';
   $specific_type{24} = 'Directory';
+  $specific_type{25} = 'Retraction_of_publication';
   
   $/ = undef;
   my (@xml) = </home/postgres/work/pgpopulation/wpa_papers/wpa_pubmed_final/xml/*>;

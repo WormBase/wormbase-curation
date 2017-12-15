@@ -621,7 +621,17 @@ sub getHashFromForm {
   unless ($hash{'contributed_by'})        { $hash{'contributed_by'}       = '';                      }	
 } # sub getHashFromForm
 
+sub checkIpBlock {
+  my ($ip) = @_;
+  $result = $dbh->prepare( "SELECT * FROM frm_ip_block WHERE frm_ip_block = '$ip';" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; my @row = $result->fetchrow();
+  if ($row[0]) { return 1; } else { return 0; }
+} # sub checkIpBlock
+
 sub displayForm {			# show form as appropriate
+  my $ip = &getIp();
+  my ($goodOrBad) = &checkIpBlock($ip);
+  return if $goodOrBad;
 
 #   my ($standardname, $wbperson, $submitter_email, $species, $gene, $concise_description, $pmids, $pmid_titles, $wb_description, $wb_description_guide, $contributed_by, $contributed_by_guide) = ('', '', '', '', '', '', '', '', '', '', '', '');
 # 

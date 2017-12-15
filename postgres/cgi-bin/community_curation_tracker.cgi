@@ -36,6 +36,16 @@
 # emails for newmutant link to phenotype form with pgid field.  2016 02 21
 #
 # changed newmutant email a bit for Chris.  2016 03 01
+#
+# changed recent-ness interval to 1 month for Chris.  2016 05 20
+#
+# skip papers that have been recently emailed to corresponding authors.
+# This was an oversight, should have been happening already.  2016 08 22
+#
+# remove papers that have been curated for RNAi for Chris.  2016 08 23
+#
+# No longer require papers to have been AFPed first, nor filter out emails that have been AFPed in the last month.
+# No longer look at corresponding author data.  If there's a first author, just email the first author.  2017 07 31
 
 
 
@@ -213,7 +223,7 @@ sub generateEmail {
   ($var, my $genes      ) = &getHtmlVar($query, 'genes');
   ($var, my $datatype   ) = &getHtmlVar($query, 'datatype');
 #   ($var, my $aggemails) = &getHtmlVar($query, 'aggemails');
-print qq(DT $datatype EM $aemails CE $cemails E<br>);
+# print qq(DT $datatype EM $aemails CE $cemails E<br>);
   my (@pmids) = $pmids =~ m/(\d+)/g;
   my @sorted_pmids = sort {$b<=>$a} @pmids;
   my $pmid = shift @sorted_pmids;
@@ -231,6 +241,7 @@ print qq(DT $datatype EM $aemails CE $cemails E<br>);
 #   print qq(PAPID $papid END<br/>);
   my %names; tie %names, "Tie::IxHash";
   my @nameSources = ($cnames, $pdfnames, $afpnames, $anames);
+  if ($anames) { @nameSources = ( $anames ); }		# if there's first author name, only use that one  2017 07 21
   foreach my $nameSource (@nameSources) {
     $nameSource =~ s/<.*?>//g;
     my (@names) = split/, /, $nameSource;
@@ -239,32 +250,34 @@ print qq(DT $datatype EM $aemails CE $cemails E<br>);
 #   print qq(N $names AN $anames CN $cnames PN $pnames E<br/>\n);
   my @emails; my %emails; tie %emails, "Tie::IxHash";
   if ($aemails) {
-    my (@aemails) = split/, /, $aemails;
-    foreach my $email (@aemails) { $emails{$email}++; } }
-  my %oldEmails;
-  my @checkEmails = (); push @checkEmails, $cemails; push @checkEmails, $afpemails; push @checkEmails, $pdfemails;
-  foreach my $emailset (@checkEmails) {
-    my (@spans) = split/, /, $emailset;
-    foreach my $span (@spans) {
-      if ($span =~ m/>(.*?)</) {			# some emails in spans
-          my ($email) = $span =~m/>(.*?)</;
-          if ( $span =~m/color: black/ ) { $emails{$email}++; }
-            elsif ( $span =~m/color: orange/ ) { $oldEmails{$email}++; } }
-        else { $emails{$span}++; } } }			# other are just emails
-  foreach my $oldEmail (sort keys %oldEmails) {
-    my @emails;
-    $result = $dbh->prepare( "SELECT joinkey FROM two_old_email WHERE two_old_email = '$oldEmail';" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-    my @row = $result->fetchrow(); my $two = $row[0];
-    $result = $dbh->prepare( "SELECT * FROM two_email WHERE joinkey = '$two' ORDER BY two_timestamp DESC;" );
-    $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-    @row = $result->fetchrow(); my $email = $row[2] || 'no current email';
-    if ($row[2]) { $emails{$email}++; }
-    print qq(old email $oldEmail is person : '$two' with email : '${email}'<br/>);
-  } # foreach my $oldEmail (sort keys %oldEmails)
+      my (@aemails) = split/, /, $aemails;
+      foreach my $email (@aemails) { $emails{$email}++; } }
+    else {
+      my %oldEmails;
+      my @checkEmails = (); push @checkEmails, $cemails; push @checkEmails, $afpemails; push @checkEmails, $pdfemails;
+      foreach my $emailset (@checkEmails) {
+        my (@spans) = split/, /, $emailset;
+        foreach my $span (@spans) {
+          if ($span =~ m/>(.*?)</) {			# some emails in spans
+              my ($email) = $span =~m/>(.*?)</;
+              if ( $span =~m/color: black/ ) { $emails{$email}++; }
+                elsif ( $span =~m/color: orange/ ) { $oldEmails{$email}++; } }
+            else { $emails{$span}++; } } }			# other are just emails
+      foreach my $oldEmail (sort keys %oldEmails) {
+        my @emails;
+        $result = $dbh->prepare( "SELECT joinkey FROM two_old_email WHERE two_old_email = '$oldEmail';" );
+        $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+        my @row = $result->fetchrow(); my $two = $row[0];
+        $result = $dbh->prepare( "SELECT * FROM two_email WHERE joinkey = '$two' ORDER BY two_timestamp DESC;" );
+        $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+        @row = $result->fetchrow(); my $email = $row[2] || 'no current email';
+        if ($row[2]) { $emails{$email}++; }
+        print qq(old email $oldEmail is person : '$two' with email : '${email}'<br/>);
+      } # foreach my $oldEmail (sort keys %oldEmails)
+#       if ($cemails) { push @emails, $cemails; }
+#       if ($pemails) { push @emails, $pemails; }
+    } # else # if ($aemails)
   
-#   if ($cemails) { push @emails, $cemails; }
-#   if ($pemails) { push @emails, $pemails; }
   my $email = join", ", keys %emails; 
 #   if ($aggemails) { $email = $aggemails; }
   my $ncbiurl = 'http://www.ncbi.nlm.nih.gov/pubmed/' . $pmid . '?report=docsum&format=text';
@@ -293,341 +306,14 @@ print qq(DT $datatype EM $aemails CE $cemails E<br>);
   print qq(</form>);
 } # sub generateEmail
 
-sub conciseReadyToGo {
-  my %pap;
-  my %recentemail;			# email addresses sent in the last 3 months
-  my %recentpeople;			# people with an email addresses sent in the last 3 months
-  my %email;
-  my %two;
-  my %com;
-  my %gin;
 
-  $result = $dbh->prepare( "SELECT * FROM com_app_emailsent" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { 
-      $com{$row[0]}{date}  = $row[2]; 
-      $com{$row[0]}{email} = $row[1]; } }
-
-  $result = $dbh->prepare( "SELECT * FROM afp_email WHERE afp_email IS NOT NULL;" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { my ($lcemail) = lc($row[1]); $email{afp}{$row[0]} = $lcemail; } }
-  $result = $dbh->prepare( "SELECT * FROM two_email" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { my ($lcemail) = lc($row[2]); $email{two}{$lcemail} = $row[0]; } }
-  $result = $dbh->prepare( "SELECT * FROM two_standardname" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $two{name}{$row[0]} = $row[2]; } }
-  
-  $result = $dbh->prepare( "SELECT * FROM pap_status WHERE pap_status = 'valid'" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{valid}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_pubmed_final WHERE pap_pubmed_final = 'final'" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{pubmedfinal}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_type WHERE pap_type = '1'" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{journalarticle}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_identifier WHERE pap_identifier ~ 'pmid'" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $row[1] =~ s/pmid//; $pap{$row[0]}{pmid}{$row[1]}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_electronic_path" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{pdf}{$row[1]}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_primary_data WHERE pap_primary_data = 'primary';" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{primary}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_gene WHERE pap_gene ~ '0';" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{gene}{$row[1]}++; } }
-
-  $result = $dbh->prepare( "SELECT * FROM gin_locus ;" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $gin{$row[0]} = $row[1]; } }
-  
-  $result = $dbh->prepare( "SELECT * FROM com_app_emailsent WHERE com_timestamp > current_date - interval '3 months' " );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) { 
-    $recentemail{pap}{app}{$row[0]}++; 
-    if ($row[1]) { ($row[1]) = lc($row[1]);
-      my (@recentemails) = split/\s+/, $row[1];
-      foreach my $recentemail (@recentemails) {
-        $recentemail =~ s/,//g; $recentemail{email}{app}{$recentemail}++; } } }
-  $result = $dbh->prepare( "SELECT * FROM com_con_emailsent WHERE com_timestamp > current_date - interval '3 months' " );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) { 
-    $recentemail{pap}{con}{$row[0]}++; 
-    if ($row[1]) { ($row[1]) = lc($row[1]);
-      my (@recentemails) = split/\s+/, $row[1];
-      foreach my $recentemail (@recentemails) {
-        $recentemail =~ s/,//g; $recentemail{email}{con}{$recentemail}++; } } }
-  $result = $dbh->prepare( "SELECT * FROM afp_email WHERE afp_timestamp > current_date - interval '3 months' " );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) { 
-    $recentemail{pap}{afp}{$row[0]}++; 
-    if ($row[1]) { ($row[1]) = lc($row[1]);
-      my (@recentemails) = split/\s+/, $row[1];
-      foreach my $recentemail (@recentemails) {
-        $recentemail =~ s/,//g; $recentemail{email}{afp}{$recentemail}++; } } }
-  foreach my $type (sort keys %{ $recentemail{email} }) {
-    foreach my $email (sort keys %{ $recentemail{email}{$type} }) {
-      if ( $email{two}{$email} ) { $recentpeople{$email{two}{$email}}++; } } }
-#   $result = $dbh->prepare( "SELECT * FROM app_paper WHERE app_paper ~ 'WBPaper'" );
-#   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-#   while (my @row = $result->fetchrow) {
-#     if ($row[0]) {
-#       my (@paps) = $row[1] =~ m/WBPaper(\d+)/g;
-#       foreach (@paps) { $pap{$_}{curated}++; } } }
-#   $result = $dbh->prepare( "SELECT * FROM pap_curation_flags WHERE pap_curation_flags = 'emailed_community_gene_descrip'" );
-#   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-#   while (my @row = $result->fetchrow) {
-#     if ($row[0]) { $pap{$row[0]}{done}++; } }
-  $result = $dbh->prepare( "SELECT * FROM con_paper WHERE con_paper ~ 'WBPaper'" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) {
-      my (@paps) = $row[1] =~ m/WBPaper(\d+)/g;
-      foreach (@paps) { $pap{$_}{curated}++; } } }
-  
-  my %filter;
-  foreach my $pap (sort keys %pap) {
-#     next unless ($pap{$pap}{flagnoncur});
-    next unless ($pap{$pap}{valid});
-    next unless ($pap{$pap}{pubmedfinal});
-    next unless ($pap{$pap}{journalarticle});
-    next unless ($pap{$pap}{pdf});
-    next unless ($pap{$pap}{primary});
-    next unless ($pap{$pap}{gene});
-    next unless ($email{afp}{$pap});		# paper must have been AFPed first
-  
-#     next if ($pap{$pap}{email});
-    next if ($com{$pap}{email});		# already emailed in com_app_emailsent
-    next if ($pap{$pap}{done});
-    next if ($pap{$pap}{curated});
-    $filter{$pap}++;
-  } # foreach my $pap (sort keys %pap)
-  
-  my %twoEmail;
-  $result = $dbh->prepare( "SELECT * FROM two_email ORDER BY joinkey, two_order" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { push @{ $twoEmail{$row[0]} }, $row[2]; } }
-  
-  # foreach my $pap (sort keys %filter) { print qq($pap\n); } 
-  
-  my %aids;
-  my $joinkeys = join"','", sort keys %filter;
-  $result = $dbh->prepare( "SELECT * FROM pap_author WHERE joinkey IN ('$joinkeys') ORDER BY pap_order::INTEGER DESC;" );	# get most recent aid last for loop
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{aid} = $row[1]; $aids{$row[1]}{any}++; } }
-  my $aids = join"','", sort {$a<=>$b} keys %aids;
-  $result = $dbh->prepare( "SELECT * FROM pap_author_index WHERE author_id IN ('$aids');" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $aids{$row[0]}{name} = $row[1]; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_author_possible WHERE author_id IN ('$aids');" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ( ($row[1]) && ($row[0]) ) { 
-      next unless ($twoEmail{$row[1]});
-      $aids{$row[0]}{two}{$row[2]} = $row[1]; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_author_verified WHERE author_id IN ('$aids') AND pap_author_verified ~ 'YES';" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { 
-      $aids{$row[0]}{ver} = $row[2]; } }
-    
-  my $countThreshold = 100;
-  print qq(Showing most recent $countThreshold entries<br/>\n);
-  print qq(<table style="border-style: none;" border="1" >\n);
-  print qq(<tr><td>generate</td><td>WBPaper</td><td>pmids</td><td>first author initials</td><td>first author's person name</td><td>first author's person id</td><td>first author's person emails</td><td>corresponding author name</td><td>corresponding person</td><td>corresponding email</td><td>pdfs</td><td>genes</td></tr>\n); 
-  my $count = 0;
-  foreach my $pap (reverse sort keys %filter) {
-    next if ($recentemail{pap}{afp}{$pap});					# filter by afp paper recently emailed
-    next if ($recentemail{pap}{app}{$pap});					# filter by afp paper recently emailed
-    next if ($recentemail{pap}{con}{$pap});					# filter by afp paper recently emailed
-    my $aid = ''; if ($pap{$pap}{aid}) { $aid = $pap{$pap}{aid}; }
-    my $pmids = join", ", sort keys %{ $pap{$pap}{pmid} };
-    my @pdfs;
-    foreach my $path (sort keys %{ $pap{$pap}{pdf} }) {
-      my ($pdfname) = $path =~ m/\/([^\/]*?)$/;
-      my $url = 'http://tazendra.caltech.edu/~acedb/daniel/' . $pdfname;
-      my $link = qq(<a href="$url" target="new">$pdfname</a>);
-      push @pdfs, $link; }
-    my $pdfs = join" ", @pdfs;
-    my $recentlyEmailed = 0;
-    my ($two, $personName, $person, $emails) = ('', '', '', '');
-    if ($aids{$aid}{ver}) { 
-      my $join = $aids{$aid}{ver}; 
-      if ($aids{$aid}{two}{$join}) {
-        $two         = $aids{$aid}{two}{$join};
-        if ($recentpeople{$two}) { $recentlyEmailed++; }
-        $personName  = $two{name}{$two}; 
-        $person      = $two; $person =~ s/two/WBPerson/;
-        $emails      = join", ", @{ $twoEmail{$two} };
-      }
-    }
-    my ($cEmail, $cTwo, $cName) = ('', '', '');	# generate from afp_email the person id and name
-    if ($email{afp}{$pap}) {    
-      my @emails; my @twos; my @names;
-      my (@afpemails) = split/\s+/, $email{afp}{$pap};
-      foreach my $afpemail (@afpemails) {
-        my ($two, $name) = ('', '');
-        $afpemail =~ s/,//g;
-        if ($recentemail{email}{afp}{$afpemail}) { $recentlyEmailed++; }	# to filter by emails recently emailed
-        if ($recentemail{email}{app}{$afpemail}) { $recentlyEmailed++; }	# to filter by emails recently emailed
-        if ($recentemail{email}{con}{$afpemail}) { $recentlyEmailed++; }	# to filter by emails recently emailed
-        if ($email{two}{$afpemail}) {
-          $two   = $email{two}{$afpemail}; 
-          if ($recentpeople{$two}) { $recentlyEmailed++; }
-          if ($two{name}{$two}) { 
-            $name  = $two{name}{$two}; } }
-        my $wbperson = $two; $wbperson =~ s/two/WBPerson/g;
-        push @emails, $afpemail; push @twos, $wbperson; push @names, $name;
-      }
-      $cEmail = join", ", @emails;
-      $cTwo   = join", ", @twos;
-      $cName  = join", ", @names;
-    }
-    next if ($recentlyEmailed);						# to filter by emails recently emailed
-    my $submit = '';
-    if ( ($pmids) && ($emails || $cEmail) ) { $submit = qq(<input type="submit" name="action" value="generate email">\n); }
-    next unless ($submit);
-    print qq(<form method="post" action="community_curation_tracker.cgi"\n>);
-    print qq(<input type="hidden" name="papid"    value="$pap" />\n);
-    print qq(<input type="hidden" name="pmids"    value="$pmids" />\n);
-    print qq(<input type="hidden" name="emails"   value="$emails"/>\n);
-    print qq(<input type="hidden" name="cemails"  value="$cEmail"/>\n);
-    print qq(<input type="hidden" name="datatype" value="con"/>\n);
-    my @genes; 
-    foreach my $wbgene (sort keys %{ $pap{$pap}{gene} }) {
-      my $locus = ''; if ($gin{$wbgene}) { $locus = $gin{$wbgene}; }
-      push @genes, qq(WBGene$wbgene,$locus); }
-    my $genes = join"<br/>", @genes;
-    print qq(<tr><td>$submit</td><td>WBPaper$pap\t</td><td>$pmids</td><td>$aids{$aid}{name}\t</td><td>$personName\t</td><td>$person\t</td><td>$emails\t</td><td>$cName</td><td>$cTwo</td><td>$cEmail</td><td>$pdfs</td><td>$genes</td></tr>\n); 
-    print qq(</form>);
-    $count++; last if ($count > $countThreshold);
-  } 
-  print qq(<tr><td>generate</td><td>WBPaper</td><td>pmids</td><td>first author initials</td><td>first author's person name</td><td>first author's person id</td><td>first author's person emails</td><td>corresponding author name</td><td>corresponding person</td><td>corresponding email</td><td>pdfs</td><td>genes</td></tr>\n); 
-  print qq(<table>);
-
-} # sub conciseReadyToGo
-
-sub conciseTracker {
-  my %pap;
-  my %com;
-  my %gin;
-
-  $result = $dbh->prepare( "SELECT * FROM com_con_emailsent" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { 
-      $com{$row[0]}{date}  = $row[2]; 
-      $com{$row[0]}{email} = $row[1]; } }
-  $result = $dbh->prepare( "SELECT * FROM com_con_emailresponse" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $com{$row[0]}{response} = $row[1]; } }
-  $result = $dbh->prepare( "SELECT * FROM com_con_remark" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $com{$row[0]}{remark} = $row[1]; } }
-  
-  $result = $dbh->prepare( "SELECT * FROM pap_identifier WHERE pap_identifier ~ 'pmid'" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $row[1] =~ s/pmid//; $pap{$row[0]}{pmid}{$row[1]}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_electronic_path" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{pdf}{$row[1]}++; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_gene WHERE pap_gene ~ '0';" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $pap{$row[0]}{gene}{$row[1]}++; } }
-  
-  $result = $dbh->prepare( "SELECT con_paper.joinkey, con_paper.con_paper, con_wbgene.con_wbgene FROM con_paper, con_wbgene WHERE con_paper.joinkey = con_wbgene.joinkey AND con_paper ~ 'WBPaper' AND con_paper.joinkey IN (SELECT joinkey FROM con_person WHERE con_person IS NOT NULL)" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) {
-      my (@paps) = $row[1] =~ m/WBPaper(\d+)/g;
-      foreach (@paps) { $pap{$_}{communityCurated}{$row[2]}++; } } }
-  
-  $result = $dbh->prepare( "SELECT * FROM gin_locus ;" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { $gin{$row[0]} = $row[1]; } }
-  
-  my %filter;
-  foreach my $pap (sort keys %pap) {
-    next unless ($com{$pap}{email});
-    $filter{$pap}++;
-  } # foreach my $pap (sort keys %pap)
-  
-  print qq(<table id="sortabletable" style="border-style: none;" border="1">\n);
-  print qq(<thead><tr><th>email response</th><th>remark</th><th>concise email date</th><th>email addresses sent request</th><th>community curated</th><th>WBPaper</th><th>pmids</th><th>pdfs</th><th>genes</th></tr></thead><tbody>\n); 
-  foreach my $pap (reverse sort keys %filter) {
-    my $pmids = join", ", sort keys %{ $pap{$pap}{pmid} };
-    my @pdfs;
-    foreach my $path (sort keys %{ $pap{$pap}{pdf} }) {
-      my ($pdfname) = $path =~ m/\/([^\/]*?)$/;
-      my $url = 'http://tazendra.caltech.edu/~acedb/daniel/' . $pdfname;
-      my $link = qq(<a href="$url" target="new">$pdfname</a>);
-      push @pdfs, $link; }
-    my $pdfs = join" ", @pdfs;
-    print qq(<form method="post" action="community_curation_tracker.cgi"\n>);
-    print qq(<input type="hidden" name="pmids"   value="$pmids" />\n);
-#     my $communityCurated = 'NOT'; if ($pap{$pap}{communityCurated}) { $communityCurated = 'curated'; }
-    my $communityCurated = 'NOT'; 
-    if (scalar keys %{ $pap{$pap}{communityCurated}} > 0) {
-      my @genes; 
-      foreach my $wbgene (sort keys %{ $pap{$pap}{communityCurated} }) {
-        $wbgene =~ s/WBGene//;
-        my $locus = ''; if ($gin{$wbgene}) { $locus = $gin{$wbgene}; }
-        push @genes, qq(WBGene$wbgene,$locus); }
-      $communityCurated = join"<br/>", @genes; }
-    my $textareacols = '40';
-    my $response = ''; if ($com{$pap}{response}) { $response = $com{$pap}{response}; }
-    my $responseAjaxUrl = "community_curation_tracker.cgi?action=ajaxUpdate&papid=$pap&field=emailresponse&datatype=con&value=";
-    my $responseInput = qq(<input name="response" id="${pap}_inputresponse" value="$response" onfocus="document.getElementById('${pap}_inputresponse').style.display = 'none'; document.getElementById('${pap}_textarearesponse').style.display = ''; document.getElementById('${pap}_textarearesponse').focus(); "/>);
-    my $responseTextarea = qq(<textarea id="${pap}_textarearesponse" rows="5" cols="$textareacols" style="display:none;" onblur="document.getElementById('${pap}_inputresponse').style.display = ''; document.getElementById('${pap}_textarearesponse').style.display = 'none'; var inputValue = document.getElementById('${pap}_inputresponse').value; var textareaValue = document.getElementById('${pap}_textarearesponse').value; if (inputValue !== textareaValue) { document.getElementById('${pap}_inputresponse').value = textareaValue; var ajaxUrl = '${responseAjaxUrl}' + document.getElementById('${pap}_textarearesponse').value; \$.ajax({ url: ajaxUrl }); }" >$response</textarea>);
-    my $remark = ''; if ($com{$pap}{remark}) { $remark = $com{$pap}{remark}; }
-    my $remarkAjaxUrl = "community_curation_tracker.cgi?action=ajaxUpdate&papid=$pap&field=remark&datatype=con&value=";
-    my $remarkInput = qq(<input name="remark" id="${pap}_inputremark" value="$remark" onfocus="document.getElementById('${pap}_inputremark').style.display = 'none'; document.getElementById('${pap}_textarearemark').style.display = ''; document.getElementById('${pap}_textarearemark').focus(); "/>);
-    my $remarkTextarea = qq(<textarea id="${pap}_textarearemark" rows="5" cols="$textareacols" style="display:none;" onblur="document.getElementById('${pap}_inputremark').style.display = ''; document.getElementById('${pap}_textarearemark').style.display = 'none'; var inputValue = document.getElementById('${pap}_inputremark').value; var textareaValue = document.getElementById('${pap}_textarearemark').value; if (inputValue !== textareaValue) { document.getElementById('${pap}_inputremark').value = textareaValue; var ajaxUrl = '${remarkAjaxUrl}' + document.getElementById('${pap}_textarearemark').value; \$.ajax({ url: ajaxUrl }); }" >$remark</textarea>);
-    my $emailedDate      = ''; if ($com{$pap}{date}) {  ($emailedDate)    = $com{$pap}{date} =~ m/^([\d\-]{10})/;  }
-    my $emailedAddresses = ''; if ($com{$pap}{email}) { $emailedAddresses = $com{$pap}{email}; }
-    my @genes; 
-    foreach my $wbgene (sort keys %{ $pap{$pap}{gene} }) {
-      my $locus = ''; if ($gin{$wbgene}) { $locus = $gin{$wbgene}; }
-      push @genes, qq(WBGene$wbgene,$locus); }
-    my $genes = join"<br/>", @genes;
-    print qq(<tr><td>${responseInput}${responseTextarea}</td><td>${remarkInput}${remarkTextarea}</td><td>$emailedDate</td><td>$emailedAddresses</td><td>$communityCurated</td><td>WBPaper$pap\t</td><td>$pmids</td><td>$pdfs</td><td>$genes</td></tr>\n); 
-    print qq(</form>);
-  } 
-  print qq(</tbody></table>);
-} # sub conciseTracker
-  
-  
 sub readyToGo {
   my ($datatype) = @_;
 #   ($var, my $datatype)       = &getHtmlVar($query, 'datatype');
 
   my %pap;
-  my %recentemail;			# email addresses sent in the last 3 months
-  my %recentpeople;			# people with an email addresses sent in the last 3 months
+  my %recentemail;			# email addresses sent in the last month
+  my %recentpeople;			# people with an email addresses sent in the last month
   my %email;
   my %two;
   my %com;
@@ -694,7 +380,7 @@ sub readyToGo {
   while (my @row = $result->fetchrow) {
     if ($row[0]) { $pap{$row[0]}{primary}++; } }
 
-  $result = $dbh->prepare( "SELECT * FROM com_app_emailsent WHERE com_timestamp > current_date - interval '3 months' " );
+  $result = $dbh->prepare( "SELECT * FROM com_app_emailsent WHERE com_timestamp > current_date - interval '1 months' " );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) { 
 #     $recentemail{pap}{app}{$row[0]}++; 
@@ -702,7 +388,7 @@ sub readyToGo {
       my (@recentemails) = split/\s+/, $row[1];
       foreach my $recentemail (@recentemails) {
         $recentemail =~ s/,//g; $recentemail{email}{app}{$recentemail}++; } } }
-  $result = $dbh->prepare( "SELECT * FROM com_con_emailsent WHERE com_timestamp > current_date - interval '3 months' " );
+  $result = $dbh->prepare( "SELECT * FROM com_con_emailsent WHERE com_timestamp > current_date - interval '1 months' " );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) { 
 #     $recentemail{pap}{con}{$row[0]}++; 
@@ -710,14 +396,15 @@ sub readyToGo {
       my (@recentemails) = split/\s+/, $row[1];
       foreach my $recentemail (@recentemails) {
         $recentemail =~ s/,//g; $recentemail{email}{con}{$recentemail}++; } } }
-  $result = $dbh->prepare( "SELECT * FROM afp_email WHERE afp_timestamp > current_date - interval '3 months' " );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) { 
-#     $recentemail{pap}{afp}{$row[0]}++; 
-    if ($row[1]) { ($row[1]) = lc($row[1]);
-      my (@recentemails) = split/\s+/, $row[1];
-      foreach my $recentemail (@recentemails) {
-        $recentemail =~ s/,//g; $recentemail{email}{afp}{$recentemail}++; } } }
+# No longer filter out emails that have been AFPed in the last month.  2017 07 31
+#   $result = $dbh->prepare( "SELECT * FROM afp_email WHERE afp_timestamp > current_date - interval '1 months' " );
+#   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+#   while (my @row = $result->fetchrow) { 
+# #     $recentemail{pap}{afp}{$row[0]}++; 
+#     if ($row[1]) { ($row[1]) = lc($row[1]);
+#       my (@recentemails) = split/\s+/, $row[1];
+#       foreach my $recentemail (@recentemails) {
+#         $recentemail =~ s/,//g; $recentemail{email}{afp}{$recentemail}++; } } }
   foreach my $type (sort keys %{ $recentemail{email} }) {
     foreach my $email (sort keys %{ $recentemail{email}{$type} }) {
       if ( $email{old}{$email} ) { $recentpeople{$email{old}{$email}}++; }
@@ -735,6 +422,14 @@ sub readyToGo {
     my $dataAnyFlaggedNCur = get $urlAnyFlaggedNCur;
     my (@papers) = $dataAnyFlaggedNCur =~ m/specific_papers=WBPaper(\d+)/g;
     foreach (@papers) { $pap{$_}{flaggeddatatype}++; }
+
+      # remove papers that have been curated for RNAi for Chris.  2016 08 23
+    my $urlRnaiCurated = 'http://tazendra.caltech.edu/~postgres/cgi-bin/curation_status.cgi?action=listCurationStatisticsPapersPage&select_curator=two1823&listDatatype=rnai&method=allcur&checkbox_cfp=on&checkbox_afp=on&checkbox_str=on&checkbox_svm=on';
+    my $dataRnaiCurated = get $urlRnaiCurated;
+    my (@rnaiPapers) = $dataRnaiCurated =~ m/specific_papers=WBPaper(\d+)/g;
+    foreach (@rnaiPapers) { 
+      if ($pap{$_}{flaggeddatatype}) {
+        delete $pap{$_}{flaggeddatatype}; } }
   } # if ($datatype eq 'app')
 
   if ($datatype eq 'con') {
@@ -771,7 +466,7 @@ sub readyToGo {
     next unless ($pap{$pap}{pubmedfinal});
     next unless ($pap{$pap}{journalarticle});
     next unless ($pap{$pap}{pdf});
-    next unless ($email{afp}{$pap});		# paper must have been AFPed first
+#     next unless ($email{afp}{$pap});		# paper must have been AFPed first	# Chris no longer wants this restriction 2017 07 31
 
 #     next if ($pap{$pap}{email});
     next if ($com{$pap}{email});		# already emailed in com_<datatype>_emailsent
@@ -811,11 +506,12 @@ sub readyToGo {
   while (my @row = $result->fetchrow) {
     if ($row[0]) { 
       $aids{$row[0]}{ver} = $row[2]; } }
-  $result = $dbh->prepare( "SELECT * FROM pap_author_corresponding WHERE author_id IN ('$aids');" );
-  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) {
-    if ($row[0]) { 
-      $aids{$row[0]}{cor} = $row[1]; } }
+# Chris no longer wants corresponding author data looked at  2017 07 17
+#   $result = $dbh->prepare( "SELECT * FROM pap_author_corresponding WHERE author_id IN ('$aids');" );
+#   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+#   while (my @row = $result->fetchrow) {
+#     if ($row[0]) { 
+#       $aids{$row[0]}{cor} = $row[1]; } }
     
   my $countThreshold = 100;
   print qq(Showing most recent $countThreshold entries<br/>\n);
@@ -857,11 +553,11 @@ sub readyToGo {
             $person      = $two; $person =~ s/two/WBPerson/;
             $emails      = join", ", @{ $twoEmail{$two} }; }
           if ($recentpeople{$two}) { $recentlyEmailed++; }
-          if ($aids{$aid}{cor}) { 
-# if ($pap eq '00046127') { print "COR $aid HERE<br>"; }
+          if ($aids{$aid}{cor}) {
             my $cTwo         = $aids{$aid}{two}{$join};
             my $cPersonName  = $two{name}{$cTwo}; 
             my $cEmails      = join", ", @{ $twoEmail{$cTwo} };
+            if ( !($emails) && ($recentpeople{$cTwo}) )  { $recentlyEmailed++; }	# if corresponding person was recently emailed and there is no fa->person->email, skip the row  2017 08 03
             push @cEmails, $cEmails;
             push @cTwos,   $cTwo;
             push @cNames,  $cPersonName;
@@ -892,12 +588,14 @@ sub readyToGo {
           if ($recentemail{email}{con}{$afpemail}) { $recentlyEmailed++; }	# to filter by emails recently emailed
           if ($email{two}{$afpemail}) {
               $two   = $email{two}{$afpemail}; 
-              if ($recentpeople{$two}) { $recentlyEmailed++; }
+#               if ($recentpeople{$two}) { $recentlyEmailed++; }	# 2017 07 18 no longer prevent showing on the list from an afp email having been emailed
+              if ( !($emails) && ($recentemail{email}{app}{$afpemail}) ) { $recentlyEmailed++; }	# 2017 08 03 if no fa->person->email check afpemail has not been emailed recently for this pipeline
               $emails{good}{$afpemail} = $two; 
               $twos{good}{$two}++; }
             elsif ($email{old}{$afpemail}) {
               $two   = $email{old}{$afpemail}; 
-              if ($recentpeople{$two}) { $recentlyEmailed++; }
+#               if ($recentpeople{$two}) { $recentlyEmailed++; }	# 2017 07 18 no longer prevent showing on the list from an afp email having been emailed
+              if ( !($emails) && ($recentemail{email}{app}{$afpemail}) ) { $recentlyEmailed++; }	# 2017 08 03 if no fa->person->email check afpemail has not been emailed recently for this pipeline
               $emails{old}{$afpemail} = $two; 
               $twos{old}{$two}++; }
             else {
@@ -925,12 +623,14 @@ sub readyToGo {
           $pdfemail =~ s/,//g;
           if ($email{two}{$pdfemail}) {
               $two   = $email{two}{$pdfemail}; 
-              if ($recentpeople{$two}) { $recentlyEmailed++; }
+#               if ($recentpeople{$two}) { $recentlyEmailed++; }	# 2017 07 18 no longer prevent showing on the list from an pdf email having been emailed
+              if ( !($emails) && ($recentemail{email}{app}{$pdfemail}) ) { $recentlyEmailed++; }	# 2017 08 03 if no fa->person->email check pdfemail has not been emailed recently for this pipeline
               $emails{good}{$pdfemail} = $two; 
               $twos{good}{$two}++; }
             elsif ($email{old}{$pdfemail}) {
               $two   = $email{old}{$pdfemail}; 
-              if ($recentpeople{$two}) { $recentlyEmailed++; }
+#               if ($recentpeople{$two}) { $recentlyEmailed++; }	# 2017 07 18 no longer prevent showing on the list from an pdf email having been emailed
+              if ( !($emails) && ($recentemail{email}{app}{$pdfemail}) ) { $recentlyEmailed++; }	# 2017 08 03 if no fa->person->email check pdfemail has not been emailed recently for this pipeline
               $emails{old}{$pdfemail} = $two; 
               $twos{old}{$two}++; }
             else {
@@ -957,29 +657,30 @@ sub readyToGo {
       my $locus = ''; if ($gin{$wbgene}) { $locus = $gin{$wbgene}; }
       push @genes, qq(WBGene$wbgene,$locus); }
     my $genes = join"<br/>", @genes;
-    print qq(<form method="post" action="community_curation_tracker.cgi"\n>);
-    print qq(<input type="hidden" name="papid"      value="$pap" />\n);
-    print qq(<input type="hidden" name="pmids"      value="$pmids" />\n);
-    print qq(<input type="hidden" name="aidname"    value="$aids{$aidFirstAuthor}{name}"/>\n);
-    print qq(<input type="hidden" name="anames"     value="$personName"/>\n);
-    print qq(<input type="hidden" name="atwos"      value="$person"/>\n);
-    print qq(<input type="hidden" name="aemails"    value="$emails"/>\n);
-    print qq(<input type="hidden" name="cnames"     value="$cName"/>\n);
-    print qq(<input type="hidden" name="ctwos"      value="$cTwo"/>\n);
-    print qq(<input type="hidden" name="cemails"    value="$cEmail"/>\n);
-    print qq(<input type="hidden" name="afpnames"   value="$afpName"/>\n);
-    print qq(<input type="hidden" name="afptwos"    value="$afpTwo"/>\n);
-    print qq(<input type="hidden" name="afpemails"  value="$afpEmail"/>\n);
-    print qq(<input type="hidden" name="pdfnames"   value="$pdfName"/>\n);
-    print qq(<input type="hidden" name="pdftwos"    value="$pdfTwo"/>\n);
-    print qq(<input type="hidden" name="pdfemails"  value="$pdfEmail"/>\n);
-    print qq(<input type="hidden" name="pdfs"       value="$pdfs"/>\n);
-    print qq(<input type="hidden" name="genes"      value="$genes"/>\n);
-    print qq(<input type="hidden" name="datatype"   value="$datatype"/>\n);
     my $submitButton = ''; my $skipButton = '';
     if ( ($pmids) && ($emails || $cEmail || $afpEmail || $pdfEmail) ) {
+      print qq(<form method="post" action="community_curation_tracker.cgi"\n>);
+      print qq(<input type="hidden" name="papid"      value="$pap" />\n);
+      print qq(<input type="hidden" name="pmids"      value="$pmids" />\n);
+      print qq(<input type="hidden" name="aidname"    value="$aids{$aidFirstAuthor}{name}"/>\n);
+      print qq(<input type="hidden" name="anames"     value="$personName"/>\n);
+      print qq(<input type="hidden" name="atwos"      value="$person"/>\n);
+      print qq(<input type="hidden" name="aemails"    value="$emails"/>\n);
+      print qq(<input type="hidden" name="cnames"     value="$cName"/>\n);
+      print qq(<input type="hidden" name="ctwos"      value="$cTwo"/>\n);
+      print qq(<input type="hidden" name="cemails"    value="$cEmail"/>\n);
+      print qq(<input type="hidden" name="afpnames"   value="$afpName"/>\n);
+      print qq(<input type="hidden" name="afptwos"    value="$afpTwo"/>\n);
+      print qq(<input type="hidden" name="afpemails"  value="$afpEmail"/>\n);
+      print qq(<input type="hidden" name="pdfnames"   value="$pdfName"/>\n);
+      print qq(<input type="hidden" name="pdftwos"    value="$pdfTwo"/>\n);
+      print qq(<input type="hidden" name="pdfemails"  value="$pdfEmail"/>\n);
+      print qq(<input type="hidden" name="pdfs"       value="$pdfs"/>\n);
+      print qq(<input type="hidden" name="genes"      value="$genes"/>\n);
+      print qq(<input type="hidden" name="datatype"   value="$datatype"/>\n);
       $submitButton = qq(<input type="submit" name="action" value="generate email">\n); 
       $skipButton   = qq(<input type="submit" name="action" value="skip paper">\n); 
+
       my $row = qq(<tr><td>$submitButton</td><td>$skipButton</td><td>WBPaper$pap\t</td><td>$pmids</td><td>$pdfs</td><td>$aids{$aidFirstAuthor}{name}\t</td><td>$personName\t</td><td>$person\t</td><td>$emails\t</td><td>$cName</td><td>$cTwo</td><td>$cEmail</td><td>$afpName</td><td>$afpTwo</td><td>$afpEmail</td><td>$pdfName</td><td>$pdfTwo</td><td>$pdfEmail</td></tr>\n);
       if ($datatype eq 'con') { $row = qq(<tr><td>$submitButton</td><td>$skipButton</td><td>WBPaper$pap\t</td><td>$pmids</td><td>$pdfs</td><td>$genes</td><td>$aids{$aidFirstAuthor}{name}\t</td><td>$personName\t</td><td>$person\t</td><td>$emails\t</td><td>$cName</td><td>$cTwo</td><td>$cEmail</td><td>$afpName</td><td>$afpTwo</td><td>$afpEmail</td><td>$pdfName</td><td>$pdfTwo</td><td>$pdfEmail</td></tr>\n); }
       print qq($row);
@@ -988,6 +689,7 @@ sub readyToGo {
     }
   }
   print qq(<table>);
+#   print qq(COUNT $count found<br/>\n);
 } # sub readyToGo
 
 sub tracker {
@@ -1143,7 +845,7 @@ sub tracker {
     if ($datatype eq 'con') { $row = qq(<tr><td>${responseInput}${responseTextarea}</td><td>${remarkInput}${remarkTextarea}</td><td>$emailedDate</td><td>$emailedAddresses</td><td>$communityCurated</td><td>WBPaper$pap\t</td><td>$pmids</td><td>$pdfs</td><td>$genes</td></tr>\n); }
     print qq($row);
     print qq(</form>);
-  } 
+  }
   print qq(</tbody></table>);
 } # sub tracker
   

@@ -43,36 +43,7 @@
 # strain submissions should write to OA app_controlstrain instead of app_strain.  2017 05 11
 #
 # Added Paul Davis to emailMaryann flag for Chris.  2017 10 06
-# 
-# 
-# INSTRUCTIONS 2017 10 11
-# I should add that I'd like the "RNAi target gene" field to accept free text in the event that an entered gene is not recognized, but then have the warning text pop up to the right of the field, as it does for alleles and transgenes:
-# 
-# "Notice: The gene '<entry>' that you have entered is not recognized by WormBase. If '<entry>' is a new gene, please continue your submission and a WormBase curator will contact you to confirm."
-# 
-# I'd like the logic for writing to the OA to be like this:
-# 
-# - If there's a single RNAi entry, the gene entry should go in the RNAi OA "Remark" field (as free text), preferably as the public name of the gene; the "RNAi reagent" field entry can go into the "DNA text" field of the RNAi OA
-# 
-# - If there are multiple perturbations and the user has clicked the radio button for "Multiple individual experiments", then all RNAi entries can go into individual rows in the RNAi OA as described above
-# 
-# - If there are multiple perturbations and the user has clicked the radio button for "Single complex genotype experiment", then we want all perturbation entries to be concatenated (separated by semicolons) and put into the Phenotype OA into the "Unregistered Variation" field as free text like this:
-# 
-# "RNAi target: <WBGene ID/free text if not recognized>, RNAi reagent: <text>, RNAi species: <species>"
-# 
-# for all RNAi entries...
-# 
-# "Allele: <WBVar ID/free text if not recognized>"
-# 
-# for all Allele entries and...
-# 
-# "Transgene: <WBTransgene ID/free text if not recognized>"
-# 
-# for all Transgene entries, each of the above separated by a semicolon. If multiple phenotypes are also reported, each phenotype (observed or not) would get its own row/pgid in the Phenotype OA with the same concatenated complex perturbation in the "Unregistered Variation" field.
-# 
-# Also, if possible, in the "Optional" section of the form, if multiple perturbations are entered (regardless of what radio button is selected), I want to gray-out/invalidate the "Inheritance Pattern", "Mutation Effect", and "Temperature Sensitive" fields.
-#
-# Live on tazendra 2017 12 14
+
 
 
 use Jex;			# untaint, getHtmlVar, cshlNew
@@ -83,6 +54,8 @@ use DBI;
 use Tie::IxHash;
 use LWP::Simple;
 use File::Basename;		# fileparse
+use File::Path qw( make_path );
+use File::Copy qw(copy);
 use Mail::Sendmail;
 use Net::Domain qw(hostname hostfqdn hostdomain);
 
@@ -156,7 +129,7 @@ sub bogusSubmission {
   ($var, my $pgidsApp) = &getHtmlVar($query, 'pgidsApp');
   ($var, my $pgidsRna) = &getHtmlVar($query, 'pgidsRna');
   my $user             = 'phenotype_form@' . $hostfqdn;	# who sends mail
-  my $email = 'cgrove@caltech.edu';
+  my $email = 'daniela.raciti@micropublication.org, cgrove@caltech.edu, karen.yook@micropublication.org';
 #   my $email = 'azurebrd@tazendra.caltech.edu';
 #   my $email = 'closertothewake@gmail.com';
   my $subject = 'Phenotype form unauthorized or retracted submission';		# subject of mail
@@ -172,7 +145,8 @@ sub emailFlagFirstpass {
   my ($var, $wbperson)     = &getHtmlVar($query, 'wbperson');	# WBPerson ID
   my ($var, $wbpaper)      = &getHtmlVar($query, 'wbpaper');	# WBPaper ID
   my $user        = 'phenotype_form@' . $hostfqdn;	# who sends mail
-  my $email       = 'cgrove@caltech.edu';
+  my $email = 'daniela.raciti@micropublication.org, cgrove@caltech.edu, karen.yook@micropublication.org';
+#   my $email       = 'cgrove@caltech.edu';
 #   my $email       = 'closertothewake@gmail.com';
   my $subject     = qq(Phenotype Form: Flag $wbpaper by $wbperson);
   print "Thank you for flagging $wbpaper for phenotype curation.<br/>\n";
@@ -311,17 +285,17 @@ sub personPublication {
       elsif ($hasWBCurator{$paper})  { $relevant = 'relevant'; }	# wormbase curated papers are relevant
       elsif ($hasComCurator{$paper}) { $relevant = 'relevant'; }	# user curated papers are relevant
       else {	# not flagged, give link to this form to email Chris that the paper should be flagged
-        $curation_status   = qq(<a href='phenotype.cgi?action=emailFlagFirstpass&wbpaper=$paper&wbperson=$personId' target='_blank' style='font-weight: bold; text-decoration: underline;'>flag this for phenotype data</a>); }
+        $curation_status   = qq(<a href='phenotype_micropub.cgi?action=emailFlagFirstpass&wbpaper=$paper&wbperson=$personId' target='_blank' style='font-weight: bold; text-decoration: underline;'>flag this for phenotype data</a>); }
    if ($relevant eq 'relevant') {
-      my $urlPreexisting  = 'http://' . $hostfqdn .  "/~azurebrd/cgi-bin/forms/phenotype.cgi?action=preexistingData&wbpaper=$paper";
+      my $urlPreexisting  = 'http://' . $hostfqdn .  "/~azurebrd/cgi-bin/forms/phenotype_micropub.cgi?action=preexistingData&wbpaper=$paper";
       my %datatypeLabels; $datatypeLabels{app} = 'Allele-Transgene'; $datatypeLabels{rna} = 'RNAi'; 
       my @curation_status;
       foreach my $datatype (sort keys %datatypeLabels) {
         my $datatype_label = '';
         if ($hasWBCurator{$paper}{$datatype}) {       $datatype_label = qq(<a href='$urlPreexisting' target='_blank' style='font-weight: bold; text-decoration: underline;'>$datatypeLabels{$datatype} WormBase curated</a>);     }
           elsif ($hasComCurator{$paper}{$datatype}) { $datatype_label = qq(<a href='$urlPreexisting' target='_blank' style='font-weight: bold; text-decoration: underline;'>$datatypeLabels{$datatype} Curation in progress</a>); }
-          elsif ($flaggedPapers{$paper}{$datatype}) { $datatype_label = qq(<a href='phenotype.cgi?action=showStart&input_1_pmid=$pmid&input_1_person=$personName&termid_1_person=$personId&input_1_email=$personEmail' target='_blank' style='font-weight: bold; text-decoration: underline;'>$datatypeLabels{$datatype} Needs curation</a>); }
-          else {                                      $datatype_label = qq(<a href='phenotype.cgi?action=emailFlagFirstpass&wbpaper=$paper&wbperson=$personId' target='_blank' style='font-weight: bold; text-decoration: underline;'>flag this for $datatypeLabels{$datatype} phenotype data</a>); }
+          elsif ($flaggedPapers{$paper}{$datatype}) { $datatype_label = qq(<a href='phenotype_micropub.cgi?action=showStart&input_1_pmid=$pmid&input_1_person=$personName&termid_1_person=$personId&input_1_email=$personEmail' target='_blank' style='font-weight: bold; text-decoration: underline;'>$datatypeLabels{$datatype} Needs curation</a>); }
+          else {                                      $datatype_label = qq(<a href='phenotype_micropub.cgi?action=emailFlagFirstpass&wbpaper=$paper&wbperson=$personId' target='_blank' style='font-weight: bold; text-decoration: underline;'>flag this for $datatypeLabels{$datatype} phenotype data</a>); }
         if ($datatype_label) {
           push @curation_status, $datatype_label; }
       }
@@ -537,16 +511,16 @@ sub checkAllele {					# only return allele code warning if both checks fail
   return $checkResults;
 } # sub checkAllele
 
-sub checkWBGene {					# check transgene is valid object or give notice
+sub checkStrain {					# only return allele code warning if both checks fail
   my ($input) = @_;
   my $checkResults = 'ok'; 
   unless ($input) { return $checkResults; }
   if ($input =~ m/;/) { $input =~ s/;/\\;/g; }
-  $result = $dbh->prepare( "SELECT * FROM gin_locus WHERE gin_locus = '$input';" );
+  $result = $dbh->prepare( "SELECT * FROM obo_name_strain WHERE obo_name_strain = '$input';" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; my @row = $result->fetchrow();
-  unless ($row[1]) { return qq(<span style='color: brown'>Notice: The gene '$input' that you have entered is not recognized by WormBase. If '$input' is a new gene, please continue your submission and a WormBase curator will contact you to confirm.</span>); }
+  unless ($row[1]) { return qq(<span style='color: brown'>Notice: The strain name '$input' that you have entered is not recognized by WormBase. If '$input' is a new strain, please continue your submission and a WormBase curator will contact you to confirm.</span>); }
   return $checkResults;
-} # sub checkTransgene
+} # sub checkStrain
 
 sub checkTransgene {					# check transgene is valid object or give notice
   my ($input) = @_;
@@ -583,25 +557,20 @@ sub checkPmid {					# only return allele code warning if both checks fail
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; my @row = $result->fetchrow();
   if ($row[0]) { $hasData++; }
   if ($hasData) {
-    my $url = 'http://' . $hostfqdn . "/~azurebrd/cgi-bin/forms/phenotype.cgi?action=preexistingData&wbpaper=$wbpaper";
+    my $url = 'http://' . $hostfqdn . "/~azurebrd/cgi-bin/forms/phenotype_micropub.cgi?action=preexistingData&wbpaper=$wbpaper";
     $checkResults = qq(<span style='color: brown'>Notice: The paper you have entered has already been curated for some phenotype data. Please refer to the <a href='$url' target='new' style='font-weight: bold; text-decoration: underline;'>phenotype data summary</a> for this paper. If you believe you have additional phenotype data for this paper, please proceed.</span>); }
   return $checkResults;
 } # sub checkPmid
 
 sub asyncFieldCheck {
   print "Content-type: text/plain\n\n";
-  ($var, my $field)     = &getHtmlVar($query, 'field');	# not used, but could be used later
-  ($var, my $ontology)  = &getHtmlVar($query, 'ontology');
-  ($var, my $input)     = &getHtmlVar($query, 'input');
+  ($var, my $field)   = &getHtmlVar($query, 'field');
+  ($var, my $input)   = &getHtmlVar($query, 'input');
   my $checkResults = 'ok';
-#   if ($field eq 'allele') {                 ($checkResults) = &checkAllele($input); }
-#     elsif ($field eq 'cloneseqgene') {      ($checkResults) = &checkWBGene($input);   }
-#     elsif ($field eq 'transgene') {         ($checkResults) = &checkTransgene($input);   }
-#     elsif ($field eq 'pmid') {              ($checkResults) = &checkPmid($input);   }
-  if ($ontology eq 'allele') {                ($checkResults) = &checkAllele($input); }
-    elsif ($ontology eq 'wbgene') {           ($checkResults) = &checkWBGene($input);   }
-    elsif ($ontology eq 'transgene') {        ($checkResults) = &checkTransgene($input);   }
-    elsif ($ontology eq 'pmid') {             ($checkResults) = &checkPmid($input);   }
+  if ($field eq 'allele') {           ($checkResults) = &checkAllele($input); }
+    elsif ($field eq 'transgene') {   ($checkResults) = &checkTransgene($input);   }
+    elsif ($field eq 'moleculestrain') {   ($checkResults) = &checkStrain($input);   }
+    elsif ($field eq 'pmid') {        ($checkResults) = &checkPmid($input);   }
   print "$checkResults";
 } # sub asyncFieldCheck
 
@@ -665,8 +634,9 @@ sub getGenericOboTermInfo {
 sub getAnySpecificTermInfo {
   my ($ontology_type, $userValue) = @_; my $matches = '';
   if ($ontology_type eq 'WBPerson') {          ($matches) = &getAnyWBPersonTermInfo($userValue); }
-    elsif ($ontology_type eq 'WBTransgene') {  ($matches) = &getAnyWBTransgeneTermInfo($userValue); }
-    elsif ($ontology_type eq 'WBGene') {       ($matches) = &getAnyWBGeneTermInfo($userValue); }
+    elsif ($ontology_type eq 'WBTransgene') {      ($matches) = &getAnyWBTransgeneTermInfo($userValue); }
+    elsif ($ontology_type eq 'WBMolecule') {       ($matches) = &getAnyWBMoleculeTermInfo($userValue); }
+#   elsif ($ontology_type eq 'WBGene') {           ($matches) = &getAnyWBGeneTermInfo($userValue); }
 
 #   if ($ontology_type eq 'Antibody') {           ($matches) = &getAnyAntibodyTermInfo($userValue); }
 #   elsif ($ontology_type eq 'Concurhst') {       ($matches) = &getAnyConcurhstTermInfo($userValue); }
@@ -686,40 +656,6 @@ sub getAnySpecificTermInfo {
 #   elsif ($ontology_type eq 'WBSequence') {      ($matches) = &getAnyWBSequenceTermInfo($userValue); }
   return $matches;
 } # sub getAnySpecificTermInfo
-
-sub getAnyWBGeneTermInfo {
-  my ($userValue) = @_;
-  my ($joinkey) = $userValue =~ m/WBGene(\d+)/; my $to_print;   # has to match a WBGene from the info
-  my %syns; my $locus; my $dead; my $species;
-  my $result = $dbh->prepare( "SELECT * FROM gin_synonyms WHERE joinkey = '$joinkey';" ); $result->execute();
-  while (my @row = $result->fetchrow) { $syns{$row[1]}++; }
-  $result = $dbh->prepare( "SELECT * FROM gin_seqname WHERE joinkey = '$joinkey';" ); $result->execute();
-  while (my @row = $result->fetchrow) { $syns{$row[1]}++; }
-  $result = $dbh->prepare( "SELECT * FROM gin_locus WHERE joinkey = '$joinkey';" ); $result->execute();
-  my @row = $result->fetchrow(); $locus = $row[1];
-  $result = $dbh->prepare( "SELECT * FROM gin_dead WHERE joinkey = '$joinkey';" ); $result->execute();
-  @row = $result->fetchrow(); $dead = $row[1];
-  $result = $dbh->prepare( "SELECT * FROM gin_species WHERE joinkey = '$joinkey';" ); $result->execute();
-  @row = $result->fetchrow(); $species = $row[1];
-  if ($userValue) { $to_print .= "id: WBGene$joinkey<br />\n"; }
-  my $wormbase_link = "http://www.wormbase.org/species/c_elegans/gene/WBGene$joinkey;class=Gene";
-  if ($locus) { $to_print .= "locus: <a target=\"new\" href=\"$wormbase_link\">$locus</a><br />\n"; }
-  if ($species) { $to_print .= "species: $species<br />\n"; }
-  if ($dead) { $to_print .= "DEAD: $dead<br />\n"; }
-  foreach my $syn (sort keys %syns) { $to_print .= "synonym: $syn<br />\n"; }
-
-  $result = $dbh->prepare( "SELECT * FROM con_desctext WHERE joinkey IN (SELECT joinkey FROM con_wbgene WHERE con_wbgene ~ 'WBGene$joinkey') AND joinkey IN (SELECT joinkey FROM con_desctype WHERE con_desctype = 'Concise_description')" ); $result->execute(); @row = $result->fetchrow();
-  if ($row[1]) { $to_print .= "Concise description: $row[1]<br />\n"; }
-  $result = $dbh->prepare( "SELECT * FROM con_desctext WHERE joinkey IN (SELECT joinkey FROM con_wbgene WHERE con_wbgene ~ 'WBGene$joinkey') AND joinkey IN (SELECT joinkey FROM con_desctype WHERE con_desctype = 'Automated_concise_description')" ); $result->execute(); @row = $result->fetchrow();
-  if ($row[1]) { $to_print .= "Automated_concise description: $row[1]<br />\n"; }
-  $result = $dbh->prepare( "SELECT * FROM dis_diseaserelevance WHERE joinkey IN (SELECT joinkey FROM dis_wbgene WHERE dis_wbgene ~ 'WBGene$joinkey')" ); $result->execute(); @row = $result->fetchrow();
-  if ($row[1]) { $to_print .= "Disease relevance : $row[1]<br />\n"; }
-
-  my (@data) = split/\n/, $to_print;
-  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
-  $to_print = join"\n", @data;
-  return $to_print;
-} # sub getAnyWBGeneTermInfo
 
 sub getAnyWBPersonTermInfo {
   my ($userValue) = @_;
@@ -750,13 +686,65 @@ sub getAnyWBPersonTermInfo {
   my (@data) = split/\n/, $to_print;
   foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
   $to_print = join"\n", @data;
-  $to_print = qq(Click <a href="phenotype.cgi?action=personPublication&personId=${person_id}&personName=${standard_name}&personEmail=${first_email}" target="new" style="font-weight: bold; text-decoration: underline;">here</a> to review your publications and see which are in need of phenotype curation<br/>\n) . $to_print;
+  $to_print = qq(Click <a href="phenotype_micropub.cgi?action=personPublication&personId=${person_id}&personName=${standard_name}&personEmail=${first_email}" target="new" style="font-weight: bold; text-decoration: underline;">here</a> to review your publications and see which are in need of phenotype curation<br/>\n) . $to_print;
 
 #   ($var, $personId)      = &getHtmlVar($query, 'personId');		# WBPerson ID
 #   ($var, $personName)    = &getHtmlVar($query, 'personName');		# WBPerson Name
 #   ($var, $personEmail)   = &getHtmlVar($query, 'personEmail');		# email address
   return $to_print;
 } # sub getAnyWBPersonTermInfo
+
+sub getAnyWBMoleculeTermInfo {
+  my ($userValue) = @_; my $objId; my $joinkey = '';
+#   if ($userValue =~ m/\( (\d+) \)/) { $joinkey = $1; } else { $joinkey = $userValue; }        # when autocomplete had the pgid for molecules
+  if ($userValue =~ m/\( (\d+) \)/) { $objId = $1; } else { $objId = $userValue; }
+  my $result = $dbh->prepare( "SELECT * FROM mop_name WHERE mop_name = '$objId' ORDER BY mop_timestamp DESC;" );
+  $result->execute(); my @row = $result->fetchrow(); $joinkey = $row[0];        # each wbmol objid can only have one pgid
+  my $to_print;
+  my $wbmolid; my $molecule_name; my $publicname; my $synonyms; my $chemi; my $chebi; my $kegg; my $remark; my $paper; 
+#   my $curator;
+  $result = $dbh->prepare( "SELECT * FROM mop_name WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $wbmolid = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_molecule WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $molecule_name = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_publicname WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $publicname = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_synonym WHERE joinkey = '$joinkey' ;" ); $result->execute(); 
+  while (my @row = $result->fetchrow) { if ($row[0]) { $synonyms = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_chemi WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $chemi = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_chebi WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $chebi = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_kegg WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $kegg = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_remark WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $remark = $row[1]; } }
+  $result = $dbh->prepare( "SELECT * FROM mop_paper WHERE joinkey = '$joinkey' ;" ); $result->execute();
+  while (my @row = $result->fetchrow) { if ($row[0]) { $paper = $row[1]; } }
+#   $result = $dbh->prepare( "SELECT * FROM mop_curator WHERE joinkey = '$joinkey' ;" ); $result->execute();
+#   @row = $result->fetchrow(); { if ($row[0]) { my ($cur_id) = $row[1] =~ m/(\d+)/;
+#     my $result2 = $dbh->prepare( "SELECT * FROM two_standardname WHERE joinkey = 'two$cur_id' ;" ); $result2->execute(); my @row2 = $result2->fetchrow(); $curator = $row2[2]; } }
+
+  $to_print .= "wbmolid: <span style=\"font-weight: bold\">$wbmolid</span><br />\n";
+  $to_print .= "molecule: $molecule_name<br />\n";
+  $to_print .= "public name: $publicname<br />\n";
+  if ($synonyms) {
+    my @syns = split/ \| /, $synonyms;
+    foreach my $syn (@syns) { $to_print .= "synonym: \"$syn\"<br />\n"; } }
+  $to_print .= "CTD: <a href=\"http://ctd.mdibl.org/detail.go?type=chem&acc=$molecule_name\" target=\"new\">$molecule_name</a><br />\n";
+  $to_print .= "NLM_MeSH: <a href=\"http://www.nlm.nih.gov/cgi/mesh/2010/MB_cgi?field=uid&term=$molecule_name\" target=\"new\">$molecule_name</a><br />\n";
+  if ($chebi) { $to_print .= "ChEBI: <a href=\"http://www.ebi.ac.uk/chebi/advancedSearchFT.do?searchString=$chebi\" target=\"new\">$chebi</a><br />\n"; }
+  if ($kegg) { $to_print .= "KEGG: <a href=\"http://www.genome.jp/dbget-bin/www_bget?cpd:$kegg\" target=\"new\">$kegg</a><br />\n"; }
+  if ($chemi) { $to_print .= "ChemIDplus: <a href=\"http://www.ncbi.nlm.nih.gov/sites/entrez?term=${chemi}~[synonym]&cmd=search&db=pcsubstance\" target=\"new\">$chemi</a><br />\n"; }
+  if ($paper) { my @papers = split/","/, $paper; foreach my $pap (@papers) { my ($joinkey) = $pap =~ m/WBPaper(\d+)/; $to_print .= "Paper: <a href=\"/~azurebrd/cgi-bin/forms/paper_display.cgi?action=Search+!&data_number=$joinkey\" target=\"new\">WBPaper$joinkey</a><br />\n"; } }
+#   if ($curator) { $to_print .= "Curator: $curator<br />\n"; }
+  if ($remark) { $to_print .= "Remark: $remark<br />\n"; }
+  $to_print .= "<hr>\n";
+  my (@data) = split/\n/, $to_print;
+  foreach my $data_line (@data) { $data_line =~ s/^(.*?):/<span style=\"font-weight: bold\">$1 : <\/span>/; }
+  $to_print = join"\n", @data;
+  return $to_print;
+} # sub getAnyWBMoleculeTermInfo
 
 sub getAnyWBTransgeneTermInfo {
   my ($userValue) = @_; my %joinkeys;
@@ -835,6 +823,7 @@ sub getGenericOboAutocomplete {
   my $obodata_table   =  'obo_data_' . $ontology_table;
   my $query_modifier  = qq(AND joinkey NOT IN (SELECT joinkey FROM $obodata_table WHERE $obodata_table ~ 'is_obsolete') ); 
   if ($field eq 'goidcc') { $query_modifier .= qq(AND joinkey IN (SELECT joinkey FROM obo_data_goid WHERE obo_data_goid ~ 'cellular_component') ); }
+    elsif ($field eq 'moleculestrain') { $query_modifier .= qq(AND joinkey IN (SELECT joinkey FROM obo_data_strain WHERE obo_data_strain ~ 'Wild_isolate') ); }
   if ($words =~ m/\'/) { $words =~ s/\'/''/g; }
   if ($words =~ m/\(/) { $words =~ s/\(/\\\(/g; }
   if ($words =~ m/\)/) { $words =~ s/\)/\\\)/g; }
@@ -915,7 +904,8 @@ sub getAnySpecificAutocomplete {
   my ($ontology_type, $words) = @_; my $matches = '';
   if ($ontology_type eq 'WBPerson') {             ($matches) = &getAnyWBPersonAutocomplete($words);    }
     elsif ($ontology_type eq 'WBTransgene') {     ($matches) = &getAnyWBTransgeneAutocomplete($words); }
-    elsif ($ontology_type eq 'WBGene') {          ($matches) = &getAnyWBGeneAutocomplete($words);      }
+    elsif ($ontology_type eq 'WBMolecule') {      ($matches) = &getAnyWBMoleculeAutocomplete($words);  }
+#   elsif ($ontology_type eq 'WBGene') {          ($matches) = &getAnyWBGeneAutocomplete($words);      }
 
 #   if ($ontology_type eq 'Antibody') {           ($matches) = &getAnyAntibodyAutocomplete($words); }
 #   elsif ($ontology_type eq 'Concurhst') {       ($matches) = &getAnyConcurhstAutocomplete($words); }
@@ -976,9 +966,52 @@ sub getAnyWBPersonAutocomplete {
   return $matches;
 } # sub getAnyWBPersonAutocomplete
 
-sub getAnyWBTransgeneAutocomplete {
+sub getAnyWBMoleculeAutocomplete {
   my ($words) = @_;
   my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
+  my %matches; my $t = tie %matches, "Tie::IxHash";     # sorted hash to filter results
+  my $table = 'mop_name';                               # can't name mop_name twice, so can't add that to generic @tables below
+  my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
+    my $elementText = qq($row[1] <span style='font-size:.75em'>( $row[1] )</span>);
+    my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$row[1]" }); $matches{$matchData}++; 
+  }
+  $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
+  $result->execute();
+  while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
+    my $elementText = qq($row[1] <span style='font-size:.75em'>( $row[1] )</span>);
+    my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$row[1]" }); $matches{$matchData}++; 
+  }
+
+  my @tables = qw( mop_publicname mop_molecule mop_synonym );
+  foreach my $table (@tables) {
+    my $result = $dbh->prepare( "SELECT mop_name.mop_name, ${table}.$table FROM mop_name, $table WHERE mop_name.joinkey = ${table}.joinkey AND LOWER(${table}.$table) ~ '^$words' ORDER BY ${table}.$table;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
+      my $elementText = qq($row[1] <span style='font-size:.75em'>( $row[1] )</span>);
+      my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$row[1]" }); $matches{$matchData}++; 
+    }
+    $result = $dbh->prepare( "SELECT mop_name.mop_name, ${table}.$table FROM mop_name, $table WHERE mop_name.joinkey = ${table}.joinkey AND LOWER(${table}.$table) ~ '$words' AND LOWER(${table}.$table) !~ '^$words' ORDER BY ${table}.$table;" );
+    $result->execute();
+    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
+      my $elementText = qq($row[1] <span style='font-size:.75em'>( $row[1] )</span>);
+      my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$row[1]" }); $matches{$matchData}++; 
+    }
+    last if (scalar keys %matches >= $max_results);
+  } # foreach my $table (@tables)
+  if (scalar keys %matches >= $max_results) { 
+    my $matchData = qq({ "eltext": "more ...", "name": "", "id": "invalid value" }); 
+    $t->Replace($max_results - 1, 'no value', $matchData); }
+  my $matches = join", ", keys %matches;
+  $matches = qq({ "results": [ $matches ] });
+  return $matches;
+} # sub getAnyWBMoleculeAutocomplete
+
+
+sub getAnyWBTransgeneAutocomplete {
+  my ($words) = @_;
+  my $max_results = 2; if ($words =~ m/^.{5,}/) { $max_results = 500; }
   my $lcwords = lc($words);
   my $limit       = $max_results + 1;
   my %matches; my $t = tie %matches, "Tie::IxHash";     # sorted hash to filter results
@@ -1019,82 +1052,21 @@ sub getAnyWBTransgeneAutocomplete {
   return $matches;
 } # sub getAnyWBTransgeneAutocomplete
 
-sub getAnyWBGeneAutocomplete {
-  my ($words) = @_;
-  my $max_results = 20; if ($words =~ m/^.{5,}/) { $max_results = 500; }
-  my %matches; my $t = tie %matches, "Tie::IxHash";     # sorted hash to filter results
-  my @tables = qw( gin_locus gin_synonyms gin_seqname gin_wbgene );
-  foreach my $table (@tables) {
-    my $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '^$words' ORDER BY $table;" );
-    $result->execute();
-    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
-      my $id = "WBGene" . $row[0];
-      if ($table eq 'gin_locus') { 
-#         $matches{"$row[1] ( $id ) "}++;
-        my $elementText = qq($row[1] <span style='font-size:.75em'>( $id )</span>);
-        my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$id" }); $matches{$matchData}++; 
- }
-      if ( ($table eq 'gin_synonyms') || ($table eq 'gin_seqname') || ($table eq 'gin_wbgene') ) {
-        my $result2 = $dbh->prepare( "SELECT * FROM gin_locus WHERE joinkey = '$row[0]';" ); $result2->execute();
-        my @row2 = $result2->fetchrow(); my $name = $row2[1]; unless ($name) { $name = $row[1]; }
-        if ( ($table eq 'gin_synonyms')|| ($table eq 'gin_seqname') ) { 
-#           $matches{"$row[1] ( $id ) \[$name\]"}++;
-          my $elementText = qq($row[1] <span style='font-size:.75em'>( $id ) \[$name\]</span>);
-          my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$id" }); $matches{$matchData}++; 
-        }
-        if ($table eq 'gin_wbgene') { 
-#           $matches{"$name ( $id ) "}++;
-          my $elementText = qq($row[1] <span style='font-size:.75em'>( $id )</span>);
-          my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$id" }); $matches{$matchData}++; 
-        } }
-    }
-    $result = $dbh->prepare( "SELECT * FROM $table WHERE LOWER($table) ~ '$words' AND LOWER($table) !~ '^$words' ORDER BY $table;" );
-    $result->execute();
-    while ( (my @row = $result->fetchrow()) && (scalar keys %matches < $max_results) ) {
-      my $id = "WBGene" . $row[0];
-      if ($table eq 'gin_locus') {
-#         $matches{"$row[1] ( $id ) "}++;
-        my $elementText = qq($row[1] <span style='font-size:.75em'>( $id )</span>);
-        my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$id" }); $matches{$matchData}++; 
-      }
-      if ( ($table eq 'gin_synonyms') || ($table eq 'gin_seqname') || ($table eq 'gin_wbgene') ) {
-        my $result2 = $dbh->prepare( "SELECT * FROM gin_locus WHERE joinkey = '$row[0]';" ); $result2->execute();
-        my @row2 = $result2->fetchrow(); my $name = $row2[1]; unless ($name) { $name = $row[1]; }
-        if ( ($table eq 'gin_synonyms')|| ($table eq 'gin_seqname') ) {
-#         $matches{"$row[1] ( $id ) \[$name\]"}++;
-          my $elementText = qq($row[1] <span style='font-size:.75em'>( $id ) \[$name\]</span>);
-          my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$id" }); $matches{$matchData}++; 
-        }
-        if ($table eq 'gin_wbgene') {
-#         $matches{"$name ( $id ) "}++;
-          my $elementText = qq($row[1] <span style='font-size:.75em'>( $id )</span>);
-          my $matchData = qq({ "eltext": "$elementText", "name": "$row[1]", "id": "$id" }); $matches{$matchData}++; 
-        } } }
-    last if (scalar keys %matches >= $max_results);
-  } # foreach my $table (@tables)
-  if (scalar keys %matches >= $max_results) { 
-    my $matchData = qq({ "eltext": "more ...", "name": "", "id": "invalid value" }); 
-    $t->Replace($max_results - 1, 'no value', $matchData); }
-  my $matches = join", ", keys %matches;
-  $matches = qq({ "results": [ $matches ] });
-  return $matches;
-} # sub getAnyWBGeneAutocomplete
-
-
 
 sub showStart {
   print "Content-type: text/html\n\n";
   print $header;
-  print qq(<span style="font-size: 24pt;">Contribute phenotype connections to WormBase</span><br/><br/>\n);
+  my $micropublish_terminfo = 'Micropublication- What is it?<br/>Not all data generated by funded research is incorporated in the scientific literature. This information often includes high quality novel findings and is unfortunately not readily available to the scientific community. This knowledge can instead be shared with the public in the form of an open-access micropublication. Once you submit this data to WormBase, it will be reviewed by one or more experts in the field. If approved, your data will be assigned a stable identifier (DOI), will be available on WormBase, and can be cited by traditional citation methods.';
+  print qq(<span style="font-size: 24pt;">Micropublish phenotype results</span><br/><br/>\n);
+  print qq(<span>If you have unpublished phenotype data you can <span style="color: #06C729;" onclick="document.getElementById('term_info_box').style.display = ''; document.getElementById('term_info').innerHTML = '$micropublish_terminfo';">micropublish</span> it in WormBase and <a href="http://www.micropublication.org/" target="new">Micropublication:biology</a> by filling the form below. Your submission will be sent out for peer review and, if accepted, will be assigned a DOI -providing a citable reference.  The form is mostly self explanatory and hints can be found by clicking green question marks. In the box on the right side of the page you can find additional tips/information that will appear when you start typing in specific fields.</span><br/><br/>\n);
 #   print qq(<span>We would appreciate your help in adding phenotype data from published papers to WormBase.<br/>Please fill out the form below. <b>Watch a short video tutorial <a style='font-weight: bold; text-decoration: underline;' href="https://www.youtube.com/watch?v=_gd87S1h3zg&feature=youtu.be" target="_blank">here</a> or read the user guide <a style='font-weight: bold; text-decoration: underline;' href="http://wiki.wormbase.org/index.php/Contributing_Phenotype_Connections" target="_blank">here</a></b>.<br/>If you would prefer to fill out a spreadsheet with this information, please download and fill out our<br/><a href="https://dl.dropboxusercontent.com/u/4290782/WormBase_Phenotype_Worksheet.xlsx" target="_blank">WormBase Phenotype Worksheet</a> and e-mail as an attachment to <a href="mailto:curation\@wormbase.org">curation\@wormbase.org</a><br/>If you have any questions, please do not hesitate to contact WormBase at <a href="mailto:help\@wormbase.org">help\@wormbase.org</a></span><br/><br/>\n);
-  print qq(<span>We would appreciate your help in adding phenotype data from published papers to WormBase.<br/>Please fill out the form below. <b>Read the user guide <a style='font-weight: bold; text-decoration: underline;' href="http://wiki.wormbase.org/index.php/Contributing_Phenotype_Connections" target="_blank">here</a></b>.<br/>If you would prefer to fill out a spreadsheet with this information, please download and fill out our<br/><a href="https://dl.dropboxusercontent.com/u/4290782/WormBase_Phenotype_Worksheet.xlsx" target="_blank">WormBase Phenotype Worksheet</a> and e-mail as an attachment to <a href="mailto:curation\@wormbase.org">curation\@wormbase.org</a><br/>If you have any questions, please do not hesitate to contact WormBase at <a href="mailto:help\@wormbase.org">help\@wormbase.org</a></span><br/><br/>\n);
   my $browser = $ENV{HTTP_USER_AGENT};
   if ($browser =~ m/safari/i) { 
     unless ( ($browser =~ m/chrome/i) || ($browser =~ m/firefox/i) ) {
       print qq(Safari users please note: Safari's 'Autofill' feature may not properly populate the name field in this form.<br/><br/>\n); } }
     # initialize originalIP + originalTime, processing uploads requires them. %fields processing will replace with form values from 'hidden' group before upload field(s).
-  unless ($fields{hidden}{field}{origip}{inputvalue}{1}) {     $fields{hidden}{field}{origip}{inputvalue}{1}   = $query->remote_host(); }
-  unless ($fields{hidden}{field}{origtime}{inputvalue}{1}) {   $fields{hidden}{field}{origtime}{inputvalue}{1} = time;                  }
+  unless ($fields{origip}{inputvalue}{1}) {     $fields{origip}{inputvalue}{1}   = $query->remote_host(); }
+  unless ($fields{origtime}{inputvalue}{1}) {   $fields{origtime}{inputvalue}{1} = time;                  }
     # if IP corresponds to an existing user, get person and email data
   unless ($fields{person}{termidvalue}{1}) {
     ( $fields{person}{termidvalue}{1}, $fields{person}{inputvalue}{1}, $fields{email}{inputvalue}{1} ) = &getUserByIp(); }
@@ -1202,32 +1174,6 @@ sub printEditorOntology {
   return $table_to_print;
 } # sub printEditorOntology
 
-sub printEditorMessage {
-  my ($i, $field, $colspan) = @_; my $toReturn = '';
-  if ($fields{$field}{type} eq 'message') {
-    my $tdColspan = qq(colspan="$colspan"); 
-    $toReturn .= qq(<td $tdColspan>);
-    $toReturn .= &printEditorJustMessage($i, $field);
-    $toReturn .= qq(</td>); }
-  return $toReturn;
-} # sub printEditorMessage
-
-sub printEditorJustMessage {
-  my ($i, $field) = @_; my $toReturn = '';
-  if ($fields{$field}{type} eq 'message') {
-    $toReturn = qq(&nbsp;$fields{$field}{label}&nbsp; \n); }
-  return $toReturn;
-} # sub printEditorJustMessage
-
-sub printEditorJustRadio {
-  my ($i, $field, $value) = @_; my $toReturn = '';
-  my $checked = '';
-  if ($fields{$field}{inputvalue}{$i} eq $value) { $checked = qq(checked="checked"); }
-  if ($fields{$field}{type} eq 'radio') {
-    $toReturn = qq(&nbsp;<input type="radio" id="input_${i}_$value" name="input_${i}_$field" value="$value" $checked>&nbsp;\n); }
-  return $toReturn;
-} # sub printEditorJustRadio
-
 sub printEditorCheckbox {
   my ($i, $field, $colspan) = @_; my $toReturn = '';
   if ($fields{$field}{type} eq 'checkbox') {
@@ -1236,15 +1182,16 @@ sub printEditorCheckbox {
     $toReturn .= &printEditorJustCheckbox($i, $field);
     $toReturn .= qq(</td>); }
   return $toReturn;
-} # sub printEditorCheckbox
+}
 
 sub printEditorJustCheckbox {
   my ($i, $field) = @_; my $toReturn = '';
   if ($fields{$field}{type} eq 'checkbox') {
-    my $checked = '';
+    my $checked = ''; my $checkboxtext = '';
     if ($fields{$field}{inputvalue}{$i} eq $fields{$field}{label}) { $checked = qq(checked="checked"); }
+    if ($fields{$field}{checkboxtext}) { $checkboxtext = $fields{$field}{checkboxtext}; }
 #     $toReturn = qq(&nbsp;&nbsp;<input type="checkbox" id="input_${i}_$field" name="input_${i}_$field" value="$fields{$field}{label}" $checked>&nbsp; $fields{$field}{label}<br/>\n);
-    $toReturn = qq(&nbsp;<input type="checkbox" id="input_${i}_$field" name="input_${i}_$field" value="$fields{$field}{label}" $checked>&nbsp; \n); }
+    $toReturn = qq(&nbsp;<input type="checkbox" id="input_${i}_$field" name="input_${i}_$field" value="$fields{$field}{label}" $checked>&nbsp;$checkboxtext \n); }
   return $toReturn;
 } # sub printEditorJustCheckbox
 
@@ -1265,6 +1212,20 @@ sub printEditorLabel {
   return qq(<td align="right" $labelTdColspan $labelTdStyle>&nbsp;&nbsp;$label $terminfo</td>);
 } # sub printEditorLabel
 
+sub printEditorUpload {							# this MAY NOT WORK
+  my ($i, $field, $colspan) = @_; my $toReturn = '';
+  my $termidvalue = $fields{$field}{termidvalue}{$i};
+  if ($fields{$field}{type} eq 'upload') {
+    my $tdColspan = qq(colspan="$colspan"); 
+    $toReturn .= qq(<td $tdColspan>);
+    if ( $termidvalue ) {                                                 # termid_<i>_<field> holds a previously uploaded file
+      $toReturn .= qq(<input type="hidden" name="termid_${i}_$field" id="termid_${i}_$field" readonly="readonly" value="$termidvalue">);
+      $toReturn .= qq(select new to replace : \n); }
+    $toReturn   .= qq(<input type="file" id="input_${i}_$field" name="input_${i}_$field" style="background-color: #FFFFFF;" />);        # input_<i>_<field> is for new or replacement upload
+    $toReturn .= qq(</td>); }
+  return $toReturn;
+} # sub printEditorUpload
+
 sub printEditorWarnings {
   my ($i, $field) = @_;
   ($var, my $warningvalue)  = &getHtmlVar($query, "input_warnings_${i}_$field");
@@ -1273,7 +1234,7 @@ sub printEditorWarnings {
       my $person_id = $fields{person}{termidvalue}{1}; my $person_name = ''; my $person_email = '';
       if ($fields{person}{inputvalue}{1}) { $person_name  = $fields{person}{inputvalue}{1}; }
       if ($fields{email}{inputvalue}{1})  { $person_email = $fields{email}{inputvalue}{1};  }
-      $warningvalue = qq(Click <a href='phenotype.cgi?action=personPublication&personId=${person_id}&personName=${person_name}&personEmail=${person_email}' target='new' style='font-weight: bold; text-decoration: underline;'>here</a> to review your publications and see which are in need of phenotype curation<br/>\n); } }
+      $warningvalue = qq(Click <a href='phenotype_micropub.cgi?action=personPublication&personId=${person_id}&personName=${person_name}&personEmail=${person_email}' target='new' style='font-weight: bold; text-decoration: underline;'>here</a> to review your publications and see which are in need of phenotype curation<br/>\n); } }
   my $labelTdColspan = qq(colspan="4"); 
   my $minwidth       = '200px'; if ($fields{$field}{minwidth}) { $minwidth = $fields{$field}{minwidth}; }
 #   my $labelTdStyle   = qq(style="display: none; min-width: $minwidth; border-style: solid; border-color: #000000;");
@@ -1315,19 +1276,18 @@ sub printArrayEditorHorizontal {
         $trToPrint .= qq(<input type="hidden" id="data_$field" value="$data" />\n); }
     } # if ($i == 1)
     foreach my $field (@fields) {
-      my $td_label .= &printEditorLabel($i, $field);
-      my $td_text = '';
-      if ($fields{$field}{type} eq 'text') {          $td_text .= &printEditorText($i, $field);        }
-        elsif ($fields{$field}{type} eq 'bigtext') {  $td_text .= &printEditorBigtext($i, $field);     }
-        elsif ($fields{$field}{type} eq 'textarea') { $td_text .= &printEditorTextarea($i, $field);    }
-        elsif ($fields{$field}{type} eq 'ontology') { $td_text .= &printEditorOntology($i, $field, 2); }
-        elsif ($fields{$field}{type} eq 'dropdown') { $td_text .= &printEditorDropdown($i, $field);    }
-        elsif ($fields{$field}{type} eq 'checkbox') { $td_text .= &printEditorCheckbox($i, $field);    }
-        elsif ($fields{$field}{type} eq 'message') {  $td_text .= &printEditorMessage($i, $field);     }
-      my $td_warnings .= &printEditorWarnings($i, $field);
-      $trToPrint .= $td_label; 
-      $trToPrint .= $td_text; 
-      $trToPrint .= $td_warnings; 
+       my $td_label .= &printEditorLabel($i, $field);
+       my $td_text = '';
+       if ($fields{$field}{type} eq 'text') {          $td_text .= &printEditorText($i, $field);     }
+         elsif ($fields{$field}{type} eq 'bigtext') {  $td_text .= &printEditorBigtext($i, $field);  }
+         elsif ($fields{$field}{type} eq 'textarea') { $td_text .= &printEditorTextarea($i, $field); }
+         elsif ($fields{$field}{type} eq 'ontology') { $td_text .= &printEditorOntology($i, $field, 2); }
+         elsif ($fields{$field}{type} eq 'dropdown') { $td_text .= &printEditorDropdown($i, $field); }
+         elsif ($fields{$field}{type} eq 'checkbox') { $td_text .= &printEditorCheckbox($i, $field); }
+       my $td_warnings .= &printEditorWarnings($i, $field);
+       $trToPrint .= $td_label; 
+       $trToPrint .= $td_text; 
+       $trToPrint .= $td_warnings; 
     } # foreach my $field (@fields)
     $trToPrint    .= qq(</tr>\n);
     print $trToPrint;
@@ -1337,21 +1297,19 @@ sub printArrayEditorHorizontal {
 sub printArrayEditorNested {
   my (@fields) = @_;
   my $amount      = $fields{$fields[0]}{multi};
+  my $showAmount  = 1;
+  if ($fields{$fields[0]}{startHidden} eq 'startHidden') { $showAmount = 0; }	# if main field in group starts hidden, whole group starts hidden
   for my $i (1 .. $amount) {
-    my $showAmount  = 1;
-    if ($fields{$fields[0]}{startHidden} eq 'startHidden') { $showAmount = 0; }	# if main field in group starts hidden, whole group starts hidden
 #     foreach my $field (@fields)
     foreach my $j (0 .. $#fields) {
       my $fieldLeader = $fields[0];				# the first field determines whether to show indented fields
       my $field       = $fields[$j];
       if ($fields{$field}{startHidden} eq 'startHidden') { $showAmount = 0; }	# if sub field in group starts hidden, only sub field starts hidden
       my $group_style = ''; if ($i > $showAmount) { $group_style = 'display: none'; }
-      my $showThreshold = $fields{$fieldLeader}{hasdata} + 0 + $showAmount; 	# threshold is amount that have data + 1 + amount to show
+      my $showThreshold = $fields{$fieldLeader}{hasdata} + 1 + $showAmount; 	# threshold is amount that have data + 1 + amount to show
       if ($fields{$fieldLeader}{hasdata}) { $showThreshold += 1; }		# if field has data, show one more blank one
       if ($i < $showThreshold) { $group_style = ''; }
       my $trToPrint = qq(<tr id="group_${i}_${field}" style="$group_style">\n);
-#       my $trToPrint = qq(<tr id="group_${i}_${field}" ><td>I $i FL $fieldLeader HD $fields{$fieldLeader}{hasdata} SA $showAmount ST $showThreshold GS $group_style</td>\n);
-#       my $trToPrint = qq(<tr id="group_${i}_${field}" ><td>I $i HD $fields{$fieldLeader}{hasdata} SA $showAmount ST $showThreshold </td>\n);
       if ($i == 1) {						# on the first row, show the field information for javascript
           $trToPrint .= qq(<input type="hidden" class="fields" value="$field" />\n);
           my $data = '{ ';                                                    # data is { 'tag' : 'value', 'tag2' : 'value2' } format javascript stuff
@@ -1375,7 +1333,7 @@ sub printArrayEditorNested {
         elsif ($fields{$field}{type} eq 'ontology') { $td_text .= &printEditorOntology($i, $field, $colspan); }
         elsif ($fields{$field}{type} eq 'dropdown') { $td_text .= &printEditorDropdown($i, $field, $colspan); }
         elsif ($fields{$field}{type} eq 'checkbox') { $td_text .= &printEditorCheckbox($i, $field, $colspan); }
-        elsif ($fields{$field}{type} eq 'message') {  $td_text .= &printEditorMessage($i, $field);            }
+        elsif ($fields{$field}{type} eq 'upload')   { $td_text .= &printEditorUpload($i, $field, $colspan);   }
       my $td_warnings .= &printEditorWarnings($i, $field);
       $trToPrint .= $td_indent; 
       $trToPrint .= $td_label; 
@@ -1455,42 +1413,29 @@ sub printTrHeader {
 
 sub printPersonField {         printArrayEditorNested('person');                                                                            }
 sub printEmailField {          printArrayEditorNested('email');                                                                             }
-sub printPmidField {           printArrayEditorNested('pmid');                                                                              }
-sub printCloneSeqField {       printArrayEditorNested('cloneseqgene', 'cloneseq', 'cloneseqspecies');                                                       }
+# sub printPmidField {           printArrayEditorNested('pmid');                                                                              }
+sub printOrcidField {          printArrayEditorNested('orcid');                                                                             }
+sub printCoautField {          printArrayEditorNested('coaut');                                                                             }
+sub printLaboratoryField {     printArrayEditorNested('laboratory');                                                                        }
+sub printFundingField {        printArrayEditorNested('funding');                                                                           }
+# sub printSpeciesField {        printArrayEditorNested('species');                                                                           }
+sub printImageuploadField {    printArrayEditorNested('imageupload');                                                                       }
+sub printDescriptionField {    printArrayEditorNested('description');                                                                       }
+sub printCloneSeqField {       printArrayEditorNested('cloneseq', 'cloneseqspecies');                                                       }
 sub printAlleleField {         printArrayEditorNested('allele');                                                                            }
 sub printTransgeneField {      printArrayEditorNested('transgene', 'transgenegene');                                                        }
-sub printSingleMultiField {
-  my $i = 1; my $field = 'pertsinglemulti'; my $showAmount = 1;
-  if ($fields{$field}{startHidden} eq 'startHidden') { $showAmount = 0; }
-  my $group_style = ''; if ($i > $showAmount) { $group_style = 'display: none'; }
-  if ($i < $fields{$field}{hasdata} + 1 + $showAmount) { $group_style = ''; }
-  if ($i < $fields{'pertsingle'}{hasdata} + 1 + $showAmount) { $group_style = ''; }
-  if ($i < $fields{'pertmultiple'}{hasdata} + 1 + $showAmount) { $group_style = ''; }
-  my $trToPrint = qq(<tr id="group_${i}_${field}" style="$group_style">\n);
-  my $td_label .= &printEditorLabel($i, $field);
-  $trToPrint   .= $td_label; 
-  my $tdColspan = qq(colspan="2"); 
-  my $minwidth  = '200px'; if ($fields{$field}{minwidth}) { $minwidth = $fields{$field}{minwidth}; }
-#   my $tdStyle   = qq(style="min-width: $minwidth; border-style: solid; border-color: #000000;");
-  my $tdStyle   = qq(style="min-width: $minwidth;");
-  $trToPrint   .= qq(<td $tdColspan $tdStyle>);
-  $trToPrint   .= qq($fields{'pertmessage'}{label}<br/>);
-  foreach my $value (keys %{ $fields{$field}{values} }) {
-    my $label = $fields{$field}{values}{$value};
-    $trToPrint   .= &printEditorJustRadio(1, $field, $value);
-    $trToPrint   .= qq($label<br/>); }
-#   $trToPrint   .= &printEditorJustRadio(1, 'pertsingle');
-#   $trToPrint   .= qq($fields{'pertsingle'}{label}<br/>);
-#   $trToPrint   .= &printEditorJustRadio(1, 'pertmultiple');
-#   $trToPrint   .= qq($fields{'pertmultiple'}{label}<br/>);
-  $trToPrint   .= qq(</td>);
-  $trToPrint   .= qq(</tr>\n);
-  print $trToPrint;
-} # sub printTempSensField
-sub printObsPhenotypeField {   printArrayEditorNested('obsphenotypeterm', 'obsphenotyperemark', 'obsphenotypepersonal');                    }
-sub printNotPhenotypeField {   printArrayEditorNested('notphenotypeterm', 'notphenotyperemark', 'notphenotypepersonal');                    }
+sub printMoleculeField {       printArrayEditorNested('molecule', 'moleculestrain');                                                  }
+# sub printObsPhenotypeField {   printArrayEditorNested('obsphenotypeterm', 'obsphenotyperemark', 'obsphenotypepersonal');                    }
+# sub printNotPhenotypeField {   printArrayEditorNested('notphenotypeterm', 'notphenotyperemark', 'notphenotypepersonal');                    }
+sub printObsPhenotypeField {   printArrayEditorNested('obsphenotypeterm');                    }
+sub printNotPhenotypeField {   printArrayEditorNested('notphenotypeterm');                    }
 sub printObsSuggestField {     printArrayEditorNested('obssuggestedterm', 'obssuggesteddef', 'obssuggestedremark', 'obssuggestedpersonal'); }
 sub printNotSuggestField {     printArrayEditorNested('notsuggestedterm', 'notsuggesteddef', 'notsuggestedremark', 'notsuggestedpersonal'); }
+sub printTitleField {          printArrayEditorNested('title');                                                                             }
+sub printReviewerField {       printArrayEditorNested('reviewer');                                                                          }
+sub printCommentsField {       printArrayEditorNested('comments');                                                                          }
+sub printReferencesField {     printArrayEditorNested('references');                                                                        }
+sub printDisclaimerField {     printArrayEditorNested('disclaimer');                                                                        }
 sub printAlleleNatureField {   printArrayEditorNested('allelenature');                                                                      }
 sub printAlleleFunctionField { printArrayEditorNested('allelefunction');                                                                    }
 sub printPenetranceField {     printArrayEditorNested('penetrance');                                                                        }
@@ -1566,7 +1511,7 @@ sub showForm {
   return if $goodOrBad;
 #   return if ($ip eq '46.161.41.199');			# spammed 2015 09 01
 #   return if ($ip eq '188.143.232.32');                  # spammed 2016 03 19
-  print qq(<form method="post" action="phenotype.cgi" enctype="multipart/form-data">);
+  print qq(<form method="post" action="phenotype_micropub.cgi" enctype="multipart/form-data">);
   print qq(<div id="term_info_box" style="border: solid; position: fixed; top: 95px; right: 20px; width: 350px; z-index:2; background-color: white;">\n);
 #   print qq(<div id="clear_term_info" style="position: fixed; z-index: 3; top: 102px; right: 30px";>&#10008;</div>\n);
 #   print qq(<div id="clear_term_info" align="right" onclick="document.getElementById('term_info').innerHTML = '';">clear &#10008;</div>\n);
@@ -1590,20 +1535,30 @@ sub showForm {
   print qq(<td colspan="1" style="width: 100px;">&nbsp;</td>);
   print qq(<td colspan="1" style="width: 100px;">&nbsp;</td>);
   print qq(<td colspan="1">&nbsp;</td>);
-  print qq(</tr>);
+  print qq(</tr>\n);
 
+  print qq(<input name="input_1_origip"   id="input_1_origip"   type="hidden" value="$fields{origip}{inputvalue}{1}">\n);  
+  print qq(<input name="input_1_origtime" id="input_1_origtime" type="hidden" value="$fields{origtime}{inputvalue}{1}">\n);
 
   &printPersonField();
   &printEmailField();
-  &printPmidField();
+#   &printPmidField();
+  &printOrcidField();
+  &printCoautField();
+  &printLaboratoryField();
+  &printFundingField();
+#   &printSpeciesField();
+  &printImageuploadField();
+  &printDescriptionField();
   &printTrSpacer();
-  &printTrHeader('Genetic Perturbation(s)', '20', '18px', "(one required)", '#ff0000', '13px');
+  &printTrHeader('What causes the phenotype?', '20', '18px', "(one required)", '#ff0000', '13px');
   &printCloneSeqField();
   &printAlleleField();
   &printTransgeneField();
-  &printSingleMultiField();
+  &printMoleculeField();
   &printTrSpacer();
-  &printTrHeader('PLEASE NOTE: All genetic perturbations above will be annotated to all phenotypes entered below. For separate perturbation-phenotype annotations, please perform separate submissions, or use the WormBase Phenotype Worksheet (linked above).', '20', '13px', "", '#ff0000', '13px');	# for Chris 2016 06 21
+#   &printTrHeader('PLEASE NOTE: All genetic perturbations above will be annotated to all phenotypes entered below. For separate perturbation-phenotype annotations, please perform separate submissions, or use the WormBase Phenotype Worksheet (linked above).', '20', '13px', "", '#ff0000', '13px');	# for Chris 2016 06 21
+  &printTrHeader('PLEASE NOTE: All perturbations above will be annotated to all phenotypes entered below. For separate perturbation-phenotype annotations, please perform separate submissions, or use the WormBase Phenotype Worksheet (linked above).', '20', '13px', "", '#ff0000', '13px');	# for Chris 2016 06 21
   &printTrSpacer();
   &printTrHeader('Phenotype(s)', '20', '18px', "(one required)", '#ff0000', '13px');
   &printObsPhenotypeField();
@@ -1614,6 +1569,13 @@ sub showForm {
   &printPhenontLink();
   &printShowNotSuggestLink();
   &printNotSuggestField();
+  &printTrSpacer();
+  &printTrHeader('Publication Details', '20', '18px', "", '#ff0000', '13px');
+  &printTitleField();
+  &printReviewerField();
+  &printCommentsField();
+  &printReferencesField();
+  &printDisclaimerField();
   &printTrSpacer();
   &printTrSpacer();
   &printTrHeader('Optional', '20', '18px', "(inheritance pattern, mutation effect, penetrance, temperature sensitivity, genetic background and general comments)", '#aaaaaa', '12px');
@@ -1643,9 +1605,6 @@ sub showEditorActions {
   print qq(<input type="submit" name="action" value="Preview" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n);
 #   print qq(<input type="submit" name="action" value="Submit" onclick="return confirm('Are you sure you want to submit?')" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n);
   print qq(<input type="submit" name="action" value="Submit">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n);
-#   print qq(<input type="reset" name="action" value="Reset">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n);
-#   print qq(<a href="phenotype.cgi">reset</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n);
-  print qq(<button onclick="location.href = 'phenotype.cgi';">Reset</button>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n);
 #   print qq(</td></tr>\n);
 #   print qq(<tr><td align="left" colspan="7">&nbsp;</td></tr>\n);
 } # sub showEditorActions
@@ -1664,8 +1623,6 @@ sub tableDisplayArray {
       if ($inputvalue) {  push @inputtermidvalue, $inputvalue;  }
       if ($termidvalue) { push @inputtermidvalue, $termidvalue; }
       my $inputtermidvalue = join" -- ", @inputtermidvalue; 
-      if ($fields{$field}{type} eq 'radio') {			# radio buttons should use button label
-        $inputtermidvalue = $fields{$field}{values}{$inputvalue}; }
 #       if ($label) { $trData .= qq(<td>$label</td><td>$inputtermidvalue</td>\n); }	# if wanted to always add labels without data, sometimes personal communication is confusing.
       if ($inputtermidvalue) { $trData .= qq(<td>$label</td><td style ="overflow: hidden; text-overflow:ellipsis; max-width: 500px;">$inputtermidvalue</td>\n); }	# only add to table row if there's data, to keep confusion between labels and data
       if ($inputtermidvalue) { $trHasvalue++; }	# if input or termid of any field in the field, row has data
@@ -1675,15 +1632,66 @@ sub tableDisplayArray {
   return $formdata;
 } # sub tableDisplayArray
 
+sub processUpload {
+  my ($i, $field) = @_;
+  my $input = "input_${i}_$field";
+  ($var, my $filename)            = &getHtmlVar($query, "input_${i}_$field");   # newly chosen image
+  ($var, my $previewfilename)     = &getHtmlVar($query, "termid_${i}_$field");  # previously chosen image (from preview or save/load)
+  if ($filename) {                                                              # there's a new image, process it
+      my $upload_dir = '/home2/acedb/public_html/draciti/Micropublication/uploads/temp';
+      my $ip   = $fields{origip}{inputvalue}{1};
+      my $time = $fields{origtime}{inputvalue}{1};
+      $filename = $ip . '_' . $time;                                            # replace filename with ip_time
+      if ($previewfilename) { my $replacedfile = "$upload_dir/$previewfilename"; if (-e $replacedfile) { unlink ($replacedfile); } }
+      my $upload_filehandle = $query->upload("input_${i}_$field");
+      open ( UPLOADFILE, ">$upload_dir/$filename" ) or die "Cannot create  : $!";
+      binmode UPLOADFILE;
+      while ( <$upload_filehandle> ) { print UPLOADFILE; }
+      close UPLOADFILE or die "Cannot close $upload_dir/$filename : $!";
+      return $filename; }
+    elsif ($previewfilename) { return $previewfilename; }	# there used to be an image, use that
+    else { return(''); }
+} # sub processUpload
+
+sub renameImageFile {                                   # move file to directory under WBPerson ID
+                                                        # for now just copying, later should figure out how to rename and change image source
+  my ($tempImageFilename, $wbperson) = @_;
+  my $tempFile  = "/home2/acedb/public_html/draciti/Micropublication/uploads/temp/$tempImageFilename";
+  my $final_upload_dir = '/home2/acedb/public_html/draciti/Micropublication/uploads/Phenotype/' . $wbperson;
+  unless (-d $final_upload_dir) {
+    make_path $final_upload_dir or die "Failed to create path: $final_upload_dir";
+    my $mode = "0777";
+    chmod oct($mode), $final_upload_dir;                # make directories have global permission, so acedb can remove them
+  }
+  my $finalFile = &getPgDate(); $finalFile =~ s/[\-:]//g; $finalFile =~ s/ /_/g;
+  my $pic_source = $finalFile . '.jpg';
+  $fields{imageupload}{termidvalue}{1} = $pic_source;
+  $finalFile = $final_upload_dir . '/' . $finalFile . '.jpg';
+  copy $tempFile, $finalFile;
+  my $mode = "0666";
+  chmod oct($mode), $tempFile;                          # make tempfiles world readable only on submission, cronjob can delete from acedb account
+  chmod oct($mode), $finalFile;                         # make files editable by acedb account
+#   print qq(COPY $tempFile TO $finalFile E<br>\n);
+} # sub renameImageFile
+
+
 sub submit {
   my ($submit_flag) = @_;
   print "Content-type: text/html\n\n";
   print $header;
-  print qq(<span style="font-size: 24pt;">Contribute phenotype connections</span><br/><br/>\n);
+  my $tempImageFilename = '';                           # temp file for preview and save-for-later
+  print qq(<span style="font-size: 24pt;">Micropublish phenotype results</span><br/><br/>\n);
 
   foreach my $field (keys %fields) {
+
     my $amount = $fields{$field}{multi};
     for my $i (1 .. $amount) {
+
+#             if ($tempImageFilename) {
+#               $fields{$group}{field}{$field}{termidvalue}{$i} = $tempImageFilename;
+#           else {
+
+
       my ($var, $inputvalue)  = &getHtmlVar($query, "input_${i}_$field");
       ($var, my $termidvalue) = &getHtmlVar($query, "termid_${i}_$field");
       if ($inputvalue) { 
@@ -1694,6 +1702,11 @@ sub submit {
         $fields{$field}{termidvalue}{$i} = $termidvalue;
         if ($i > $fields{$field}{hasdata}) { $fields{$field}{hasdata} = $i; }
       } # if ($termidvalue) 
+
+      if ($fields{$field}{type} eq 'upload') {
+        ($tempImageFilename) = &processUpload($i, $field);
+        $fields{$field}{termidvalue}{$i} = $tempImageFilename; }
+
     } # for my $i (1 .. $amount)
   } # foreach my $field (keys %fields)
   if ($fields{allele}{inputvalue}{1}) {			# sometimes allele names are typed without selecting a wbvariation, but they map to wbvariation
@@ -1701,18 +1714,23 @@ sub submit {
       $result = $dbh->prepare( "SELECT * FROM obo_name_variation WHERE obo_name_variation = '$fields{allele}{inputvalue}{1}';" );
       $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; my @row = $result->fetchrow();
       if ($row[0]) { $fields{allele}{termidvalue}{1} = $row[0]; } } }
-  for my $i (1 .. $fields{cloneseqgene}{multi}) {
-    unless ($fields{cloneseqgene}{inputvalue}{$i}) {		# if there is no rnai, its species should be blank (not generalized for other fields) 2016 02 18
-      $fields{cloneseqspecies}{inputvalue}{$i} = ''; $fields{cloneseqspecies}{termidvalue}{$i} = ''; } }
+  unless ($fields{cloneseq}{inputvalue}{1}) {		# if there is no rnai, its species should be blank (not generalized for other fields) 2016 02 18
+    $fields{cloneseqspecies}{inputvalue}{1} = ''; $fields{cloneseqspecies}{termidvalue}{1} = ''; }
     
   my $form_data  = qq(<table border="1" cellpadding="5">);
   $form_data    .= &tableDisplayArray('person'); 
   $form_data    .= &tableDisplayArray('email');  
-  $form_data    .= &tableDisplayArray('pmid');   
-  $form_data    .= &tableDisplayArray('cloneseqgene', 'cloneseq', 'cloneseqspecies'); 
+#   $form_data    .= &tableDisplayArray('pmid');   
+  $form_data    .= &tableDisplayArray('coaut');
+  $form_data    .= &tableDisplayArray('laboratory');
+  $form_data    .= &tableDisplayArray('funding');
+#   $form_data    .= &tableDisplayArray('species');
+  $form_data    .= &tableDisplayArray('description');
+
+  $form_data    .= &tableDisplayArray('cloneseq', 'cloneseqspecies'); 
   $form_data    .= &tableDisplayArray('allele'); 
   $form_data    .= &tableDisplayArray('transgene', 'transgenegene'); 
-  $form_data    .= &tableDisplayArray('pertsinglemulti'); 
+  $form_data    .= &tableDisplayArray('molecule', 'moleculestrain'); 
   $form_data    .= &tableDisplayArray('obsphenotypeterm', 'obsphenotyperemark', 'obsphenotypepersonal');
   $form_data    .= &tableDisplayArray('notphenotypeterm', 'notphenotyperemark', 'notphenotypepersonal');
   $form_data    .= &tableDisplayArray('obssuggestedterm', 'obssuggesteddef', 'obssuggestedremark', 'obssuggestedpersonal');
@@ -1724,7 +1742,17 @@ sub submit {
   $form_data    .= &tableDisplayArray('coldsens');
   $form_data    .= &tableDisplayArray('genotype');
   $form_data    .= &tableDisplayArray('strain');
+
   $form_data    .= &tableDisplayArray('comment');
+  $form_data    .= &tableDisplayArray('title');
+  $form_data    .= &tableDisplayArray('reviewer');
+  $form_data    .= &tableDisplayArray('comments');
+  $form_data    .= &tableDisplayArray('references');
+#   $form_data    .= &tableDisplayArray('disclaimer');
+
+  if ($tempImageFilename) { 
+    my $imageUrl = "http://" . $hostfqdn . "/~acedb/draciti/Micropublication/uploads/temp/$tempImageFilename";
+    $form_data .= qq(<td>Image</td><td><img width="400" src="$imageUrl"></td>\n); }
   $form_data    .= qq(</table><br/><br/>);
 
     # on any submission action, update the person / email for the user's IP address
@@ -1740,11 +1768,12 @@ sub submit {
           &showForm(); }
         else {
 #           &deletePg($fields{origip}{inputvalue}{1}, $fields{origtime}{inputvalue}{1});	# if had save files, this would delete
-          my $messageToUser = qq(Dear $fields{person}{inputvalue}{1}, thank you for submitting Phenotype data.<br/>A WormBase curator will be in touch if there are any questions.<br/>);
+          my $messageToUser = qq(Dear $fields{person}{inputvalue}{1}, thank you for submitting phenotype data. Your submission will be sent for peer-review. We will contact you after the evaluation is completed. If you have additional questions, please contact the <a href="mailto:contact\@micropublication.org">Micropublication Team</a>.<br/>);
           print qq($messageToUser<br/>);
           print qq(<br/>$form_data);
-          print qq(<br/>Return to the <a href="phenotype.cgi">Phenotype Form</a>.<br/>\n);
+          print qq(<br/>Return to the <a href="phenotype_micropub.cgi">Phenotype Form</a>.<br/>\n);
           &writePgOaAndEmail($messageToUser, $form_data);
+          &renameImageFile($tempImageFilename, $fields{person}{termidvalue}{1});
         }
     }
     elsif ($submit_flag eq 'preview') { 
@@ -1766,7 +1795,7 @@ sub writePgOaAndEmail {		# tacking on email here since need pgids from pg before
 #   my $ip            = $query->remote_host();			# get value for current user IP, not (potentially) loaded IP 
   my $ip            = &getIp();
   my $timestamp     = &getPgDate();
-  my $emailVariation  = ''; my $emailPaper = ''; my $emailTransgene = ''; my $emailGene = '';
+  my $emailMaryann  = ''; my $emailKimberly = ''; my $emailKaren = '';
   my @newPgidsApp   = ();
   my @newPgidsRna   = ();
   my $pgidApp       = &getHighestPgid('app'); 
@@ -1789,7 +1818,7 @@ sub writePgOaAndEmail {		# tacking on email here since need pgids from pg before
   if ($row[0]) { $wbpaperOrig = 'WBPaper' . $row[0]; $unregpaperOrig = ''; }
   if ($wbpaperOrig) {    $paperHistOrig = "$pmid ($wbpaperOrig)"; } 
     else {               $paperHistOrig = "$pmid (no match)"; }
-  if ($unregpaperOrig) { $emailPaper .= qq(PMID "$unregpaperOrig" is new.\n); }
+  if ($unregpaperOrig) { $emailKimberly .= qq(PMID "$unregpaperOrig" is new.\n); }
   my %alleles;
   my $amountAllele   = $fields{allele}{multi};
   for my $i (1 .. $amountAllele) {
@@ -1798,57 +1827,32 @@ sub writePgOaAndEmail {		# tacking on email here since need pgids from pg before
     next unless ($unregallele);
     my $alleleHist;
     if ($variation) {    $alleleHist = "$unregallele ($variation)"; $unregallele = ''; }
-      else {             $alleleHist = "$unregallele (no match)";   $emailVariation .= qq(Allele "$unregallele" is new.\n); }
+      else {             $alleleHist = "$unregallele (no match)";   $emailMaryann .= qq(Allele "$unregallele" is new.\n); }
     $alleles{$i}{unregallele} = $unregallele;
     $alleles{$i}{variation}   = $variation;
     $alleles{$i}{alleleHist}  = $alleleHist;
   }
   my %transgenes;
-  my $amountTransgene  = $fields{transgene}{multi};
-  for my $i (1 .. $amountTransgene) {
-    my $unregtransgene   = $fields{transgene}{inputvalue}{$i}      || '';
-    my $wbtransgene      = $fields{transgene}{termidvalue}{$i}     || '';
-    my $transgenegene    = $fields{transgenegene}{inputvalue}{$i}  || '';
-    my $transgenewbgene  = $fields{transgenegene}{termidvalue}{$i} || '';
+  my $amountAllele   = $fields{transgene}{multi};
+  for my $i (1 .. $amountAllele) {
+    my $unregtransgene = $fields{transgene}{inputvalue}{$i}     || '';
+    my $wbtransgene    = $fields{transgene}{termidvalue}{$i}    || '';
+    my $transgenegene  = $fields{transgenegene}{inputvalue}{$i} || '';
     next unless ($unregtransgene);
-    my $transgeneHist; my $transgenegeneHist;
+    my $transgeneHist;
     if ($wbtransgene) {  $transgeneHist = "$unregtransgene ($wbtransgene)"; $unregtransgene = ''; }
-      else {             $transgeneHist = "$unregtransgene (no match)";     $emailTransgene .= qq(Transgene "$unregtransgene" is new.\n); }
-    if ($transgenewbgene) {  $transgenegeneHist = "$transgenegene ($transgenewbgene)"; $transgenegene = ''; }
-      else {                 $transgenegeneHist = "$transgenegene (no match)";         $emailGene .= qq(Gene "$transgenegene" is new.\n); }
-    $transgenes{$i}{unregtransgene}     = $unregtransgene;
-    $transgenes{$i}{wbtransgene}        = $wbtransgene;
-    $transgenes{$i}{transgeneHist}      = $transgeneHist;
-    $transgenes{$i}{transgenegene}      = $transgenegene;
-    $transgenes{$i}{transgenewbgene}    = $transgenewbgene;
-    $transgenes{$i}{transgenegeneHist}  = $transgenegeneHist;
+      else {             $transgeneHist = "$unregtransgene (no match)";     $emailKaren .= qq(Transgene "$unregtransgene" is new.\n); }
+    $transgenes{$i}{unregtransgene} = $unregtransgene;
+    $transgenes{$i}{wbtransgene}    = $wbtransgene;
+    $transgenes{$i}{transgeneHist}  = $transgeneHist;
+    $transgenes{$i}{transgenegene}  = $transgenegene;
   }
-#   my $rnaiGene      = $fields{cloneseqgene}{inputvalue}{1} || '';
-#   my $rnai          = $fields{cloneseq}{inputvalue}{1} || '';
-#   my $rnaiSpecies   = $fields{cloneseqspecies}{inputvalue}{1} || '';
-
-  my %rnais;
-  my $amountRnai       = $fields{cloneseq}{multi};
-  for my $i (1 .. $amountRnai) {
-    my $unregrnaigene  = $fields{cloneseqgene}{inputvalue}{$i}   || '';
-    my $wbrnaigene     = $fields{cloneseqgene}{termidvalue}{$i}  || '';
-    my $rnaiReagent    = $fields{cloneseq}{inputvalue}{$i}       || '';
-    my $rnaiSpecies    = $fields{cloneseqspecies}{inputvalue}{1} || '';
-    next unless ($unregrnaigene);
-    my $rnaiGene;
-    if ($wbrnaigene) {  $rnaiGene = "$unregrnaigene ($wbrnaigene)";  $unregrnaigene = ''; }
-      else {            $rnaiGene = "$unregrnaigene (no match)"; $emailGene .= qq(RNAiGene "$unregrnaigene" is new.\n); }
-#     $rnais{$i}{unregrnaigene}   = $unregrnaigene;
-#     $rnais{$i}{wbrnaigene}      = $wbrnaigene;
-    $rnais{$i}{rnaiGene}        = $rnaiGene;
-    $rnais{$i}{rnaiReagent}     = $rnaiReagent;
-    $rnais{$i}{rnaiSpecies}     = $rnaiSpecies;
-  }
-
+  my $rnai          = $fields{cloneseq}{inputvalue}{1} || '';
+  my $rnaiSpecies   = $fields{cloneseqspecies}{inputvalue}{1} || '';
 #   my $unregallele   = $fields{allele}{inputvalue}{1};
 #   my $variation     = $fields{allele}{termidvalue}{1} || '';
 #   if ($variation) {    $alleleHist = "$unregallele ($variation)"; $unregallele = ''; }
-#     else {             $alleleHist = "$unregallele (no match)";   $emailVariation .= qq(Allele "$unregallele" is new.\n); }
+#     else {             $alleleHist = "$unregallele (no match)";   $emailMaryann .= qq(Allele "$unregallele" is new.\n); }
   my $nature        = $fields{allelenature}{inputvalue}{1} || '';
   my $func          = $fields{allelefunction}{inputvalue}{1} || '';
   my $penetrance    = $fields{penetrance}{inputvalue}{1} || '';
@@ -1890,63 +1894,30 @@ sub writePgOaAndEmail {		# tacking on email here since need pgids from pg before
     my $unregpaper = $unregpaperOrig; my $wbpaper = $wbpaperOrig; my $paperHist = $paperHistOrig; my $personEvi = ''; 
     if ($obsphenotypepersonalValue) { $unregpaper = ''; $wbpaper = ''; $paperHist = ''; $personEvi = $person; }
     if ($obsphenotypetermValue) {
-      my $singlemultiFlag = ''; if ($fields{'pertsinglemulti'}{inputvalue}{1}) { $singlemultiFlag = $fields{'pertsinglemulti'}{inputvalue}{1}; }
-      if ($singlemultiFlag eq 'pertsingle') {
-          my @unregVariation = ();
-          foreach my $i (sort {$a<=>$b} keys %rnais) {
-            my $rnaiGene = $rnais{$i}{rnaiGene}; 
-            my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            push @unregVariation, qq(RNAi target: $rnaiGene, RNAi reagent: $rnaiReagent, RNAi species: $rnaiSpecies); }
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $alleleHist =  $alleles{$i}{alleleHist};
-            push @unregVariation, qq(Allele: $alleleHist); }
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {
-            my $transgeneHist     = $transgenes{$i}{transgeneHist};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist}; 
-            push @unregVariation, qq(Transgene: $transgeneHist, Caused by: $transgenegeneHist); }
-          next unless (scalar @unregVariation > 0);
-          $pgidApp++; push @newPgidsApp, $pgidApp;
-          my $unregallele = join" | ", @unregVariation; my $alleleHist = $unregallele;
-          my $datatype = 'app'; my $variation = ''; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = '';
-          my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent = ''; my $rnaiSpecies = '';
-          push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obsphenotypepersonalValue\t$obsphenotypetermName ($obsphenotypetermValue)\t$not\t$obsphenotyperemarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-          &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-          &writePgField($datatype, $pgidApp, 'term', $obsphenotypetermValue);
-          &writePgField($datatype, $pgidApp, 'phen_remark', $obsphenotyperemarkValue);
-        }
-        else {
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
-            my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obsphenotypepersonalValue\t$obsphenotypetermName ($obsphenotypetermValue)\t$not\t$obsphenotyperemarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'term', $obsphenotypetermValue);
-            &writePgField($datatype, $pgidApp, 'phen_remark', $obsphenotyperemarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {	# no nature func for transgenes
-            my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
-            my $transgeneHist  = $transgenes{$i}{transgeneHist};
-            my $transgenegene = $transgenes{$i}{transgenegene};   my $transgenewbgene   = $transgenes{$i}{transgenewbgene};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist};
-            my $alleleHist = ''; my $rnaiGene = ''; my $rnaiReagent; my $datatype = 'app'; my $unregallele = ''; my $variation = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegeneHist\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obsphenotypepersonalValue\t$obsphenotypetermName ($obsphenotypetermValue)\t$not\t$obsphenotyperemarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'term', $obsphenotypetermValue);
-            &writePgField($datatype, $pgidApp, 'phen_remark', $obsphenotyperemarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %rnais) {	# no nature func for transgenes
-#             my $unregrnaigene = $rnais{$i}{unregrnaigene}; my $wbrnaigene   = $rnais{$i}{wbrnaigene};
-            my $rnaiGene  = $rnais{$i}{rnaiGene};  my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            my $datatype = 'rna'; my $transgeneHist = ''; my $transgenegene = ''; my $alleleHist = '';
-            $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
-            my @thisComment;
-            if ($rnaiGene) {      push @thisComment, $rnaiGene;      }
-            if ($comment) {       push @thisComment, $comment;       }
-            my $thisComment = join" | ", @thisComment;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obsphenotypepersonalValue\t$obsphenotypetermName ($obsphenotypetermValue)\t$not\t$obsphenotyperemarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnaiReagent, $rnaiSpecies, $penetrance, $genotype, $strain, $heat_sens, $cold_sens, $thisComment);
-            &writePgField($datatype, $pgidRna, 'phenotype', $obsphenotypetermValue);
-            &writePgField($datatype, $pgidRna, 'phenremark', $obsphenotyperemarkValue); } } } }
+      foreach my $i (sort {$a<=>$b} keys %alleles) {
+        my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
+        my $transgeneHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $speciesBlank = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$speciesBlank\t$obsphenotypepersonalValue\t$obsphenotypetermName ($obsphenotypetermValue)\t$not\t$obsphenotyperemarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'term', $obsphenotypetermValue);
+        &writePgField($datatype, $pgidApp, 'phen_remark', $obsphenotyperemarkValue); } 
+      foreach my $i (sort {$a<=>$b} keys %transgenes) {	# no nature func heat_sens cold_sens for transgenes
+        my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
+        my $transgeneHist  = $transgenes{$i}{transgeneHist};  my $transgenegene = $transgenes{$i}{transgenegene};
+        my $alleleHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregallele = ''; my $variation = ''; my $speciesBlank = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$speciesBlank\t$obsphenotypepersonalValue\t$obsphenotypetermName ($obsphenotypetermValue)\t$not\t$obsphenotyperemarkValue\t$obssuggesteddefValue\t\t\t$penetrance\t\t\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, '', '', $penetrance, '', '', $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'term', $obsphenotypetermValue);
+        &writePgField($datatype, $pgidApp, 'phen_remark', $obsphenotyperemarkValue); } 
+      if ($rnai) {
+        $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
+        my $rnaiHist = $rnai; my $datatype = 'rna'; my $alleleHist = ''; my $transgeneHist = ''; my $transgenegene = '';
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$obsphenotypepersonalValue\t$obsphenotypetermName ($obsphenotypetermValue)\t$not\t$obsphenotyperemarkValue\t$obssuggesteddefValue\t\t\t$penetrance\t\t\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnai, $rnaiSpecies, $penetrance, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidRna, 'phenotype', $obsphenotypetermValue);
+        &writePgField($datatype, $pgidRna, 'phenremark', $obsphenotyperemarkValue); } } }
 
   my $amountNot   = $fields{notphenotypeterm}{multi};
   for my $i (1 .. $amountNot) {
@@ -1958,67 +1929,33 @@ sub writePgOaAndEmail {		# tacking on email here since need pgids from pg before
     my $unregpaper = $unregpaperOrig; my $wbpaper = $wbpaperOrig; my $paperHist = $paperHistOrig; my $personEvi = ''; 
     if ($notphenotypepersonalValue) { $unregpaper = ''; $wbpaper = ''; $paperHist = ''; $personEvi = $person; }
     if ($notphenotypetermValue) {
-      my $singlemultiFlag = ''; if ($fields{'pertsinglemulti'}{inputvalue}{1}) { $singlemultiFlag = $fields{'pertsinglemulti'}{inputvalue}{1}; }
-      if ($singlemultiFlag eq 'pertsingle') {
-          my @unregVariation = ();
-          foreach my $i (sort {$a<=>$b} keys %rnais) {
-            my $rnaiGene = $rnais{$i}{rnaiGene}; 
-            my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            push @unregVariation, qq(RNAi target: $rnaiGene, RNAi reagent: $rnaiReagent, RNAi species: $rnaiSpecies); }
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $alleleHist =  $alleles{$i}{alleleHist};
-            push @unregVariation, qq(Allele: $alleleHist); }
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {
-            my $transgeneHist     = $transgenes{$i}{transgeneHist};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist}; 
-            push @unregVariation, qq(Transgene: $transgeneHist, Caused by: $transgenegeneHist); }
-          next unless (scalar @unregVariation > 0);
-          $pgidApp++; push @newPgidsApp, $pgidApp;
-          my $unregallele = join" | ", @unregVariation; my $alleleHist = $unregallele;
-          my $datatype = 'app'; my $variation = ''; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = '';
-          my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent = ''; my $rnaiSpecies = '';
-          push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notphenotypepersonalValue\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-          &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-          &writePgField($datatype, $pgidApp, 'term', $notphenotypetermValue);
-          &writePgField($datatype, $pgidApp, 'not', 'NOT');
-          &writePgField($datatype, $pgidApp, 'phen_remark', $notphenotyperemarkValue);
-        }
-        else {
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
-            my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent = ''; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notphenotypepersonalValue\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'term', $notphenotypetermValue);
-            &writePgField($datatype, $pgidApp, 'not', 'NOT');
-            &writePgField($datatype, $pgidApp, 'phen_remark', $notphenotyperemarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {
-            my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
-            my $transgeneHist  = $transgenes{$i}{transgeneHist};  
-            my $transgenegene = $transgenes{$i}{transgenegene};   my $transgenewbgene   = $transgenes{$i}{transgenewbgene};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist};
-            my $alleleHist = ''; my $rnaiGene = ''; my $rnaiReagent; my $datatype = 'app'; my $unregallele = ''; my $variation = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegeneHist\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notphenotypepersonalValue\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'term', $notphenotypetermValue);
-            &writePgField($datatype, $pgidApp, 'not', 'NOT');
-            &writePgField($datatype, $pgidApp, 'phen_remark', $notphenotyperemarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %rnais) {	# no nature func for transgenes
-#             my $unregrnaigene = $rnais{$i}{unregrnaigene}; my $wbrnaigene   = $rnais{$i}{wbrnaigene};
-            my $rnaiGene  = $rnais{$i}{rnaiGene};  my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            my $datatype = 'rna'; my $transgeneHist = ''; my $transgenegene = ''; my $alleleHist = '';
-            $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
-            my @thisComment;
-            if ($rnaiGene) {      push @thisComment, $rnaiGene;      }
-            if ($comment) {       push @thisComment, $comment;       }
-            my $thisComment = join" | ", @thisComment;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notphenotypepersonalValue\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnaiReagent, $rnaiSpecies, $penetrance, $genotype, $strain, $heat_sens, $cold_sens, $thisComment);
-            &writePgField($datatype, $pgidRna, 'phenotype', $notphenotypetermValue);
-            &writePgField($datatype, $pgidRna, 'phenotypenot', 'NOT');
-            &writePgField($datatype, $pgidRna, 'phenremark', $notphenotyperemarkValue); } } } }
+      foreach my $i (sort {$a<=>$b} keys %alleles) {
+        my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
+        my $transgeneHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$notphenotypepersonalValue\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'term', $notphenotypetermValue);
+        &writePgField($datatype, $pgidApp, 'not', 'NOT');
+        &writePgField($datatype, $pgidApp, 'phen_remark', $notphenotyperemarkValue); } 
+      foreach my $i (sort {$a<=>$b} keys %transgenes) {
+        my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
+        my $transgeneHist  = $transgenes{$i}{transgeneHist};  my $transgenegene = $transgenes{$i}{transgenegene};
+        my $alleleHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregallele = ''; my $variation = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$notphenotypepersonalValue\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t\t\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, '', '', $penetrance, '', '', $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'term', $notphenotypetermValue);
+        &writePgField($datatype, $pgidApp, 'not', 'NOT');
+        &writePgField($datatype, $pgidApp, 'phen_remark', $notphenotyperemarkValue); } 
+      if ($rnai) {
+        $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
+        my $rnaiHist = $rnai; my $datatype = 'rna'; my $alleleHist = ''; my $transgeneHist = ''; my $transgenegene = '';
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$notphenotypepersonalValue\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t\t\t$penetrance\t\t\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnai, $rnaiSpecies, $penetrance, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidRna, 'phenotype', $notphenotypetermValue);
+        &writePgField($datatype, $pgidRna, 'phenotypenot', 'NOT');
+        &writePgField($datatype, $pgidRna, 'phenremark', $notphenotyperemarkValue); } } }
 
   my $amountObsSug   = $fields{obssuggestedterm}{multi};
   for my $i (1 .. $amountObsSug) {
@@ -2030,67 +1967,33 @@ sub writePgOaAndEmail {		# tacking on email here since need pgids from pg before
     my $unregpaper = $unregpaperOrig; my $wbpaper = $wbpaperOrig; my $paperHist = $paperHistOrig; my $personEvi = ''; 
     if ($obssuggestedpersonalValue) { $unregpaper = ''; $wbpaper = ''; $paperHist = ''; $personEvi = $person; }
     if ($obssuggestedtermName) {
-      my $singlemultiFlag = ''; if ($fields{'pertsinglemulti'}{inputvalue}{1}) { $singlemultiFlag = $fields{'pertsinglemulti'}{inputvalue}{1}; }
-      if ($singlemultiFlag eq 'pertsingle') {
-          my @unregVariation = ();
-          foreach my $i (sort {$a<=>$b} keys %rnais) {
-            my $rnaiGene = $rnais{$i}{rnaiGene}; 
-            my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            push @unregVariation, qq(RNAi target: $rnaiGene, RNAi reagent: $rnaiReagent, RNAi species: $rnaiSpecies); }
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $alleleHist =  $alleles{$i}{alleleHist};
-            push @unregVariation, qq(Allele: $alleleHist); }
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {
-            my $transgeneHist     = $transgenes{$i}{transgeneHist};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist}; 
-            push @unregVariation, qq(Transgene: $transgeneHist, Caused by: $transgenegeneHist); }
-          next unless (scalar @unregVariation > 0);
-          $pgidApp++; push @newPgidsApp, $pgidApp;
-          my $unregallele = join" | ", @unregVariation; my $alleleHist = $unregallele;
-          my $datatype = 'app'; my $variation = ''; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = '';
-          my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent = ''; my $rnaiSpecies = '';
-          push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obssuggestedpersonalValue\t$obssuggestedtermName (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-          &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-          &writePgField($datatype, $pgidApp, 'suggested', $obssuggestedtermName);
-          &writePgField($datatype, $pgidApp, 'suggested_definition', $obssuggesteddefValue);
-          &writePgField($datatype, $pgidApp, 'phen_remark', $obssuggestedremarkValue);
-        }
-        else {
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
-            my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent = ''; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obssuggestedpersonalValue\t$obssuggestedtermName (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'suggested', $obssuggestedtermName);
-            &writePgField($datatype, $pgidApp, 'suggested_definition', $obssuggesteddefValue);
-            &writePgField($datatype, $pgidApp, 'phen_remark', $obssuggestedremarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {
-            my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
-            my $transgeneHist  = $transgenes{$i}{transgeneHist};  
-            my $transgenegene = $transgenes{$i}{transgenegene};   my $transgenewbgene   = $transgenes{$i}{transgenewbgene};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist};
-            my $alleleHist = ''; my $rnaiGene = ''; my $rnaiReagent = ''; my $datatype = 'app'; my $unregallele = ''; my $variation = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegeneHist\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obssuggestedpersonalValue\t$obssuggestedtermName (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'suggested', $obssuggestedtermName);
-            &writePgField($datatype, $pgidApp, 'suggested_definition', $obssuggesteddefValue);
-            &writePgField($datatype, $pgidApp, 'phen_remark', $obssuggestedremarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %rnais) {	# no nature func for transgenes
-#             my $unregrnaigene = $rnais{$i}{unregrnaigene}; my $wbrnaigene   = $rnais{$i}{wbrnaigene};
-            my $rnaiGene  = $rnais{$i}{rnaiGene};  my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            my $datatype = 'rna'; my $transgeneHist = ''; my $transgenegene = ''; my $alleleHist = '';
-            $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
-            my @thisComment;
-            if ($rnaiGene) {      push @thisComment, $rnaiGene;      }
-            if ($comment) {       push @thisComment, $comment;       }
-            my $thisComment = join" | ", @thisComment;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$obssuggestedpersonalValue\t$obssuggestedtermName (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnaiReagent, $rnaiSpecies, $penetrance, $genotype, $strain, $heat_sens, $cold_sens, $thisComment);
-            &writePgField($datatype, $pgidRna, 'suggested', $obssuggestedtermName);
-            &writePgField($datatype, $pgidRna, 'suggested_definition', $obssuggesteddefValue);
-            &writePgField($datatype, $pgidRna, 'phenremark', $obssuggestedremarkValue); } } } }
+      foreach my $i (sort {$a<=>$b} keys %alleles) {
+        my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
+        my $transgeneHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$obssuggestedpersonalValue\t$obssuggestedtermName (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'suggested', $obssuggestedtermName);
+        &writePgField($datatype, $pgidApp, 'suggested_definition', $obssuggesteddefValue);
+        &writePgField($datatype, $pgidApp, 'phen_remark', $obssuggestedremarkValue); } 
+      foreach my $i (sort {$a<=>$b} keys %transgenes) {
+        my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
+        my $transgeneHist  = $transgenes{$i}{transgeneHist};  my $transgenegene = $transgenes{$i}{transgenegene};
+        my $alleleHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregallele = ''; my $variation = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$obssuggestedpersonalValue\t$obssuggestedtermName (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t\t\t$penetrance\t\t\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, '', '', $penetrance, '', '', $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'suggested', $obssuggestedtermName);
+        &writePgField($datatype, $pgidApp, 'suggested_definition', $obssuggesteddefValue);
+        &writePgField($datatype, $pgidApp, 'phen_remark', $obssuggestedremarkValue); } 
+      if ($rnai) {
+        $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
+        my $rnaiHist = $rnai; my $datatype = 'rna'; my $alleleHist = ''; my $transgeneHist = ''; my $transgenegene = '';
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$obssuggestedpersonalValue\t$obssuggestedtermName (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t\t\t$penetrance\t\t\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnai, $rnaiSpecies, $penetrance, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidRna, 'suggested', $obssuggestedtermName);
+        &writePgField($datatype, $pgidRna, 'suggested_definition', $obssuggesteddefValue);
+        &writePgField($datatype, $pgidRna, 'phenremark', $obssuggestedremarkValue); } } }
 
   my $amountNotSug   = $fields{notsuggestedterm}{multi};
   for my $i (1 .. $amountNotSug) {
@@ -2102,117 +2005,120 @@ sub writePgOaAndEmail {		# tacking on email here since need pgids from pg before
     my $unregpaper = $unregpaperOrig; my $wbpaper = $wbpaperOrig; my $paperHist = $paperHistOrig; my $personEvi = ''; 
     if ($notsuggestedpersonalValue) { $unregpaper = ''; $wbpaper = ''; $paperHist = ''; $personEvi = $person; }
     if ($notsuggestedtermName) {
-      my $singlemultiFlag = ''; if ($fields{'pertsinglemulti'}{inputvalue}{1}) { $singlemultiFlag = $fields{'pertsinglemulti'}{inputvalue}{1}; }
-      if ($singlemultiFlag eq 'pertsingle') {
-          my @unregVariation = ();
-          foreach my $i (sort {$a<=>$b} keys %rnais) {
-            my $rnaiGene = $rnais{$i}{rnaiGene}; 
-            my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            push @unregVariation, qq(RNAi target: $rnaiGene, RNAi reagent: $rnaiReagent, RNAi species: $rnaiSpecies); }
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $alleleHist =  $alleles{$i}{alleleHist};
-            push @unregVariation, qq(Allele: $alleleHist); }
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {
-            my $transgeneHist     = $transgenes{$i}{transgeneHist};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist}; 
-            push @unregVariation, qq(Transgene: $transgeneHist, Caused by: $transgenegeneHist); }
-          next unless (scalar @unregVariation > 0);
-          $pgidApp++; push @newPgidsApp, $pgidApp;
-          my $unregallele = join" | ", @unregVariation; my $alleleHist = $unregallele;
-          my $datatype = 'app'; my $variation = ''; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = '';
-          my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent = ''; my $rnaiSpecies = '';
-          push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notsuggestedpersonalValue\t$notsuggestedtermName (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-          &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-          &writePgField($datatype, $pgidApp, 'suggested', $notsuggestedtermName);
-          &writePgField($datatype, $pgidApp, 'not', 'NOT');
-          &writePgField($datatype, $pgidApp, 'suggested_definition', $notsuggesteddefValue);
-          &writePgField($datatype, $pgidApp, 'phen_remark', $notsuggestedremarkValue);
-        }
-        else {
-          foreach my $i (sort {$a<=>$b} keys %alleles) {
-            my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
-            my $transgeneHist = ''; my $rnaiGene = ''; my $rnaiReagent; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = ''; my $transgenewbgene = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notsuggestedpersonalValue\t$notsuggestedtermName (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'suggested', $notsuggestedtermName);
-            &writePgField($datatype, $pgidApp, 'suggested_definition', $notsuggesteddefValue);
-            &writePgField($datatype, $pgidApp, 'not', 'NOT');
-            &writePgField($datatype, $pgidApp, 'phen_remark', $notsuggestedremarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %transgenes) {
-            my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
-            my $transgeneHist  = $transgenes{$i}{transgeneHist};  
-            my $transgenegene = $transgenes{$i}{transgenegene};   my $transgenewbgene   = $transgenes{$i}{transgenewbgene};
-            my $transgenegeneHist = $transgenes{$i}{transgenegeneHist};
-            my $alleleHist = ''; my $rnaiGene = ''; my $rnaiReagent; my $datatype = 'app'; my $unregallele = ''; my $variation = ''; my $rnaiSpecies = '';
-            $pgidApp++; push @newPgidsApp, $pgidApp;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegeneHist\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notsuggestedpersonalValue\t$notsuggestedtermName (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
-            &writePgField($datatype, $pgidApp, 'suggested', $notsuggestedtermName);
-            &writePgField($datatype, $pgidApp, 'suggested_definition', $notsuggesteddefValue);
-            &writePgField($datatype, $pgidApp, 'not', 'NOT');
-            &writePgField($datatype, $pgidApp, 'phen_remark', $notsuggestedremarkValue); } 
-          foreach my $i (sort {$a<=>$b} keys %rnais) {	# no nature func for transgenes
-#             my $unregrnaigene = $rnais{$i}{unregrnaigene}; my $wbrnaigene   = $rnais{$i}{wbrnaigene};
-            my $rnaiGene  = $rnais{$i}{rnaiGene};  my $rnaiReagent = $rnais{$i}{rnaiReagent};  my $rnaiSpecies = $rnais{$i}{rnaiSpecies};
-            my $datatype = 'rna'; my $transgeneHist = ''; my $transgenegene = ''; my $alleleHist = '';
-            $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
-            my @thisComment;
-            if ($rnaiGene) {      push @thisComment, $rnaiGene;      }
-            if ($comment) {       push @thisComment, $comment;       }
-            my $thisComment = join" | ", @thisComment;
-            push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiGene\t$rnaiReagent\t$rnaiSpecies\t$notsuggestedpersonalValue\t$notsuggestedtermName (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
-            &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnaiReagent, $rnaiSpecies, $penetrance, $genotype, $strain, $heat_sens, $cold_sens, $thisComment);
-            &writePgField($datatype, $pgidRna, 'suggested', $notsuggestedtermName);
-            &writePgField($datatype, $pgidRna, 'suggested_definition', $notsuggesteddefValue);
-            &writePgField($datatype, $pgidRna, 'phenotypenot', 'NOT');
-            &writePgField($datatype, $pgidRna, 'phenremark', $notsuggestedremarkValue); } } } }
+      foreach my $i (sort {$a<=>$b} keys %alleles) {
+        my $unregallele = $alleles{$i}{unregallele}; my $variation = $alleles{$i}{variation}; my $alleleHist = $alleles{$i}{alleleHist};
+        my $transgeneHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregtransgene = ''; my $wbtransgene = ''; my $transgenegene = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$notsuggestedpersonalValue\t$notsuggestedtermName (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'suggested', $notsuggestedtermName);
+        &writePgField($datatype, $pgidApp, 'suggested_definition', $notsuggesteddefValue);
+        &writePgField($datatype, $pgidApp, 'not', 'NOT');
+        &writePgField($datatype, $pgidApp, 'phen_remark', $notsuggestedremarkValue); } 
+      foreach my $i (sort {$a<=>$b} keys %transgenes) {
+        my $unregtransgene = $transgenes{$i}{unregtransgene}; my $wbtransgene   = $transgenes{$i}{wbtransgene};
+        my $transgeneHist  = $transgenes{$i}{transgeneHist};  my $transgenegene = $transgenes{$i}{transgenegene};
+        my $alleleHist = ''; my $rnaiHist = ''; my $datatype = 'app'; my $unregallele = ''; my $variation = '';
+        $pgidApp++; push @newPgidsApp, $pgidApp;
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$notsuggestedpersonalValue\t$notsuggestedtermName (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t\t\t$penetrance\t\t\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsApp($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, '', '', $penetrance, '', '', $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidApp, 'suggested', $notsuggestedtermName);
+        &writePgField($datatype, $pgidApp, 'suggested_definition', $notsuggesteddefValue);
+        &writePgField($datatype, $pgidApp, 'not', 'NOT');
+        &writePgField($datatype, $pgidApp, 'phen_remark', $notsuggestedremarkValue); } 
+      if ($rnai) {
+        $pgidRna++; push @newPgidsRna, $pgidRna; $highRnaiId++;
+        my $rnaiHist = $rnai; my $datatype = 'rna'; my $alleleHist = ''; my $transgeneHist = ''; my $transgenegene = '';
+        push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidRna\t$paperHist\t$alleleHist\t$transgeneHist\t$transgenegene\t$rnaiHist\t$rnaiSpecies\t$notsuggestedpersonalValue\t$notsuggestedtermName (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t\t\t$penetrance\t\t\t$genotype\t$strain\t$comment);
+        &writePgRowFieldsRna($pgidRna, $highRnaiId, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $personEvi, $rnai, $rnaiSpecies, $penetrance, $genotype, $strain, $comment);
+        &writePgField($datatype, $pgidRna, 'suggested', $notsuggestedtermName);
+        &writePgField($datatype, $pgidRna, 'suggested_definition', $notsuggesteddefValue);
+        &writePgField($datatype, $pgidRna, 'phenotypenot', 'NOT');
+        &writePgField($datatype, $pgidRna, 'phenremark', $notsuggestedremarkValue); } } }
+
+#   my $amountNot   = $fields{notphenotypeterm}{multi};
+#   for my $i (1 .. $amountNot) {
+#     my $notphenotypetermValue   = $fields{'notphenotypeterm'}{termidvalue}{$i};
+#     my $notphenotypetermName    = $fields{'notphenotypeterm'}{inputvalue}{$i};
+#     my $notphenotyperemarkValue = $fields{'notphenotyperemark'}{inputvalue}{$i};
+#     if ($notphenotypetermValue) {
+#       $pgidApp++; push @newPgidsApp, $pgidApp;
+#       my $notsuggesteddefValue  = ''; my $not = 'NOT';
+#       push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$notphenotypetermName ($notphenotypetermValue)\t$not\t$notphenotyperemarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$comment);
+#       &writePgRowFields($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $unregallele, $variation, $nature, $func, $penetrance, $heat_sens, $cold_sens, $comment);
+#       &writePgField($pgidApp, 'term', $notphenotypetermValue);
+#       &writePgField($pgidApp, 'not', 'NOT');
+#       &writePgField($pgidApp, 'phen_remark', $notphenotyperemarkValue); } }
+
+#   my $amountObsSug   = $fields{obssuggestedterm}{multi};
+#   for my $i (1 .. $amountObsSug) {
+#     my $obssuggestedtermValue   = $fields{'obssuggestedterm'}{inputvalue}{$i};
+#     my $obssuggesteddefValue    = $fields{'obssuggesteddef'}{inputvalue}{$i};
+#     my $obssuggestedremarkValue = $fields{'obssuggestedremark'}{inputvalue}{$i};
+#     if ($obssuggestedtermValue) {
+#       $pgidApp++; push @newPgidsApp, $pgidApp; 
+#       my $not = '';
+#       push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$obssuggestedtermValue (no match)\t$not\t$obssuggestedremarkValue\t$obssuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$comment);
+#       &writePgRowFields($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $unregallele, $variation, $nature, $func, $penetrance, $heat_sens, $cold_sens, $comment);
+#       &writePgField($pgidApp, 'suggested', $obssuggestedtermValue);
+#       &writePgField($pgidApp, 'suggested_definition', $obssuggesteddefValue);
+#       &writePgField($pgidApp, 'phen_remark', $obssuggestedremarkValue); } }
+
+#   my $amountNotSug   = $fields{notsuggestedterm}{multi};
+#   for my $i (1 .. $amountNotSug) {
+#     my $notsuggestedtermValue   = $fields{'notsuggestedterm'}{inputvalue}{$i};
+#     my $notsuggesteddefValue    = $fields{'notsuggesteddef'}{inputvalue}{$i};
+#     my $notsuggestedremarkValue = $fields{'notsuggestedremark'}{inputvalue}{$i};
+#     if ($notsuggestedtermValue) {
+#       $pgidApp++; push @newPgidsApp, $pgidApp;
+#       my $not = 'NOT';
+#       push @historyAppend, qq($ip\t$timestamp\t$person ($personName)\t$email\t$pgidApp\t$paperHist\t$alleleHist\t$notsuggestedtermValue (no match)\t$not\t$notsuggestedremarkValue\t$notsuggesteddefValue\t$nature\t$func\t$penetrance\t$heat_sens\t$cold_sens\t$comment);
+#       &writePgRowFields($pgidApp, $nodump, $needsreview, $curator, $person, $email, $unregpaper, $wbpaper, $unregallele, $variation, $nature, $func, $penetrance, $heat_sens, $cold_sens, $comment);
+#       &writePgField($pgidApp, 'not', 'NOT');
+#       &writePgField($pgidApp, 'suggested', $notsuggestedtermValue);
+#       &writePgField($pgidApp, 'suggested_definition', $notsuggesteddefValue);
+#       &writePgField($pgidApp, 'phen_remark', $notsuggestedremarkValue); } }
 
   my $newPgidsApp = join",", @newPgidsApp;
   my $newPgidsRna = join",", @newPgidsRna;
 
   my $user = 'phenotype_form@' . $hostfqdn;	# who sends mail
-  if ($emailPaper) {
+  if ($emailKimberly) {
     my $email       = 'cgrove@caltech.edu, vanauken@caltech.edu';
 #     my $email       = 'closertothewake@gmail.com';
     my $subject     = qq(Phenotype Form: Unregistered paper alert);
-    $emailPaper .= qq(New PGIDs in phenotype OA $newPgidsApp\n);
-#     print "Email Kimberly $emailPaper<br/>\n";
-    &mailSendmail($user, $email, $subject, $emailPaper);
+    $emailKimberly .= qq(New PGIDs in phenotype OA $newPgidsApp\n);
+#     print "Email Kimberly $emailKimberly<br/>\n";
+# UNCOMMENT send kimberly emails
+    &mailSendmail($user, $email, $subject, $emailKimberly);
   }
-  if ($emailVariation) {
+  if ($emailMaryann) {
     my $email      = 'cgrove@caltech.edu, genenames@wormbase.org';
 #     my $email      = 'closertothewake@gmail.com';
     my $subject    = qq(Phenotype Form: Unregistered variation alert);
-    $emailVariation .= qq(New PGIDs in phenotype OA $newPgidsApp\n);
-#     print "Email Mary Ann $emailVariation<br/>\n";
-    &mailSendmail($user, $email, $subject, $emailVariation);
+    $emailMaryann .= qq(New PGIDs in phenotype OA $newPgidsApp\n);
+#     print "Email Mary Ann $emailMaryann<br/>\n";
+# UNCOMMENT send kimberly emails
+    &mailSendmail($user, $email, $subject, $emailMaryann);
   }
-  if ($emailTransgene) {
-    my $email      = 'cgrove@caltech.edu';
+  if ($emailKaren) {
+    my $email      = 'cgrove@caltech.edu, karen.yook@micropublication.org';
 #     my $email      = 'closertothewake@gmail.com';
     my $subject    = qq(Phenotype Form: Unregistered transgene alert);
-    $emailTransgene .= qq(New PGIDs in phenotype OA $newPgidsApp\n);
-#     print "Email Karen $emailTransgene<br/>\n";
-    &mailSendmail($user, $email, $subject, $emailTransgene);
+    $emailKaren .= qq(New PGIDs in phenotype OA $newPgidsApp\n);
+#     print "Email Karen $emailKaren<br/>\n";
+# UNCOMMENT send karen emails
+    &mailSendmail($user, $email, $subject, $emailKaren);
   }
-  if ($emailGene) {
-    my $email      = 'cgrove@caltech.edu, garys@caltech.edu';
-#     my $email      = 'closertothewake@gmail.com';
-    my $subject    = qq(Phenotype Form: Unregistered rnai gene alert);
-    $emailGene .= qq(New PGIDs in phenotype OA $newPgidsApp\n);
-#     print "Email Gene $emailGene<br/>\n";
-    &mailSendmail($user, $email, $subject, $emailGene);
-  }
-  my $cc = 'cgrove@caltech.edu, garys@caltech.edu';
+  my $cc = 'daniela.raciti@micropublication.org, cgrove@caltech.edu, karen.yook@micropublication.org, garys@caltech.edu';
 #   my $email = 'cgrove@caltech.edu';
 #   my $email = 'azurebrd@tazendra.caltech.edu';
 #   my $email = 'closertothewake@gmail.com';
 #   $email   .= ", $fields{email}{inputvalue}{1}";
   my $email   = "$fields{email}{inputvalue}{1}";
-  my $subject = 'Phenotype confirmation';		# subject of mail
+  my $subject = 'Phenotype Micropublication confirmation';		# subject of mail
   my $body = $messageToUser;					# message to user shown on form
-  $body .= qq(Click <a href='http://${hostfqdn}/~azurebrd/cgi-bin/forms/phenotype.cgi?action=bogusSubmission&pgidsApp=$newPgidsApp&pgidsRna=$newPgidsRna&ipAddress=$ip' target='_blank' style='font-weight: bold; text-decoration: underline;'>here</a> if you did not submit this data or if you would like to retract this submission.<br/><br/>\n);	# additional link to report false data
+  $body .= qq(Click <a href='http://${hostfqdn}/~azurebrd/cgi-bin/forms/phenotype_micropub.cgi?action=bogusSubmission&pgidsApp=$newPgidsApp&pgidsRna=$newPgidsRna&ipAddress=$ip' target='_blank' style='font-weight: bold; text-decoration: underline;'>here</a> if you did not submit this data or if you would like to retract this submission.<br/><br/>\n);	# additional link to report false data
   $body .= $form_data;						# form data
 # UNCOMMENT send general emails
   &mailSendmail($user, $email, $subject, $body, $cc);
@@ -2277,7 +2183,7 @@ sub getHighestRnaiId {          # look at all rna_name, get the highest number a
   return $highest; }
 
 sub writePgRowFieldsRna {
-  my ($pgid, $highRnaiId, $nodump, $needsreview, $curator, $communitycurator, $email, $unregpaper, $wbpaper, $personEvi, $rnaiReagent, $rnaiSpecies, $penetrance, $genotype, $strain, $heatsens, $coldsens, $comment) = @_;
+  my ($pgid, $highRnaiId, $nodump, $needsreview, $curator, $communitycurator, $email, $unregpaper, $wbpaper, $personEvi, $rnai, $rnaiSpecies, $penetrance, $genotype, $strain, $comment) = @_;
   my $datatype = 'rna';
   my $rnaiId   = &pad8Zeros($highRnaiId);
   my $wbrnai   = 'WBRNAi' . $rnaiId;
@@ -2291,17 +2197,15 @@ sub writePgRowFieldsRna {
   &writePgField($datatype, $pgid, 'unregpaper', $unregpaper);
   &writePgField($datatype, $pgid, 'paper', $wbpaper);
   &writePgField($datatype, $pgid, 'person', $personEvi);
-  &writePgField($datatype, $pgid, 'dnatext', $rnaiReagent);
+  &writePgField($datatype, $pgid, 'dnatext', $rnai);
   &writePgField($datatype, $pgid, 'penetrance', $penetrance);
   &writePgField($datatype, $pgid, 'genotype', $genotype);
   &writePgField($datatype, $pgid, 'strain', $strain);
-  &writePgField($datatype, $pgid, 'heatsens', $heatsens);
-  &writePgField($datatype, $pgid, 'coldsens', $coldsens);
   &writePgField($datatype, $pgid, 'remark', $comment);
 } # sub writePgRowFieldsRna
 
 sub writePgRowFieldsApp {
-  my ($pgid, $nodump, $needsreview, $curator, $communitycurator, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $transgenewbgene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment) = @_;
+  my ($pgid, $nodump, $needsreview, $curator, $communitycurator, $email, $unregpaper, $wbpaper, $personEvi, $unregallele, $variation, $unregtransgene, $wbtransgene, $transgenegene, $nature, $func, $penetrance, $heat_sens, $cold_sens, $genotype, $strain, $comment) = @_;
   my $datatype = 'app';
   &writePgField($datatype, $pgid, 'nodump', $nodump);
   &writePgField($datatype, $pgid, 'needsreview', $needsreview);
@@ -2316,7 +2220,6 @@ sub writePgRowFieldsApp {
   &writePgField($datatype, $pgid, 'unregtransgene', $unregtransgene);
   &writePgField($datatype, $pgid, 'transgene', $wbtransgene);
   &writePgField($datatype, $pgid, 'caused_by_other', $transgenegene);
-  &writePgField($datatype, $pgid, 'caused_by', $transgenewbgene);
   &writePgField($datatype, $pgid, 'nature', $nature);
   &writePgField($datatype, $pgid, 'func', $func);
   &writePgField($datatype, $pgid, 'penetrance', $penetrance);
@@ -2340,10 +2243,9 @@ sub getHighestPgid {                                    # get the highest joinke
 
 
 sub checkMandatoryFields {
-  my $mandatoryFail        = 0;
-  my $aphenotypeExists     = 0;
-  my $hasAnyPrimaryData    = 0;
-  my $amountPerturbations  = 0;
+  my $mandatoryFail      = 0;
+  my $aphenotypeExists   = 0;
+  my $hasAnyPrimaryData  = 0;
   foreach my $field (keys %fields) {
     if ($field eq 'person') { 
       if ($fields{$field}{termidvalue}{1}) {
@@ -2355,31 +2257,24 @@ sub checkMandatoryFields {
         $mandatoryFail++;
         print qq(<span style="color:red">$fields{$field}{label} is required.</span><br/>\n); } }
     if ($fields{$field}{'mandatory'} eq 'anyprimarydata') {
-      my $amount = $fields{$field}{multi};
-      for my $i (1 .. $amount) {
-        my ($var, $inputvalue)  = &getHtmlVar($query, "input_${i}_$field");
-        if ($inputvalue) { $amountPerturbations++; } }
       if ($fields{$field}{hasdata}) { $hasAnyPrimaryData++; } }
   }
   unless ($hasAnyPrimaryData) {					# one of the primary data fields must have something : allele / transgene / rnai
     $mandatoryFail++;
     print qq(<span style="color:red">At least one genetic perturbation (Allele, Transgene or RNAi Clone / Sequence) is required.</span><br/>\n); }
-  if ($amountPerturbations > 1) {				# multiple perturbations require a radio button option
-    unless ( $fields{pertsinglemulti}{hasdata} ) { 
-      print qq(<span style="color:red">Please indicate if the multiple perturbations entered indicate multiple individual experiments or a single complex experiment.</span><br/>\n); } }
-  unless ( $fields{pmid}{inputvalue}{1} ) {			# if there's no pmid, check all phenotype fields for corresponding personal communication checkbox on
-    my @phenFields = qw( obsphenotype obssuggested notphenotype notsuggested );
-    my $pmidPersonalFail = 0;
-    foreach my $shortfield (@phenFields) {
-      my $termField = $shortfield . 'term';
-      my $persField = $shortfield . 'personal';
-      my $amount    = $fields{$termField}{multi};
-      for my $i (1 .. $amount) {
-        if ($fields{$termField}{inputvalue}{$i}) { 
-          unless ($fields{$persField}{inputvalue}{$i}) { $pmidPersonalFail++; } } } }
-    if ($pmidPersonalFail) {
-      $mandatoryFail++;
-      print qq(<span style="color:red">PMID is required, or all phenotype fields must have the Personal Communication checkbox selected.</span><br/>\n); } }
+#   unless ( $fields{pmid}{inputvalue}{1} ) {			# if there's no pmid, check all phenotype fields for corresponding personal communication checkbox on
+#     my @phenFields = qw( obsphenotype obssuggested notphenotype notsuggested );
+#     my $pmidPersonalFail = 0;
+#     foreach my $shortfield (@phenFields) {
+#       my $termField = $shortfield . 'term';
+#       my $persField = $shortfield . 'personal';
+#       my $amount    = $fields{$termField}{multi};
+#       for my $i (1 .. $amount) {
+#         if ($fields{$termField}{inputvalue}{$i}) { 
+#           unless ($fields{$persField}{inputvalue}{$i}) { $pmidPersonalFail++; } } } }
+#     if ($pmidPersonalFail) {
+#       $mandatoryFail++;
+#       print qq(<span style="color:red">PMID is required, or all phenotype fields must have the Personal Communication checkbox selected.</span><br/>\n); } }
   unless ( ($fields{obsphenotypeterm}{hasdata}) || ($fields{obssuggestedterm}{hasdata}) || ($fields{notphenotypeterm}{hasdata}) || ($fields{notsuggestedterm}{hasdata}) ) {
     $mandatoryFail++;
     print qq(<span style="color:red">At least one phenotype is required.</span><br/>\n); }
@@ -2389,6 +2284,11 @@ sub checkMandatoryFields {
 
 sub initFields {
 #   tie %{ $fields{person}{field} }, "Tie::IxHash";
+  $fields{origip}{multi}                                      = '1';
+  $fields{origip}{type}                                       = 'hidden';
+  $fields{origtime}{multi}                                    = '1';
+  $fields{origtime}{type}                                     = 'hidden';
+
   $fields{person}{multi}                                      = '1';
   $fields{person}{type}                                       = 'ontology';
   $fields{person}{label}                                      = 'Your Name';
@@ -2404,39 +2304,81 @@ sub initFields {
   $fields{email}{terminfo}                                    = qq(Enter your preferred e-mail address. A confirmation e-mail will be sent to this address upon data submission. If you selected your name from the registered WormBase Persons list in the previous field, your e-mail on file would have been used to populate this field. Feel free to correct this to a different, preferred e-mail address. You will need to update your contact information using the <a href="http://tazendra.caltech.edu/~azurebrd/cgi-bin/forms/person.cgi" target="new">Person Update Form</a> if you want us to store this new e-mail address for you.);
   $fields{email}{example}                                     = 'e.g. help@wormbase.org';
   $fields{email}{mandatory}                                   = 'mandatory';
+#   tie %{ $fields{orcid}{field} }, "Tie::IxHash";
+  $fields{orcid}{multi}                                       = '1';
+  $fields{orcid}{type}                                        = 'text';
+  $fields{orcid}{label}                                       = 'ORCID (optional)';
+  $fields{orcid}{terminfo}                                    = qq(Register at <a href="http://orcid.org" target="new">orcid.org</a>);
 #   tie %{ $fields{pmid}{field} }, "Tie::IxHash";
-  $fields{pmid}{multi}                                        = '1';
-  $fields{pmid}{type}                                         = 'text';
-  $fields{pmid}{label}                                        = 'PubMed ID';
-  $fields{pmid}{haschecks}                                    = 'pmid';
-  $fields{pmid}{terminfo}                                     = qq(Enter the PubMed ID for the paper in which this phenotype data was published. If your paper does not have a PubMed ID, please enter any unique identifier, like a D.O.I. (e.g. doi 10.1038/ni.2957). If you would like to report a phenotype as an unpublished personal communication, check the box next to 'Personal Communication' under the relevant phenotype.);
-  $fields{pmid}{example}                                      = 'e.g. 4366476 (Please enter only one ID)';
-  $fields{pmid}{mandatory}                                    = 'pmid';
-  $fields{cloneseqgene}{multi}                                = '4';
-  $fields{cloneseqgene}{type}                                 = 'ontology';
-  $fields{cloneseqgene}{label}                                = 'RNAi target gene';
-  $fields{cloneseqgene}{freeForced}                           = 'free';
-  $fields{cloneseqgene}{ontology_type}                        = 'WBGene';
-  $fields{cloneseqgene}{example}                              = 'e.g. dbl-1';
-  $fields{cloneseqgene}{haschecks}                            = 'wbgene';	# TODO change to gene later
-  $fields{cloneseqgene}{terminfo}                             = qq(Enter the name of the gene that has been targeted by RNAi. Once you have started typing, select a gene from the list of known genes. If you are entering a gene not recognized by WormBase, continue with your submission and a WormBase curator will contact you if there are any questions. Enter additional RNAi target genes in the additional 'RNAi target gene' field provided below.);
-  $fields{cloneseqgene}{mandatory}                            = 'anyprimarydata';
-  $fields{cloneseqgene}{grouphas}                             = qq([ cloneseqgene cloneseq cloneseqspecies ]);
-  $fields{cloneseq}{multi}                                    = '4';
-  $fields{cloneseq}{startHidden}                              = 'startHidden';
+#   $fields{pmid}{multi}                                        = '1';
+#   $fields{pmid}{type}                                         = 'text';
+#   $fields{pmid}{label}                                        = 'PubMed ID';
+#   $fields{pmid}{haschecks}                                    = 'pmid';
+#   $fields{pmid}{terminfo}                                     = qq(Enter the PubMed ID for the paper in which this phenotype data was published. If your paper does not have a PubMed ID, please enter any unique identifier, like a D.O.I. (e.g. doi 10.1038/ni.2957). If you would like to report a phenotype as an unpublished personal communication, check the box next to 'Personal Communication' under the relevant phenotype.);
+#   $fields{pmid}{example}                                      = 'e.g. 4366476 (Please enter only one ID)';
+#   $fields{pmid}{mandatory}                                    = 'pmid';
+
+#   tie %{ $fields{coaut}{field} }, "Tie::IxHash";
+  $fields{coaut}{multi}                                        = '10';
+  $fields{coaut}{type}                                         = 'ontology';
+  $fields{coaut}{label}                                        = 'Co-authors';
+  $fields{coaut}{example}                                      = 'Who else contributed?';
+  $fields{coaut}{mandatory}                                    = 'optional';
+  $fields{coaut}{grouphas}                                     = qq([ coaut ]);
+  $fields{coaut}{ontology_type}                                = 'WBPerson';
+#   tie %{ $fields{laboratory}{field} }, "Tie::IxHash";
+  $fields{laboratory}{multi}                                                 = '10';
+  $fields{laboratory}{type}                               = 'ontology';
+  $fields{laboratory}{label}                              = 'Laboratory';
+  $fields{laboratory}{terminfo}                           = 'Start typing the PI name and select an entry from the list.  Click <a href="mailto:genenames@wormbase.org">here</a> to request a lab designation.';
+  $fields{laboratory}{mandatory}                          = 'mandatory';
+  $fields{laboratory}{ontology_type}                      = 'obo';
+  $fields{laboratory}{ontology_table}                     = 'laboratory';
+#   tie %{ $fields{funding}{field} }, "Tie::IxHash";
+  $fields{funding}{multi}                                                    = '1';
+  $fields{funding}{type}                                     = 'bigtext';
+  $fields{funding}{label}                                    = 'Funding';
+  $fields{funding}{terminfo}                                 = 'Example: "This work was supported by the National Human Genome Research Institute of the National Institutes of Health [ grant number HGxxxxxx-xx ] and the Wellcome Trust [ grant number xxxxxx ]."';
+  $fields{funding}{mandatory}                                = 'mandatory';
+#   tie %{ $fields{species}{field} }, "Tie::IxHash";
+#   $fields{species}{multi}                                                    = '1';
+#   $fields{species}{type}                                     = 'ontology';
+#   $fields{species}{label}                                    = 'Species';
+#   $fields{species}{example}                                  = 'Ex: Caenorhabditis elegans';
+#   $fields{species}{mandatory}                                = 'mandatory';
+#   $fields{species}{ontology_type}                            = 'obo';
+#   $fields{species}{ontology_table}                           = 'species';
+#   tie %{ $fields{imageupload}{field} }, "Tie::IxHash";
+  $fields{imageupload}{multi}                                                = '1';
+  $fields{imageupload}{type}                             = 'upload';
+  $fields{imageupload}{label}                            = 'Choose an image (jpg format)';
+  $fields{imageupload}{terminfo}                         = 'Each submission should have an image depicting the localization of a reporter gene fusion. The image should be at high resolution as it will be used as evidence of expression and should be unequivocally interpreted by a reviewer.  When necessary, arrows and labels to facilitate interpretation should be added. You can submit more than one image for one specific expression pattern by creating a panel as if you were generating a figure for a research article. Remember that the reporter should be the same for all images. Click <a href="/~acedb/draciti/Micropublication/Guidelines.htm">here</a> to see full guidelines.';
+  $fields{imageupload}{mandatory}                        = 'mandatory';
+  $fields{imageupload}{upload_type}                      = 'jpg';
+#   tie %{ $fields{description}{field} }, "Tie::IxHash";
+  $fields{description}{multi}                                                = '1';
+  $fields{description}{type}                             = 'bigtext';
+  $fields{description}{label}                            = 'Main Text of the Micropublication';
+  $fields{description}{terminfo}                         = q[Provide a comprehensive description of what you observed as if you were writing a paragraph for phenotypic characterization for a research article. In case you used arrows and labels in the image you provided, please explain what they are pointing to. You can see examples <a href="http://www.micropublicationbiology.org/phenotype-data.html" target="_blank">here</a>];
+#   $fields{description}{terminfo}                         = q[Provide a comprehensive description of what you observed as if you were writing a paragraph for gene expression for a research article. In case you used arrows and labels in the image you provided, please explain what they are pointing to. Here a couple of pattern descriptions taken from the literature: 1): 'Strong snf-12 expression was observed in the epidermis of C. elegans throughout development. Expression is also seen in vulval cells, in the excretory cell, in the seam cells, and in the amphid and phasmid socket cells.' 2):' Expression of aipl-1 was initially detected in embryos at the comma to 1.5-fold stages (310-350 min after first cell division) in the neurons, the intestine, and the body wall muscle. In older embryos, expression of GFP is gradually diminished in the body wall muscle, while it persisted in the neurons and intestine. In adult worms, expression of GFP was detected in the intestine, the spermatheca, and some of the head neurons.];
+  $fields{description}{mandatory}                        = 'mandatory';
+
+
+  $fields{cloneseq}{multi}                                    = '1';
   $fields{cloneseq}{type}                                     = 'bigtext';
-  $fields{cloneseq}{label}                                    = 'RNAi Reagent';
-  $fields{cloneseq}{terminfo}                                 = qq(Enter the RNAi clone identity or sequence for the RNAi target gene indicated in the field above.);
+  $fields{cloneseq}{label}                                    = 'RNAi';
+  $fields{cloneseq}{terminfo}                                 = qq(Enter the RNAi clone identity or sequence for any number of RNAi clones or sequences, separated by commas. Note: each phenotype entered will be independently annotated to each RNAi clone rather than annotated to the combination of clones.);
   $fields{cloneseq}{example}                                  = 'e.g. dpl-1 Ahringer RNAi clone, xbp-1 ORFeome RNAi clone, ATGCTAGCTGA...';
-#   $fields{cloneseq}{mandatory}                                = 'anyprimarydata';
-  $fields{cloneseqspecies}{multi}                             = '4';
+  $fields{cloneseq}{mandatory}                                = 'anyprimarydata';
+  $fields{cloneseq}{grouphas}                                 = qq([ cloneseq cloneseqspecies ]);
+  $fields{cloneseqspecies}{multi}                             = '1';
   $fields{cloneseqspecies}{startHidden}                       = 'startHidden';
   $fields{cloneseqspecies}{type}                              = 'dropdown';
   $fields{cloneseqspecies}{label}                             = 'Species';
   $fields{cloneseqspecies}{terminfo}                          = qq(Enter the species in which the RNAi experiment was carried out.);
   $fields{cloneseqspecies}{example}                           = 'elegans';
 #   tie %{ $fields{allele}{field} }, "Tie::IxHash";
-  $fields{allele}{multi}                                      = '4';
+  $fields{allele}{multi}                                      = '10';
   $fields{allele}{type}                                       = 'ontology';
   $fields{allele}{label}                                      = 'Allele';
   $fields{allele}{freeForced}                                 = 'free';
@@ -2448,51 +2390,44 @@ sub initFields {
   $fields{allele}{matchstartonly}                             = 'matchstartonly';
   $fields{allele}{mandatory}                                  = 'anyprimarydata';
   $fields{allele}{grouphas}                                   = qq([ allele ]);
-  $fields{transgene}{multi}                                   = '4';
+  $fields{transgene}{multi}                                   = '10';
   $fields{transgene}{type}                                    = 'ontology';
   $fields{transgene}{label}                                   = 'Transgene';
   $fields{transgene}{freeForced}                              = 'free';
   $fields{transgene}{ontology_type}                           = 'WBTransgene';
   $fields{transgene}{example}                                 = 'e.g. ctIs40';
-  $fields{transgene}{haschecks}                               = 'transgene';
+  $fields{transgene}{haschecks}                               = 'allele';
   $fields{transgene}{terminfo}                                = qq(Enter the name of a transgene for which you are providing phenotype data. Once you have started typing, select a transgene from the list of known transgenes. If you are entering a transgene not recognized by WormBase, continue with your submission and a WormBase curator will contact you if there are any questions.);
   $fields{transgene}{matchstartonly}                          = 'matchstartonly';
   $fields{transgene}{mandatory}                               = 'anyprimarydata';
   $fields{transgene}{grouphas}                                = qq([ transgene transgenegene ]);
-  $fields{transgenegene}{multi}                               = '4';
+  $fields{transgenegene}{multi}                               = '10';
   $fields{transgenegene}{startHidden}                         = 'startHidden';
-  $fields{transgenegene}{type}                                = 'ontology';
+  $fields{transgenegene}{type}                                = 'bigtext';
   $fields{transgenegene}{label}                               = 'Gene Causing Phenotype';
-  $fields{transgenegene}{freeForced}                          = 'free';
-  $fields{transgenegene}{ontology_type}                       = 'WBGene';
   $fields{transgenegene}{example}                             = 'e.g. dbl-1';
-  $fields{transgenegene}{haschecks}                           = 'wbgene';
-  $fields{transgenegene}{terminfo}                            = qq(Enter the name of the gene that has been targeted by RNAi. Once you have started typing, select a gene from the list of known genes. If you are entering a gene not recognized by WormBase, continue with your submission and a WormBase curator will contact you if there are any questions. Enter additional RNAi target genes in the additional 'RNAi target gene' field provided below.);
-
-  $fields{pertmessage}{multi}                                     = '1';
-  $fields{pertmessage}{type}                                      = 'message';
-  $fields{pertmessage}{label}                                     = '<span style="color:red">You have entered multiple genetic perturbations. Please indicate below if this represents multiple individual experiments (e.g. single mutant phenotypes) or a single complex genotype experiment (e.g. double mutant phenotype):</span>';
-#   $fields{pertmultiple}{multi}                                    = '1';
-#   $fields{pertmultiple}{type}                                     = 'radio';
-#   $fields{pertmultiple}{label}                                    = 'Multiple individual experiments';
-#   $fields{pertsingle}{multi}                                      = '1';
-#   $fields{pertsingle}{type}                                       = 'radio';
-#   $fields{pertsingle}{label}                                      = 'Single complex genotype experiment';
-#   $fields{pertsinglemulti}{multi}                                 = '1';
-#   $fields{pertsinglemulti}{type}                                  = 'nodata';
-#   $fields{pertsinglemulti}{label}                                 = '';
-  $fields{pertsinglemulti}{multi}                                 = '1';
-  $fields{pertsinglemulti}{type}                                  = 'radio';
-  $fields{pertsinglemulti}{label}                                 = 'Multiple Perturbations';
-  $fields{pertsinglemulti}{terminfo}                              = qq(Indicate whether each submitted phenotype is observed independently (in individual, independent experiments) for each of the multiple perturbations entered (e.g. single mutant phenotypes) or whether each phenotype is observed as a result of a complex genetic perturbation (e.g. a double mutant phenotype) compared to a control that lacks each of these perturbations.);
-
-  tie %{ $fields{pertsinglemulti}{values} }, "Tie::IxHash";
-  $fields{pertsinglemulti}{values}{pertmultiple}                  = 'Multiple individual experiments';
-  $fields{pertsinglemulti}{values}{pertsingle}                    = 'Single complex genotype experiment';
-  $fields{pertsinglemulti}{startHidden}                           = 'startHidden';
-#   $fields{pertsinglemulti}{terminfo}                              = qq(If applicable, choose a temperature sensitivity of the allele(s) with respect to the phenotype(s) entered.);
-
+  $fields{transgenegene}{terminfo}                            = qq(Enter the identity of the gene or element within the transgene that is most likely responsible for the phenotype observed.);
 #   tie %{ $fields{obsphenotypeterm}{field} }, "Tie::IxHash";
+  $fields{molecule}{multi}                                   = '10';
+  $fields{molecule}{type}                                    = 'ontology';
+  $fields{molecule}{label}                                   = 'Drug/Chemical';
+  $fields{molecule}{freeForced}                              = 'free';
+  $fields{molecule}{ontology_type}                           = 'WBMolecule';
+  $fields{molecule}{example}                                 = 'e.g. serotonin';
+  $fields{molecule}{terminfo}                                = qq(Enter the name of the Drug/Chemical used in your study.);
+  $fields{molecule}{matchstartonly}                          = 'matchstartonly';
+  $fields{molecule}{mandatory}                               = 'anyprimarydata';
+  $fields{molecule}{grouphas}                                = qq([ molecule moleculestrain ]);
+  $fields{moleculestrain}{multi}                               = '10';
+  $fields{moleculestrain}{startHidden}                         = 'startHidden';
+  $fields{moleculestrain}{type}                                = 'ontology';
+  $fields{moleculestrain}{label}                               = 'Natural Isolate Strain';
+  $fields{moleculestrain}{example}                             = 'e.g. N2';
+  $fields{moleculestrain}{freeForced}                          = 'free';
+  $fields{moleculestrain}{ontology_type}                       = 'obo';
+  $fields{moleculestrain}{ontology_table}                      = 'strain';
+  $fields{moleculestrain}{haschecks}                           = 'strain';	# might needs this ?
+  $fields{moleculestrain}{terminfo}                            = qq(Enter the identity of the gene or element within the transgene that is most likely responsible for the phenotype observed.);
   $fields{obsphenotypeterm}{multi}                            = '10';
   $fields{obsphenotypeterm}{type}                             = 'ontology';
   $fields{obsphenotypeterm}{label}                            = 'Observed Phenotype';
@@ -2501,18 +2436,18 @@ sub initFields {
   $fields{obsphenotypeterm}{example}                          = 'e.g. larval lethal';
   $fields{obsphenotypeterm}{terminfo}                         = qq(For phenotypes observed with the indicated allele(s), RNAi clone(s), or transgene(s), start typing and select a phenotype term from the WormBase Phenotype Ontology. If you are having trouble finding a phenotype, you may browse the phenotype ontology with the link provided.  If you still cannot find a suitable phenotype term, click on the checkbox next to "Can’t find your Phenotype?" and enter your suggested term and a definition in the fields provided.);
   $fields{obsphenotypeterm}{grouphas}                         = qq([ obsphenotypeterm obsphenotyperemark obsphenotypepersonal ]);
-#   tie %{ $fields{obsphenotyperemark}{field} }, "Tie::IxHash";
-  $fields{obsphenotyperemark}{multi}                          = '10';
-  $fields{obsphenotyperemark}{startHidden}                    = 'startHidden';
-  $fields{obsphenotyperemark}{type}                           = 'bigtext';
-  $fields{obsphenotyperemark}{label}                          = 'Phenotype Remark';
-  $fields{obsphenotyperemark}{example}                        = '(optional) e.g. Figure 3, animals die as L2 larvae';
-  $fields{obsphenotyperemark}{terminfo}                       = qq(If you would like, provide more information about the phenotype effects of this allele.);
-  $fields{obsphenotypepersonal}{multi}                        = '10';
-  $fields{obsphenotypepersonal}{startHidden}                  = 'startHidden';
-  $fields{obsphenotypepersonal}{type}                         = 'checkbox';
-  $fields{obsphenotypepersonal}{label}                        = 'Personal Communication';
-  $fields{obsphenotypepersonal}{terminfo}                     = qq(If you would like to report the indicated phenotype as an unpublished personal communication for all indicated alleles, RNAi clones, and transgenes, check this box.);
+# #   tie %{ $fields{obsphenotyperemark}{field} }, "Tie::IxHash";
+#   $fields{obsphenotyperemark}{multi}                          = '10';
+#   $fields{obsphenotyperemark}{startHidden}                    = 'startHidden';
+#   $fields{obsphenotyperemark}{type}                           = 'bigtext';
+#   $fields{obsphenotyperemark}{label}                          = 'Phenotype Remark';
+#   $fields{obsphenotyperemark}{example}                        = '(optional) e.g. Figure 3, animals die as L2 larvae';
+#   $fields{obsphenotyperemark}{terminfo}                       = qq(If you would like, provide more information about the phenotype effects of this allele.);
+#   $fields{obsphenotypepersonal}{multi}                        = '10';
+#   $fields{obsphenotypepersonal}{startHidden}                  = 'startHidden';
+#   $fields{obsphenotypepersonal}{type}                         = 'checkbox';
+#   $fields{obsphenotypepersonal}{label}                        = 'Personal Communication';
+#   $fields{obsphenotypepersonal}{terminfo}                     = qq(If you would like to report the indicated phenotype as an unpublished personal communication for all indicated alleles, RNAi clones, and transgenes, check this box.);
 #   tie %{ $fields{obssuggestedterm}{field} }, "Tie::IxHash";
   $fields{obssuggestedterm}{multi}                            = '10';
   $fields{obssuggestedterm}{startHidden}                      = 'startHidden';
@@ -2546,18 +2481,18 @@ sub initFields {
   $fields{notphenotypeterm}{example}                          = 'e.g. larval lethal';
   $fields{notphenotypeterm}{terminfo}                         = qq(For phenotypes assayed for and determined not to be exhibited by the allele(s), RNAi clone(s), or transgene(s), start typing and select a phenotype term from the WormBase Phenotype Ontology. If you are having trouble finding your phenotype, you may browse the phenotype ontology with the link provided. If you still cannot find a suitable phenotype, click on the checkbox next to "Can’t find your Phenotype?" and enter your suggested term and a definition in the fields provided.");
   $fields{notphenotypeterm}{grouphas}                         = qq([ notphenotypeterm notphenotyperemark notphenotypepersonal ]);
-#   tie %{ $fields{notphenotyperemark}{field} }, "Tie::IxHash";
-  $fields{notphenotyperemark}{multi}                          = '10';
-  $fields{notphenotyperemark}{startHidden}                    = 'startHidden';
-  $fields{notphenotyperemark}{type}                           = 'bigtext';
-  $fields{notphenotyperemark}{label}                          = 'Phenotype Remark';
-  $fields{notphenotyperemark}{example}                        = '(optional) e.g. Figure 3, animals die as L2 larvae';
-  $fields{notphenotyperemark}{terminfo}                       = qq(If you would like, provide more information about the phenotype effects of this allele.);
-  $fields{notphenotypepersonal}{multi}                        = '10';
-  $fields{notphenotypepersonal}{startHidden}                  = 'startHidden';
-  $fields{notphenotypepersonal}{type}                         = 'checkbox';
-  $fields{notphenotypepersonal}{label}                        = 'Personal Communication';
-  $fields{notphenotypepersonal}{terminfo}                     = qq(If you would like to report the indicated phenotype as an unpublished personal communication for all indicated alleles, RNAi clones, and transgenes, check this box.);
+# #   tie %{ $fields{notphenotyperemark}{field} }, "Tie::IxHash";
+#   $fields{notphenotyperemark}{multi}                          = '10';
+#   $fields{notphenotyperemark}{startHidden}                    = 'startHidden';
+#   $fields{notphenotyperemark}{type}                           = 'bigtext';
+#   $fields{notphenotyperemark}{label}                          = 'Phenotype Remark';
+#   $fields{notphenotyperemark}{example}                        = '(optional) e.g. Figure 3, animals die as L2 larvae';
+#   $fields{notphenotyperemark}{terminfo}                       = qq(If you would like, provide more information about the phenotype effects of this allele.);
+#   $fields{notphenotypepersonal}{multi}                        = '10';
+#   $fields{notphenotypepersonal}{startHidden}                  = 'startHidden';
+#   $fields{notphenotypepersonal}{type}                         = 'checkbox';
+#   $fields{notphenotypepersonal}{label}                        = 'Personal Communication';
+#   $fields{notphenotypepersonal}{terminfo}                     = qq(If you would like to report the indicated phenotype as an unpublished personal communication for all indicated alleles, RNAi clones, and transgenes, check this box.);
 #   tie %{ $fields{notsuggestedterm}{field} }, "Tie::IxHash";
   $fields{notsuggestedterm}{multi}                            = '10';
   $fields{notsuggestedterm}{startHidden}                      = 'startHidden';
@@ -2583,6 +2518,39 @@ sub initFields {
   $fields{notsuggestedpersonal}{type}                         = 'checkbox';
   $fields{notsuggestedpersonal}{label}                        = 'Personal Communication';
   $fields{notsuggestedpersonal}{terminfo}                     = qq(If you would like to report the indicated phenotype as an unpublished personal communication for all indicated alleles, RNAi clones, and transgenes, check this box.);
+
+#   tie %{ $fields{title}{field} }, "Tie::IxHash";
+  $fields{title}{multi}                                                      = '1';
+  $fields{title}{type}                                         = 'bigtext';
+  $fields{title}{label}                                        = 'Title of the Submission';
+  $fields{title}{example}                                      = qq(Ex: Pharyngeal pumping elevated in mod-5 mutants);
+  $fields{title}{mandatory}                                    = 'mandatory';
+#   tie %{ $fields{reviewer}{field} }, "Tie::IxHash";
+  $fields{reviewer}{multi}                                                   = '1';
+  $fields{reviewer}{type}                                   = 'ontology';
+  $fields{reviewer}{label}                                  = 'Suggested Reviewer';
+  $fields{reviewer}{mandatory}                              = 'optional';
+  $fields{reviewer}{ontology_type}                          = 'WBPerson';
+#   tie %{ $fields{comments}{field} }, "Tie::IxHash";
+  $fields{comments}{multi}                                                   = '1';
+  $fields{comments}{type}                                   = 'bigtext';
+  $fields{comments}{label}                                  = 'Comments to editors';
+  $fields{comments}{mandatory}                              = 'optional';
+#   tie %{ $fields{references}{field} }, "Tie::IxHash";
+  $fields{references}{multi}                                                   = '1';
+  $fields{references}{type}                                 = 'bigtext';
+  $fields{references}{label}                                = 'References';
+  $fields{references}{mandatory}                            = 'optional';
+#   tie %{ $fields{disclaimer}{field} }, "Tie::IxHash";
+  $fields{disclaimer}{multi}                                                 = '1';
+  $fields{disclaimer}{type}                               = 'checkbox';
+  $fields{disclaimer}{label}                              = 'Disclaimer';
+  $fields{disclaimer}{mandatory}                          = 'mandatory';
+  $fields{disclaimer}{checkboxtext}                       = 'I/we declare to the best of my/our knowledge that the experiment is reproducible; that the submission has been approved by all authors; and that the submission has been approved by the laboratory’s Principal Investigator. The author(s) declare no conflict of interest.';
+  $fields{disclaimer}{checkboxvalue}                      = 'Agree that I declare to the best of my knowledge that the experiment is reproducible.';
+
+
+
 #   tie %{ $fields{allelenature}{field} }, "Tie::IxHash";
   $fields{allelenature}{multi}                                = '1';
   $fields{allelenature}{type}                                 = 'dropdown';
@@ -2691,7 +2659,7 @@ sub addJavascriptCssToHeader {
 <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/datasource/datasource-min.js"></script>
 <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/autocomplete/autocomplete-min.js"></script>
 <script type="text/javascript" src="http://yui.yahooapis.com/2.7.0/build/json/json-min.js"></script>
-<script type="text/javascript" src="http://${hostfqdn}/~azurebrd/javascript/phenotype.js"></script>
+<script type="text/javascript" src="http://${hostfqdn}/~azurebrd/javascript/phenotype_micropub.js"></script>
 <script type="text/JavaScript">
 <!--Your browser is not set to be Javascript enabled
 //-->
@@ -2743,7 +2711,7 @@ sub mailSendmail {
   $mail{subject}        = $subject;
   $mail{body}           = $body;
   $mail{'content-type'} = 'text/html; charset="iso-8859-1"';
-# UNCOMMENT TO SEND EMAIL
+# UNCOMMENT TO SEND EMAIL	# FIX before live
   sendmail(%mail) || print qq(<span style="color:red">Error, confirmation email failed</span> : $Mail::Sendmail::error<br/>\n);
 } # sub mailSendmail
 

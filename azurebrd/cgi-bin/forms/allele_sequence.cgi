@@ -3,6 +3,8 @@
 # Form to submit allele-sequence
 #
 # changed ip to come from header HTTP_X_REAL_IP if it exists.  2016 02 08
+#
+# Add Daniela to the email recepients.  2017 05 18
 
 
 
@@ -495,13 +497,15 @@ sub showStart {
 sub printEditorDropdown {
 #   my ($i, $field, $group, $inputvalue, $termidvalue, $input_size, $colspan, $fieldclass, $placeholder, $freeForced) = @_;
   my ($i, $field, $colspan) = @_;
-  my $inputvalue  = ''; my $termidvalue = ''; my @options = ();
+  my $inputvalue  = ''; my $termidvalue = ''; my $placeholder = ''; my @options = ();
   if ($fields{$field}{inputvalue}{$i})     { $inputvalue  = $fields{$field}{inputvalue}{$i}; }	# previous form value
   if ($fields{$field}{termidvalue}{$i})    { $termidvalue = $fields{$field}{termidvalue}{$i}; }
+  if ($fields{$field}{example})            { $placeholder = qq(placeholder="$fields{$field}{example}"); }
 #   my $td = qq(<td style="min-width: 300px; border-style: solid; border-color: #000000;"><select name="input_${i}_$field" id="input_${i}_$field" style="width: 100%;" >);
 #   my $td = qq(<td style="min-width: 300px;"><select name="input_${i}_$field" id="input_${i}_$field" style="width: 100%; background-color: #DDF3F3;" >);
   my $td = qq(<td style="min-width: 300px; max-width: 300px;" colspan="$colspan"><select name="input_${i}_$field" id="input_${i}_$field" style="max-width: 300px; width: 100%; background-color: #E1F1FF;" >);
-  $td .= qq(<option value=""></option>);
+  if ($placeholder) { $td .= qq(<option value="" disabled selected>$fields{$field}{example}</option>); }
+  $td .= qq(<option value=""></option>); 
   foreach my $value (keys %{ $dropdown{$field} }) {
     my $selected = '';
     if ($fields{$field}{inputvalue}{$i} eq $value) { $selected = qq(selected="selected"); }
@@ -572,11 +576,11 @@ sub printEditorOntology {
   $table_to_print .= qq(<div id="${freeForced}${i}${field}AutoComplete" class="div-autocomplete">\n);
     # when blurring ontology fields, if it's been deleted by user, make the corresponding termid field also blank.
   my $onBlur = qq(if (document.getElementById('input_${i}_$field').value === '') { document.getElementById('termid_${i}_$field').value = ''; });
-  $table_to_print .= qq(<input id="input_${i}_$field"  name="input_${i}_$field" value="$inputvalue"  style="max-width: 300px; width: 97%; background-color: #E1F1FF;" $placeholder onBlur="$onBlur">\n);
 # HIDE
 #   $table_to_print .= qq(<input id="termid_${i}_$field" name="termid_${i}_$field" value="$termidvalue" size="40"          readonly="readonly">\n);
   $table_to_print .= qq(<input type="hidden" id="termid_${i}_$field" name="termid_${i}_$field" value="$termidvalue" size="40"          readonly="readonly">\n);
     # ontology fields have html values in input_i_field but are not from autocomplete object, so selectionenforce clears them.  store this parallel value, so if it gets cleared, it gets reloaded
+  $table_to_print .= qq(<input id="input_${i}_$field"  name="input_${i}_$field" value="$inputvalue"  style="max-width: 300px; width: 97%; background-color: #E1F1FF;" $placeholder onBlur="$onBlur">\n);
 #   $table_to_print .= qq(<input id="loaded_${i}_$field" name="loaded_${i}_$field" value="$inputvalue" size="40"          readonly="readonly">\n);
   $table_to_print .= qq(<input type="hidden" id="loaded_${i}_$field" name="loaded_${i}_$field" value="$inputvalue" size="40"          readonly="readonly">\n);
   $table_to_print .= qq(<div id="${freeForced}${i}${field}Container"></div></div></span>\n);
@@ -759,6 +763,7 @@ sub printUpstreamField {                 printArrayEditorNested('upstream');    
 sub printDownstreamField {               printArrayEditorNested('downstream');          }
 sub printStrainField {                   printArrayEditorNested('strain');              }
 sub printGenotypeField {                 printArrayEditorNested('genotype');            }
+sub printProductionMethodField {         printArrayEditorNested('productionmethod');    }
 sub printMutagenField {                  printArrayEditorNested('mutagen');             }
 sub printForwardField {                  printArrayEditorNested('forward');             }
 sub printReverseField {                  printArrayEditorNested('reverse');             }
@@ -822,6 +827,7 @@ sub showForm {
   &printTrHeader('Origin', '20', '16px', "", '#aaaaaa', '12px');
   &printStrainField();
   &printGenotypeField();
+  &printProductionMethodField();
   &printTrSpacer();
   &printTrHeader('Isolation', '20', '16px', "", '#aaaaaa', '12px');
   &printMutagenField();
@@ -933,6 +939,7 @@ sub submit {
   $form_data    .= &tableDisplayArray('downstream'); 
   $form_data    .= &tableDisplayArray('strain'); 
   $form_data    .= &tableDisplayArray('genotype'); 
+  $form_data    .= &tableDisplayArray('productionmethod'); 
   $form_data    .= &tableDisplayArray('mutagen'); 
   $form_data    .= &tableDisplayArray('forward'); 
   $form_data    .= &tableDisplayArray('reverse'); 
@@ -959,7 +966,8 @@ sub submit {
           print qq(<br/>Return to the <a href="allele_sequence.cgi">Allele-Sequence Form</a>.<br/>\n);
           my $user = 'allele_sequence_form@' . $hostfqdn;	# who sends mail
 #           my $email = 'cgrove@caltech.edu, maryann.tuli@wormbase.org ';
-          my $email = 'genenames@wormbase.org';
+          my $email = 'genenames@wormbase.org, draciti@caltech.edu, daniela@wormbase.org';
+#           my $email = 'genenames@wormbase.org';
 #           my $email = 'azurebrd@tazendra.caltech.edu';
 #           my $email = 'closertothewake@gmail.com';
           $email   .= ", $fields{email}{inputvalue}{1}";
@@ -1114,6 +1122,10 @@ sub initFields {
   $fields{genotype}{example}                                    = 'e.g. smg-1 (r904) unc-54 (r293) I';
 #   $fields{genotype}{mandatory}                                  = 'mandatory';
 #   tie %{ $fields{mutagen}{field} }, "Tie::IxHash";
+  $fields{productionmethod}{multi}                                = '1';
+  $fields{productionmethod}{type}                                 = 'dropdown';
+  $fields{productionmethod}{label}                                = 'Production Method';
+  $fields{productionmethod}{example}                              = 'For engineered alleles only';
   $fields{mutagen}{multi}                                       = '1';
   $fields{mutagen}{type}                                        = 'text';
   $fields{mutagen}{label}                                       = 'Mutagen';
@@ -1147,6 +1159,7 @@ sub initFields {
   $dropdown{typealteration}{"Insertion"}                      = "Sequence insertion";
   $dropdown{typealteration}{"Deletion"}                       = "Sequence deletion";
   $dropdown{typealteration}{"Insertion + Deletion"}           = "Deletion + insertion";
+  $dropdown{typealteration}{"Engineered Allele"}              = "Engineered Allele";
   $dropdown{typealteration}{"Complex Alteration"}             = "Complex alterations";
   tie %{ $dropdown{typemutation} }, "Tie::IxHash";
   $dropdown{typemutation}{"Missense"}                         = "Missense ";
@@ -1154,6 +1167,15 @@ sub initFields {
   $dropdown{typemutation}{"Silent"}                           = "Silent ";
   $dropdown{typemutation}{"Splice-site"}                      = "Splice-site ";
   $dropdown{typemutation}{"Frameshift"}                       = "Frameshift ";
+  tie %{ $dropdown{productionmethod} }, "Tie::IxHash";
+  $dropdown{productionmethod}{"CRISPR_Cas9"}                  = "CRISPR_Cas9";
+  $dropdown{productionmethod}{"Homologous_recombination"}     = "Homologous_recombination";
+  $dropdown{productionmethod}{"MosSci"}                       = "MosSci";
+  $dropdown{productionmethod}{"MosDEL"}                       = "MosDEL";
+  $dropdown{productionmethod}{"NHEJ"}                         = "NHEJ";
+  $dropdown{productionmethod}{"TALENs"}                       = "TALENs";
+  $dropdown{productionmethod}{"ZFNNHEJ_repair"}               = "ZFNNHEJ_repair";
+  $dropdown{productionmethod}{"ZFNNHEJ_repair"}               = "ZFNNHEJ_repair";
 } # sub initFields
 
 

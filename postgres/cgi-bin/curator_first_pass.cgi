@@ -102,6 +102,8 @@
 # changed email of newsnp to mt3@sanger.ac.uk  2011 02 09
 #
 # added draciti to otherexpr  2011 02 10
+#
+# added Chris 2987 to curator list.  2014 11 12
 
 
 
@@ -916,6 +918,7 @@ sub populateCurators {
   $curators{name}{''} = '';
   $curators{name}{'101'}  = 'Wen Chen';
   $curators{name}{'2021'} = 'Jolene S. Fernandes';
+  $curators{name}{'2987'} = 'Chris Grove';
   $curators{name}{'324'}  = 'Ranjana Kishore';
   $curators{name}{'363'}  = 'Raymond Lee';
   $curators{name}{'480'}  = 'Andrei Petcherski';

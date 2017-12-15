@@ -962,96 +962,113 @@ function convertSelectToDatatableValue(field) {						// return datatable value b
  * @param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.
  * The <displayValue> is the value to display in the dataTable, and it is the same as the userValue to pass through AJAX, but converts URL escapes to normal characters.
  * Get whether the user wants to use normal mode or the batch unsafe mode (which updates postgres, but does not update the dataTable because changing a lot of values is slow) by getting the editor frame html hidden input element with id 'batchUnsafeFlag'.
- * If the batch unsafe flag is selected (originally from the front page of the ontology_annotator.cgi) make changes to postgres tables (only) with an AJAX call by calling  batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .
- * If the batch unsafe flag is not selected (default mode) make changes to postgres tables and dataTable with an AJAX call by calling  normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .
+ * If the batch unsafe flag is selected (originally from the front page of the ontology_annotator.cgi) make changes to postgres tables (only) with an AJAX call by calling  batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, 'noDataTable') .
+//  * If the batch unsafe flag is not selected (default mode) make changes to postgres tables and dataTable with an AJAX call by calling  normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) .
+ * If the batch unsafe flag is not selected (default mode) make changes to postgres tables and dataTable with an AJAX call by calling  normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, 'yesDataTable') .
  *
  */
 
 function updateDataTableValues(field, newValue, selectedRows) {						// update selected rows for a given field to have newValue
     var displayValue = newValue;
     var batchUnsafeFlag = top.frames['editor'].document.getElementById("batchUnsafeFlag").value;	// use  normalSafeUpdateDataTableValues  by default, if checked use  batchUnsafeUpdateDataTableValues
-    if (batchUnsafeFlag) { batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue); }
-        else { normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue); }
+//     if (batchUnsafeFlag) { batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue); }
+//         else { normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue); }
+    if (batchUnsafeFlag) { batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, 'noDataTable' ); }
+        else {             batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, 'yesDataTable'); }
 // FUTURE FOR DANIELA  for selectedRows { if (fieldsData[field]["reloadRow"]) }   remove row from dataTable and requery it.
 } // function updateDataTableValues(field, newValue, selectedRows)
 
 /**
- * batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)
+ * batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, dataTableFlag)
  * Fast and 'unsafe' mode to batch update data from a lot of <selectedRows> in postgres tables with a single AJAX call, but unsafe because dataTable is not updated and there is a single error message for all errors instead of individual error messages per field-pgid-value update.
  * @param {String} field  is the field whose value should be updated.
  * @param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.
  * @param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)
  * @param {String} displayValue  is the same new value, but in dataTable display format.  Deprecated -- It is not used because the dataTable is not being updated because  myDataTable.updateCell(record, field, displayValue)  seems to happen quickly, but then the browser hangs for many selected rows.  Kept here in case a future update makes it faster.
- * Get all ids from dataTable selected rows and put them in an array <arrPgidsToChange> and hash <idHash>.  Deprecated -- <idHash> is not used, but kept here in case a future update makes updating dataTable cells faster.
+ * @param {String} dataTableFlag  is whether or not to do dataTable updates (noDataTable|yesDataTable), which are slow when doing an batchUnsafe, but good when doing normal curation
+ * Get all ids from dataTable selected rows and put them in an array <arrPgidsToChange> and hash <hashPgidsChanged>.  
  * If there are pgids to update, join them with comma and update postgres tables and dataTable by calling  updatePostgresTableField(pgidsToChange, field, newValue) .
- *
- * Deprecated -- For each selected row, if the pgid is in <idHash> get the record and update the dataTable cell to have the <displayValue>.
+ * In regular curation mode, for each selected row, if the pgid is in <hashPgidsChanged> get the record and update the dataTable cell to have the <displayValue>.
  *
  */
 
-function batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) {
+function batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue, dataTableFlag) {
     var arrPgidsToChange = new Array;						// store strings converted for datatable here
-    var idHash = new Object();
+    var hashPgidsChanged = new Object();
     for (var i = 0; i < selectedRows.length; i++) {				// for each selected row in the data table
         var recordData = myDataTable.getRecord(selectedRows[i])._oData;		// get oData from each record
         var tableValue = recordData[field];					// get tableValue for that field
         var pgid = recordData.id;
-        if (tableValue !== newValue) { idHash[pgid] = 1; arrPgidsToChange.push(pgid); } }	// if new value is different add to array to change
+        if (tableValue !== newValue) { hashPgidsChanged[pgid] = 1; arrPgidsToChange.push(pgid); } }	// if new value is different add to array to change
     if (arrPgidsToChange.length > 0) {						// if there are any pgids to change (otherwise will do updates on blank pgid creating blank joinkey in postgres
         var pgidsToChange = arrPgidsToChange.join(','); 			// get ids to pass to change
-        updatePostgresTableField(pgidsToChange, field, newValue); }		// this happens a bit slowly as each row happens separately off of a separate ajax update
-
-// KEEP THIS CODE BLOCK in case a future update makes  myDataTable.updateCell  faster.
-// looping over selected rows still updates cell by cell which is still really slow
-//     for (var i = 0; i < selectedRows.length; i++) {				// for each selected row in the data table
-//         var recordData = myDataTable.getRecord(selectedRows[i])._oData;	// get oData from each record
-//         var tableValue = recordData[field];					// get tableValue for that field
-//         var pgid = recordData.id;
-//         if (pgid in idHash) {
-//             var record = myDataTable.getRecord(selectedRows[i]);		// get the record
-//             myDataTable.updateCell(record, field, displayValue);		// update the datatable cell, which leaves the row id the same.  this seems to happen quickly but then hangs for multiple rows at once.  guessing something slow about the way updateCell returns
-//     } }
+        updatePostgresTableField(pgidsToChange, field, newValue, dataTableFlag, selectedRows, hashPgidsChanged); }		// this happens a bit slowly as each row happens separately off of a separate ajax update
 } // function batchUnsafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)
 
-
-/**
- * normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)
- * Safe and default mode to update data from <selectedRows> one by one with individual AJAX calls to update postgres tables and update dataTable.
+/** update the dataTable display of pgids that have changed values in postgres
+ * @param {String} dataTableFlag  is whether or not to do dataTable updates (noDataTable|yesDataTable), which are slow when doing an batchUnsafe, but good when doing normal curation
  * @param {String} field  is the field whose value should be updated.
+ * @param {String} displayValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)
  * @param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.
- * @param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)
- * @param {String} displayValue  is the same new value, but in dataTable display format.
- * Get all ids from dataTable selected rows, and if the <newValue> is different from the corresponding dataTable value:
- * - Call  updatePostgresTableField(pgidsToChange, field, newValue) to update postgres tables.
- * - Update the dataTable cell to show the <displayValue>.  It's possible for this to happen even if  updatePostgresTableField  fails, but a failure there will give an error message for users to check data.
- * - Get the html div elements corresponding to this dataTable record.
- * - Add or remove the red_square.jpg to those html div elements depending on whether there's too much data in the cell or not (respectively) by calling  colorMoreCells(divArray) .
+ * @param {Object} hashPgidsChanged  is a hash of pgids that changed in postgres that need changing in dataTable
+ * For each selected row, get the record and pgid, if the pgid changed in postgres (hashPgidsChanged), updateCell that record to the displayValue.
  *
  */
 
-function normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) {
-    for (var i = 0; i < selectedRows.length; i++) {					// for each selected row in the data table
-        var recordData = myDataTable.getRecord(selectedRows[i])._oData;			// get oData from each record
-        var tableValue = recordData[field];						// get tableValue for that field
-        var pgid = recordData.id;
-        if (tableValue !== newValue) {							// if new value is different
-            var record = myDataTable.getRecord(selectedRows[i]);			// get the record
-            updatePostgresTableField(pgid, field, newValue);				// this happens a bit slowly as each row happens separately off of a separate ajax update
-            myDataTable.updateCell(record, field, displayValue);			// update the datatable cell, which leaves the row id the same.  this seems to happen quickly but then hangs for multiple rows at once.  guessing something slow about the way updateCell returns
-            var trId = myDataTable.getTrEl(record).id;					// get the table row id
-	    var divArray = document.getElementById(trId).getElementsByTagName("div");	// get all divs in that table row
-            colorMoreCells(divArray);							// check and set their overflow
-        } // if (tableValue !== newValue)
-    } // for (var i = 0; i < selectedRows.length; i++)
-} // function normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)
+function updateDataTableDisplay(dataTableFlag, field, displayValue, selectedRows, hashPgidsChanged) {
+    if (dataTableFlag === 'yesDataTable') {
+// KEEP THIS CODE BLOCK in case a future update makes  myDataTable.updateCell  faster.
+// looping over selected rows still updates cell by cell which is still really slow
+        for (var i = 0; i < selectedRows.length; i++) {				// for each selected row in the data table
+            var recordData = myDataTable.getRecord(selectedRows[i])._oData;	// get oData from each record
+            var pgid = recordData.id;
+            if (pgid in hashPgidsChanged) {
+                var record = myDataTable.getRecord(selectedRows[i]);		// get the record
+                myDataTable.updateCell(record, field, displayValue);		// update the datatable cell, which leaves the row id the same.  this seems to happen quickly but then hangs for multiple rows at once.  guessing something slow about the way updateCell returns
+   } } }
+} // function updateDataTableDisplay(dataTableFlag, field, displayValue, selectedRows, hashPgidsChanged)
+
+// /** to update postgres one by one, and update datatables all together.
+//  * normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)
+//  * Safe and default mode to update data from <selectedRows> one by one with individual AJAX calls to update postgres tables and update dataTable.
+//  * @param {String} field  is the field whose value should be updated.
+//  * @param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.
+//  * @param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)
+//  * @param {String} displayValue  is the same new value, but in dataTable display format.
+//  * Get all ids from dataTable selected rows, and if the <newValue> is different from the corresponding dataTable value:
+//  * - Call  updatePostgresTableField(pgidsToChange, field, newValue) to update postgres tables.
+//  * - Update the dataTable cell to show the <displayValue>.  It's possible for this to happen even if  updatePostgresTableField  fails, but a failure there will give an error message for users to check data.
+//  * - Get the html div elements corresponding to this dataTable record.
+//  * - Add or remove the red_square.jpg to those html div elements depending on whether there's too much data in the cell or not (respectively) by calling  colorMoreCells(divArray) .
+//  *
+//  */
+// 
+// function normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue) {
+//     for (var i = 0; i < selectedRows.length; i++) {					// for each selected row in the data table
+//         var recordData = myDataTable.getRecord(selectedRows[i])._oData;			// get oData from each record
+//         var tableValue = recordData[field];						// get tableValue for that field
+//         var pgid = recordData.id;
+//         if (tableValue !== newValue) {							// if new value is different
+//             var record = myDataTable.getRecord(selectedRows[i]);			// get the record
+//             updatePostgresTableField(pgid, field, newValue);				// this happens a bit slowly as each row happens separately off of a separate ajax update
+//             myDataTable.updateCell(record, field, displayValue);			// update the datatable cell, which leaves the row id the same.  this seems to happen quickly but then hangs for multiple rows at once.  guessing something slow about the way updateCell returns
+//             var trId = myDataTable.getTrEl(record).id;					// get the table row id
+// 	    var divArray = document.getElementById(trId).getElementsByTagName("div");	// get all divs in that table row
+//             colorMoreCells(divArray);							// check and set their overflow
+//         } // if (tableValue !== newValue)
+//     } // for (var i = 0; i < selectedRows.length; i++)
+// } // function normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayValue)
 
 
 /**
- * updatePostgresTableField(pgid, field, newValue)
+ * updatePostgresTableField(pgid, field, newValue, dataTableFlag, selectedRows, hashPgidsChanged)
  * Update data in postgres data tables with an AJAX call, alerting of any errors.
  * @param {String} pgid  are the comma-separated pgids that should be updated.
  * @param {String} field  is the field whose value should be updated.
  * @param {String} newValue  is the new value for that field in URL format.  Autocomplete values are in dataTable display format (with html span elements, not with parentheses)
+ * @param {String} dataTableFlag  is whether or not to do dataTable updates (noDataTable|yesDataTable), which are slow when doing an batchUnsafe, but good when doing normal curation
+ * @param {Array} selectedRows  is an array of record ids of selected dataTable rows, whose pgids should be updated.
+ * @param {Object} hashPgidsChanged  is a hash of pgids that changed in postgres that need changing in dataTable
  * Disable the form if appropriate by calling  disableForm() .
  * Define callbacks action for AJAX return.
  * Call  convertDisplayToUrlFormat(newValue)  to replace any characters to escape with html URL escape characters.
@@ -1064,20 +1081,21 @@ function normalSafeUpdateDataTableValues(field, selectedRows, newValue, displayV
 /**
  * callbacks from updatePostgresTableField
  * Get back AJAX response of 'OK' or error message.  Undisable form if appropriate and warn of any errors in an alert window. 
- * On successful return undisable the form by calling  undisableForm() .  If the response is not 'OK' make an alert window with the <newValue>, <pgid>, <field>, and <o.responseText>.
+ * On successful return undisable the form by calling  undisableForm() .  If the response is not 'OK' make an alert window with the <newValue>, <pgid>, <field>, and <o.responseText>.  If the response is 'OK' call  updateDataTableDisplay  to change display of values in dataTable.
  * On failure return undisable the form by calling  undisableForm()  and make an alert window with the <newValue>, <pgid>, <field>, and <o.statusText>.
  * 
  */
 
-function updatePostgresTableField(pgid, field, newValue) {
+function updatePostgresTableField(pgid, field, newValue, dataTableFlag, selectedRows, hashPgidsChanged) {
     disableForm();
     var callbacks = { 
         success : function (o) {				// Successful XHR response handler 
-            if (o.responseText === 'OK') { } 			// it's ok, don't say anything
+            if (o.responseText === 'OK') { updateDataTableDisplay(dataTableFlag, field, newValue, selectedRows, hashPgidsChanged); }	// update dataTable display
             else { alert("ERROR not OK response for newValue " + newValue + " did not update for pgid " + pgid + " and " + field + " " + o.responseText); }
             undisableForm();
         },
         failure:function(o) {
+console.log('failure responseText ' + o.responseText);
             alert("ERROR newValue " + newValue + " did not update for pgid " + pgid + " and " + field + "<br>" + o.statusText);
             undisableForm();
         },

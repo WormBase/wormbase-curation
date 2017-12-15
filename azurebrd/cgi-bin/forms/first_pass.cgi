@@ -413,11 +413,11 @@ sub emailCurator {
     $email = 'raymond@its.caltech.edu'; }
   elsif ( $table eq 'otherexpr' ) { $email = 'draciti@caltech.edu'; }
   elsif ( $table eq 'marker') { $email = 'kyook@caltech.edu, draciti@caltech.edu'; }
-  elsif ( $table eq 'extvariation' ) { $email = 'worm-bug@sanger.ac.uk'; $addPmid++; }
+#   elsif ( $table eq 'extvariation' ) { $email = 'worm-bug@sanger.ac.uk'; $addPmid++; }
   elsif ( $table eq 'newsnp' ) { $email = 'mt3@sanger.ac.uk'; $addPmid++; }
-  elsif ( ($table eq 'seqfeat') ) { $email = 'xdwang@its.caltech.edu, stlouis@wormbase.org, worm-bug@sanger.ac.uk'; $addPmid++; }
-  elsif ( $table eq 'structcorr' ) { $email = 'wormticket@watson.wustl.edu, worm-bug@sanger.ac.uk'; $addPmid++; }
-  elsif ( $table eq 'massspec' ) { $email = 'gw3@sanger.ac.uk, worm-bug@sanger.ac.uk'; $addPmid++; }
+  elsif ( ($table eq 'seqfeat') ) { $email = 'draciti@caltech.edu, worm-bug@sanger.ac.uk'; $addPmid++; }
+  elsif ( $table eq 'structcorr' ) { $email = 'seqcur@wormbase.org, worm-bug@sanger.ac.uk'; $addPmid++; }
+  elsif ( $table eq 'massspec' ) { $email = 'gary.williams@wormbase.org, worm-bug@sanger.ac.uk'; $addPmid++; }
   elsif ( ( $table eq 'genesymbol' ) || ( $table eq 'mappingdata' ) || ( $table eq 'seqchange' ) ) { $email = 'genenames@wormbase.org'; $addPmid++; }
 
   if ($email) {
@@ -522,7 +522,7 @@ sub populatePgData {
   foreach my $table (@pgTables) {
     my ($pgdata) = &getPgData($table, $paper);
     if ($pgdata) { 
-      $pgData{afp}++;
+      unless ($table eq 'email') { $pgData{afp}++; }
       $pgData{$table} = $pgdata; }
   } # foreach my $table (@pgTables)
 } # sub populatePgData
@@ -631,8 +631,8 @@ sub hashName {
   $hash{name}{genesymbol}   = 'Newly cloned gene.';
   $hash{name3}{genesymbol}  = '<a style="color:#C11B17;" href="http://tazendra.caltech.edu/~azurebrd/cgi-bin/forms/community_gene_description.cgi" target="new">Submit a concise description for this gene.</a>';
   $hash{exmp}{genesymbol}   = 'Please indicate if your paper reports a new symbol for a known locus or the name of a newly defined locus.';
-  $hash{name}{extvariation} = 'Newly created alleles.';
-  $hash{exmp}{extvariation} = 'Please indicate if your paper reports the identification of any allele that doesn\'t exist in WormBase already.';
+#   $hash{name}{extvariation} = 'Newly created alleles.';
+#   $hash{exmp}{extvariation} = 'Please indicate if your paper reports the identification of any allele that doesn\'t exist in WormBase already.';
   $hash{name}{mappingdata}  = 'Genetic mapping data.';
   $hash{exmp}{mappingdata}  = 'Please indicate if your paper contains 3-factor interval mapping data, i.e., genetic data only.  Include Df or Dp data, but no SNP interval mapping.';
 
@@ -655,8 +655,8 @@ sub hashName {
   $hash{exmp}{siteaction} = 'Please indicate if your paper reports anatomy (tissue or cell)-specific expression function for a gene.';
   $hash{name}{timeaction} = 'Time of action.';
   $hash{exmp}{timeaction} = 'Please indicate if your paper reports a temporal requirement for gene function, that is, if gene activity was assayed, for example, through temperature-shift experiments.';
-  $hash{name}{genefunc} = 'Molecular function of a gene product.';
-  $hash{exmp}{genefunc} = 'Please indicate if your paper discusses a new function for a known or newly defined gene.';
+#   $hash{name}{genefunc} = 'Molecular function of a gene product.';
+#   $hash{exmp}{genefunc} = 'Please indicate if your paper discusses a new function for a known or newly defined gene.';
   $hash{name}{humdis} = 'Homolog of a human disease-associated gene.';
   $hash{exmp}{humdis} = 'Please indicate if genes discussed in your paper are a homolog/ortholog of a human disease-related gene.';
 

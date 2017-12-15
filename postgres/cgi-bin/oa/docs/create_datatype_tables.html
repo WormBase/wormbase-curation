@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>create_datatype_tables.pl - script to create postgres data tables and history tables for ontology annotator datatype-field tables.</title>
+<title></title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <link rev="made" href="mailto:root@localhost" />
 </head>
@@ -10,54 +10,51 @@
 <body style="background-color: white">
 
 
-<!-- INDEX BEGIN -->
-<div name="index">
-<p><a name="__index__"></a></p>
 
-<ul>
-
-	<li><a href="#name">NAME</a></li>
-	<li><a href="#synopsis">SYNOPSIS</a></li>
-	<li><a href="#description">DESCRIPTION</a></li>
+<ul id="index">
+  <li><a href="#NAME">NAME</a></li>
+  <li><a href="#SYNOPSIS">SYNOPSIS</a></li>
+  <li><a href="#DESCRIPTION">DESCRIPTION</a></li>
 </ul>
 
-<hr name="index" />
-</div>
-<!-- INDEX END -->
+<h1 id="NAME">NAME</h1>
 
-<p>
-</p>
-<h1><a name="name">NAME</a></h1>
 <p>create_datatype_tables.pl - script to create postgres data tables and history tables for ontology annotator datatype-field tables.</p>
-<p>
-</p>
-<hr />
-<h1><a name="synopsis">SYNOPSIS</a></h1>
-<p>Edit the arrays of users to grant permission to (both 'select' and 'all'), edit the datatype, edit the array of tables that list the table values, then run with</p>
-<pre>
-  ./create_datatype_tables.pl</pre>
-<p>
-</p>
-<hr />
-<h1><a name="description">DESCRIPTION</a></h1>
-<p>The ontology_annotator.cgi requires some postgres data tables and postgres history tables for almost all fields.  The 'id' field is required and doesn't have a corresponding set of postgres tables.  Fields of type 'queryonly' also don't have a corresponding set of postgres tables.  The tables have columns:</p>
+
+<h1 id="SYNOPSIS">SYNOPSIS</h1>
+
+<p>Edit the arrays of users to grant permission to (both &#39;select&#39; and &#39;all&#39;), edit the datatype, edit the array of tables that list the table values, then run with</p>
+
+<pre><code>  ./create_datatype_tables.pl</code></pre>
+
+<h1 id="DESCRIPTION">DESCRIPTION</h1>
+
+<p>The ontology_annotator.cgi requires some postgres data tables and postgres history tables for almost all fields. The &#39;id&#39; field is required and doesn&#39;t have a corresponding set of postgres tables. Fields of type &#39;queryonly&#39; also don&#39;t have a corresponding set of postgres tables. The tables have columns:</p>
+
 <ul>
-<li><strong><a name="joinkey_a_text_field_that_corresponds_to_the_ontology_annotator_s_pgid" class="item">joinkey  a text field that corresponds to the ontology annotator's pgid.</a></strong>
+
+<li><p>joinkey a text field that corresponds to the ontology annotator&#39;s pgid.</p>
 
 </li>
-<li><strong><a name="datatype_table_a_text_field_that_stores_the_corresponding_data" class="item">&lt;datatype&gt;_&lt;table&gt;  a text field that stores the corresponding data.</a></strong>
+<li><p>&lt;datatype&gt;_&lt;table&gt; a text field that stores the corresponding data.</p>
 
 </li>
-<li><strong><a name="datatype_timestamp_a_timestamp_field_with_default_now" class="item">&lt;datatype&gt;_timestamp  a timestamp field with default 'now'.</a></strong>
+<li><p>&lt;datatype&gt;_timestamp a timestamp field with default &#39;now&#39;.</p>
 
 </li>
 </ul>
-<p>History tables are the same as normal tables with '_hst' appended to the table name, the second column name, and the index name.</p>
-<p>For each table, the postgres table is '&lt;datatype&gt;_&lt;table&gt;', the history table is '&lt;datatype&gt;_&lt;table&gt;_hst' ;  the indices are '&lt;datatype&gt;_&lt;table&gt;_idx' and '&lt;datatype&gt;_&lt;table&gt;_hst_idx', indexing on the data column.  Tables are dropped in case they already exist and are then re-created, access is granted to postgres users, indices are created.</p>
-<p>Edit the arrays of postgres database users to grant permission to (both 'select' and 'all'), edit the datatype, edit the array of tables that list the table values, then run with</p>
-<pre>
-  ./create_datatype_tables.pl</pre>
+
+<p>History tables are the same as normal tables with &#39;_hst&#39; appended to the table name, the second column name, and the index name.</p>
+
+<p>For each table, the postgres table is &#39;&lt;datatype&gt;_&lt;table&gt;&#39;, the history table is &#39;&lt;datatype&gt;_&lt;table&gt;_hst&#39; ; the indices are &#39;&lt;datatype&gt;_&lt;table&gt;_idx&#39; and &#39;&lt;datatype&gt;_&lt;table&gt;_hst_idx&#39;, indexing on the data column. Tables are dropped in case they already exist and are then re-created, access is granted to postgres users, indices are created.</p>
+
+<p>Edit the arrays of postgres database users to grant permission to (both &#39;select&#39; and &#39;all&#39;), edit the datatype, edit the array of tables that list the table values, then run with</p>
+
+<pre><code>  ./create_datatype_tables.pl</code></pre>
+
 
 </body>
 
 </html>
+
+

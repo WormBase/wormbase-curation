@@ -164,6 +164,15 @@
 # for Chris 2015 04 02
 #
 # genereg object counts were coming from grg_name instead of grg_intid.  for Chris.  2015 02 04
+#
+# limit  populateCuratablePapers  to those from a subset of taxonIDs that Kimberly 
+# approves for Caltech in pap_species.  2016 05 25
+#
+# changed cur_curdata (and _hst) to have a 'cur_site' column with 'caltech' or 'parasite'
+# to limit results based on datatypeSource.  &populateOaData  only populates oaData
+# for 'caltech'.  2016 08 05
+#
+# Added WBPerson38423, Jae Cho	2016 09 13
 
 
 
@@ -188,6 +197,8 @@ my $oop;
 my $frontpage = 1;
 
 my $curator = '';
+my $datatypeSource = 'caltech';
+# my %datatypesParasite; 		# all allowed datatypes for parasite
 my %datatypes; # tie %datatypes, "Tie::IxHash";		# all allowed datatypes, was tieing to separate/order nonSvm vs Svm, but not anymore  2012 11 16
 my %datatypesAfpCfp;		# key datatype value is afp_ cfp_ tables's datatype to query (e.g. datatype 'blastomere' maps to 'cellfunc' for [ac]fp_cellfunc)
 my %chosenDatatypes;		# selected datatypes to display
@@ -241,6 +252,10 @@ sub display {
   &populateDonPosNegOptions(); 
   ($oop, $curator) = &getHtmlVar($query, "select_curator");
   if ($curator) { &updateWormCurator($curator); }
+  ($oop, my $datatypeSourceFormValue) = &getHtmlVar($query, "select_datatypesource");
+  if ($datatypeSourceFormValue) { 
+    $datatypeSource = $datatypeSourceFormValue;
+    if ($datatypeSource eq 'parasite') { &populateDatatypesParasite(); } }
   
   unless ($action = $query->param('action')) {
     $action = 'none';
@@ -255,9 +270,12 @@ sub display {
   elsif ($action eq 'Submit New Results') {                &submitNewResults();                     }
   elsif ($action eq 'Overwrite Selected Results') {        &overwriteSelectedResults();             }
   elsif ($action eq 'Specific Paper Page') {               &printSpecificPaperPage();               }
+  elsif ($action eq 'Specific Parasite Paper Page') {      &populateDatatypesParasite(); &printSpecificPaperPage();      }
   elsif ($action eq 'Add Results Page') {                  &printAddResultsPage();                  }
+  elsif ($action eq 'Add Parasite Results Page') {         &populateDatatypesParasite(); &printAddResultsPage();         }
   elsif ($action eq 'Curation Statistics Page') {          &printCurationStatisticsPage();          }
   elsif ($action eq 'Curation Statistics Options Page') {  &printCurationStatisticsOptionsPage();   }
+  elsif ($action eq 'Curation Parasite Statistics Page') { &populateDatatypesParasite(); &printCurationStatisticsPage(); }
   elsif ($action eq 'listCurationStatisticsPapersPage') {  &listCurationStatisticsPapersPage();     }
   elsif ($action eq 'printDescriptionOfLabelPage') {       &printDescriptionOfLabelPage();          }
 
@@ -298,6 +316,14 @@ sub firstPage {
   print qq(<input type="hidden" name="checkbox_all_flagging_methods"  value="all">);	# if looking at statistics page from front page use all flagging methods
   print qq(<td><input type="submit" name="action" value="Curation Statistics Options Page"></td></tr>\n);
   print qq(<tr><td>Documentation</td><td colspan="2"><font size="-1"><a href="http://wiki.wormbase.org/index.php/New_2012_Curation_Status">http://wiki.wormbase.org/index.php/New_2012_Curation_Status</a></font></td></tr>\n);
+  print qq(<tr><td>&nbsp;</td></tr>\n);
+  print qq(<tr><td>Parasite</td></tr>\n);
+  print qq(<tr><td>Check Specific Parasite Paper</td>\n);
+  print qq(<td colspan="2"><input type="submit" name="action" value="Specific Parasite Paper Page"></td></tr>\n);
+  print qq(<tr><td>Enter Curator Parasite Results</td>\n);
+  print qq(<td colspan="2"><input type="submit" name="action" value="Add Parasite Results Page"></td></tr>\n);
+  print qq(<tr><td>Curation Parasite Statistics</td>\n);
+  print qq(<td colspan="2"><input type="submit" name="action" value="Curation Parasite Statistics Page"></td>\n);
   print qq(</table>\n);
   &printFormClose();
 } # sub firstPage
@@ -314,6 +340,14 @@ sub updateWormCurator {                                 # update two_curator_ip 
 } } # sub updateWormCurator
 
 
+sub printHiddenDatatypeSource {
+  if ($datatypeSource) { 
+
+      print qq(<input type="hidden" name="select_datatypesource"  value="$datatypeSource"  ><br />); }
+    else { 
+      print qq(<br/><span style="color: red">ERROR : you must choose a datatypeSource, go </span>\n);
+      &printFrontPageLink(); die;  } } 
+
 sub printHiddenCurator {
   if ($curator) { 
       print qq(<input type="hidden" name="select_curator"  value="$curator"  ><br />); }
@@ -324,8 +358,9 @@ sub printHiddenCurator {
 sub printSpecificPaperPage {
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
   &printTextareaSpecificPapers('');
-  &printSelectTopics();
+  if ($datatypeSource eq 'caltech') { &printSelectTopics(); }
   &printCheckboxesDatatype('off');
   &printCheckboxesCurationSources('all');
   &printPaperOptions();
@@ -340,9 +375,10 @@ sub printAddResultsPage {
 sub listCurationStatisticsPapersPage {
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
   my ($papers) = &printListCurationStatisticsPapers();
   &printTextareaSpecificPapers($papers);
-  &printSelectTopics();
+  if ($datatypeSource eq 'caltech') { &printSelectTopics(); }
   &printSubmitGetResults();
   ($oop, my $listDatatype) = &getHtmlVar($query, "listDatatype");
   &printCheckboxesDatatype($listDatatype);
@@ -430,7 +466,7 @@ sub printListCurationStatisticsPapers {
   my @joinkeys;
   foreach my $joinkey (sort keys %{ $hash_ref->{$listDatatype}{'papers'} }) { 
     push @joinkeys, $joinkey;
-    my $link = "curation_status.cgi?select_curator=$curator&specific_papers=WBPaper$joinkey&checkbox_$listDatatype=$listDatatype&checkbox_filteron_primary=on&checkbox_svm=on&checkbox_str=on&checkbox_cfp=on&checkbox_afp=on&checkbox_oa=on&checkbox_cur=on&papers_per_page=10&checkbox_journal=on&checkbox_pmid=on&checkbox_pdf=on&checkbox_primary=on&action=Get+Results";
+    my $link = "curation_status.cgi?select_curator=$curator&select_datatypesource=$datatypeSource&specific_papers=WBPaper$joinkey&checkbox_$listDatatype=$listDatatype&checkbox_filteron_primary=on&checkbox_svm=on&checkbox_str=on&checkbox_cfp=on&checkbox_afp=on&checkbox_oa=on&checkbox_cur=on&papers_per_page=10&checkbox_journal=on&checkbox_pmid=on&checkbox_pdf=on&checkbox_primary=on&action=Get+Results";
     print qq(<a href="$link" target="new">$joinkey</a> );
   }
   print qq(<br/><br/>);
@@ -441,6 +477,7 @@ sub printListCurationStatisticsPapers {
 sub printCurationStatisticsOptionsPage {
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
   &printCheckboxesDatatype('all');
   &printCheckboxesCurationSources('flagging');
   print qq(<input type="submit" name="action" value="Curation Statistics Page">\n);
@@ -450,6 +487,7 @@ sub printCurationStatisticsOptionsPage {
 sub printCurationStatisticsPage {
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
   &printCurationStatisticsTable();
   &printFormClose();
 } # sub printCurationStatisticsPage
@@ -516,9 +554,8 @@ sub printCurationStatisticsTable {
   tie %{ $curStats{'any'}{'pos'} }, "Tie::IxHash";		# make any section appear in this order by tying it, though it will get populated last
   $curStats{'dividerint'}{'allSame'}{'countPap'} = 'blank';
   tie %{ $curStats{'int'}{'pos'} }, "Tie::IxHash";		# make any section appear in this order by tying it, though it will get populated last
-
   if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "printCurationStatistics Datatypes / Objects   $diff<br>"; }
-
+  
   &getCurationStatisticsAllCurated(         \@datatypesToShow ); 
   &getCurationStatisticsAllVal(             \@datatypesToShow );  
   &getCurationStatisticsAllValPos(          \@datatypesToShow );  
@@ -536,14 +573,14 @@ sub printCurationStatisticsTable {
     &getCurationStatisticsStrPos(           \@datatypesToShow );
     &getCurationStatisticsStrNeg(           \@datatypesToShow ); }
   if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "getStatsStr   $diff<br>"; }
-
+  
   if ( ($displayAll) || ($displayAfp) ) { 
     &getCurationStatisticsAfpEmailed(       \@datatypesToShow );
     &getCurationStatisticsAfpFlagged(       \@datatypesToShow );
     &getCurationStatisticsAfpPos(           \@datatypesToShow );
     &getCurationStatisticsAfpNeg(           \@datatypesToShow ); }
   if ($showTimes) { $end = time; $diff = $end - $start; $start = time; print "getStatsAfp   $diff<br>"; }
-
+  
   if ( ($displayAll) || ($displayCfp) ) { 
     &getCurationStatisticsCfpFlagged(       \@datatypesToShow );
     &getCurationStatisticsCfpPos(           \@datatypesToShow );
@@ -583,7 +620,7 @@ sub recurseCurStats {					# recurse through %curStats to print row of stats
         my $tdCellData = '0';
 
         my $count = $hash->{$key}{$datatype}{'countPap'}; 
-        if ($count) { $tdCellData = qq(<a href="curation_status.cgi?action=listCurationStatisticsPapersPage&select_curator=$curator&listDatatype=$datatype&method=$labelKeys&$flaggingMethods" target="new">$count</a>); }
+        if ($count) { $tdCellData = qq(<a href="curation_status.cgi?action=listCurationStatisticsPapersPage&select_datatypesource=$datatypeSource&select_curator=$curator&listDatatype=$datatype&method=$labelKeys&$flaggingMethods" target="new">$count</a>); }
         my $ratio = $hash->{$key}{$datatype}{'ratio'} ; 
         if ($ratio) { if ($ratio != 0) { $tdCellData .= " ; ${ratio}%"; } }
         if ($count) { if ($count eq 'blank') { $tdCellData = '&nbsp;'; } }
@@ -1640,9 +1677,10 @@ sub printCurationStatisticsObjectsCurated {
   print qq(<tr><td>objects curated</td>);
   foreach my $datatype (@datatypesToShow) {
     my $countObjs = scalar keys %{ $objsCurated{$datatype} };
-    if ($datatype eq 'rnai') { 			$countObjs += 59656; }
-      elsif ($datatype eq 'otherexpr') {	$countObjs +=  2084; }	# add 2084 for chronograms for Daniela 2013 01 23
-      elsif ($datatype eq 'picture') {  	$countObjs += 19052; }	# add 19052 for yanai pictures for Daniela 2013 01 24
+    if ($datatypeSource eq 'caltech') {
+      if ($datatype eq 'rnai') { 			$countObjs += 59656; }
+        elsif ($datatype eq 'otherexpr') {	$countObjs +=  2084; }  	# add 2084 for chronograms for Daniela 2013 01 23
+        elsif ($datatype eq 'picture') {  	$countObjs += 19052; } }	# add 19052 for yanai pictures for Daniela 2013 01 24
     print "<td>$countObjs</td>";
   } # foreach my $datatype (@datatypesToShow)
   if ($labelRightFlag) { print qq(<td>objects curated</td>); }
@@ -1654,9 +1692,10 @@ sub printCurationStatisticsObjectsPerPaperCurated {
   print qq(<tr><td>objects curated per paper</td>);		# this really means objects curated per curated paper, but Chris wants it labeled like this 2012 11 12
   foreach my $datatype (@datatypesToShow) {
     my $countObjs = scalar keys %{ $objsCurated{$datatype} };
-    if ($datatype eq 'rnai') { 			$countObjs += 59656; }
-      elsif ($datatype eq 'otherexpr') {	$countObjs +=  2084; }	# add 2084 for chronograms for Daniela 2013 01 23
-      elsif ($datatype eq 'picture') {  	$countObjs += 19052; }	# add 19052 for yanai pictures for Daniela 2013 01 24
+    if ($datatypeSource eq 'caltech') {
+      if ($datatype eq 'rnai') { 			$countObjs += 59656; }
+        elsif ($datatype eq 'otherexpr') {	$countObjs +=  2084; }  	# add 2084 for chronograms for Daniela 2013 01 23
+        elsif ($datatype eq 'picture') {  	$countObjs += 19052; } }	# add 19052 for yanai pictures for Daniela 2013 01 24
     my $countPapers = keys %{ $valCur{$datatype} };		# use curated papers, not validated papers
     my $ratio = 0;
     if ($countPapers > 0) { $ratio = $countObjs / $countPapers; $ratio = FormatSigFigs($ratio, 2); } # ($ratio) = &roundToPlaces($ratio, 2);
@@ -1784,14 +1823,23 @@ sub printCheckboxesDatatype {
 sub printCheckboxesCurationSources {
   my ($which_checkboxes_to_show) = @_;		#   values can be : all / flagging (curation+validation+flagging vs. flagging_sources)
   print qq(curation sources :<br/>\n);
-  if ($which_checkboxes_to_show eq 'all') {
-    print qq(<input type="checkbox" name="checkbox_oa"     checked="checked">OA or other postgres<br/>\n);
-    print qq(<input type="checkbox" name="checkbox_cur"    checked="checked">Curator uploaded cur_curdata<br/>\n);
-  } # if ($which_checkboxes_to_show eq 'all')
-  print qq(<input type="checkbox" name="checkbox_svm"      checked="checked">svm flags cur_svmdata<br/>\n);
-  print qq(<input type="checkbox" name="checkbox_str"      checked="checked">str flags cur_strdata<br/>\n);
-  print qq(<input type="checkbox" name="checkbox_afp"      checked="checked">author first pass afp_<br/>\n);
-  print qq(<input type="checkbox" name="checkbox_cfp"      checked="checked">curator first pass cfp_<br/>\n);
+  if ($datatypeSource eq 'caltech') {
+    if ($which_checkboxes_to_show eq 'all') {
+      print qq(<input type="checkbox" name="checkbox_oa"     checked="checked">OA or other postgres<br/>\n);
+      print qq(<input type="checkbox" name="checkbox_cur"    checked="checked">Curator uploaded cur_curdata<br/>\n);
+    } # if ($which_checkboxes_to_show eq 'all')
+    print qq(<input type="checkbox" name="checkbox_svm"      checked="checked">svm flags cur_svmdata<br/>\n);
+    print qq(<input type="checkbox" name="checkbox_str"      checked="checked">str flags cur_strdata<br/>\n);
+    print qq(<input type="checkbox" name="checkbox_afp"      checked="checked">author first pass afp_<br/>\n);
+    print qq(<input type="checkbox" name="checkbox_cfp"      checked="checked">curator first pass cfp_<br/>\n);
+  } elsif ($datatypeSource eq 'parasite') {
+    if ($which_checkboxes_to_show eq 'all') {
+      print qq(<input type="checkbox" name="checkbox_cur"    checked="checked">Curator uploaded cur_curdata<br/>\n);
+    } # if ($which_checkboxes_to_show eq 'all')
+    print qq(<input type="checkbox" name="checkbox_svm"      checked="checked">svm flags cur_svmdata<br/>\n);
+    print qq(<input type="checkbox" name="checkbox_afp"      checked="checked">author first pass afp_<br/>\n);
+    print qq(<input type="checkbox" name="checkbox_cfp"      checked="checked">curator first pass cfp_<br/>\n);
+  }
   print qq(<br/>);
 } # sub printCheckboxesCurationSources
 
@@ -1835,10 +1883,11 @@ sub printAddSection {
   my $selected = '';
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
   print qq(Select your datatype :<br/>);
   print qq(<select name="select_datatype">);
   print qq(<option value=""             ></option>\n);
-  foreach my $datatype (keys %datatypes) {
+  foreach my $datatype (sort keys %datatypes) {
     if ($datatype eq $datatypeForm) { $selected = qq(selected="selected"); } else { $selected = ''; }
     print qq(<option value="$datatype" $selected>$datatype</option>\n); }
   print qq(</select><br/>);
@@ -1867,6 +1916,7 @@ sub printAddSection {
 sub submitNewResults {
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
   ($oop, my $trAmount) = &getHtmlVar($query, "trCounter");
   my %papersToAdd;
   my %curatorData;
@@ -1881,11 +1931,11 @@ sub submitNewResults {
     ($oop, my $datatype)          = &getHtmlVar($query, "datatype_$i");
 
     $papersToAdd{$datatype}{$joinkey}++;
-    $curatorData{$joinkey}{$datatype}{curator}    = $activeCurator;
-    $curatorData{$joinkey}{$datatype}{donposneg}  = $curatorDonposneg;
-    $curatorData{$joinkey}{$datatype}{selcomment} = $curatorSelComment;
+    $curatorData{$joinkey}{$datatype}{curator}         = $activeCurator;
+    $curatorData{$joinkey}{$datatype}{donposneg}       = $curatorDonposneg;
+    $curatorData{$joinkey}{$datatype}{selcomment}      = $curatorSelComment;
     if ($curatorTxtComment) { if ($curatorTxtComment =~ m/\'/) { $curatorTxtComment =~ s/\'/''/g; } }
-    $curatorData{$joinkey}{$datatype}{txtcomment} = $curatorTxtComment;
+    $curatorData{$joinkey}{$datatype}{txtcomment}      = $curatorTxtComment;
   } # for my $i (1 .. $trAmount)
   my %pgData;
   foreach my $datatype (sort keys %papersToAdd) {
@@ -1900,13 +1950,14 @@ sub submitNewResults {
   my @data; my @duplicateData;
   foreach my $joinkey (sort keys %curatorData) {
     foreach my $datatype (keys %{ $curatorData{$joinkey} }) {
-        my $thisCurator  = $curatorData{$joinkey}{$datatype}{curator}; 
-        my $donposneg    = $curatorData{$joinkey}{$datatype}{donposneg}; 
-        my $selcomment   = $curatorData{$joinkey}{$datatype}{selcomment}; 
-        my $txtcomment   = $curatorData{$joinkey}{$datatype}{txtcomment}; 
+        my $thisCurator           = $curatorData{$joinkey}{$datatype}{curator}; 
+        my $donposneg             = $curatorData{$joinkey}{$datatype}{donposneg}; 
+        my $selcomment            = $curatorData{$joinkey}{$datatype}{selcomment}; 
+        my $txtcomment            = $curatorData{$joinkey}{$datatype}{txtcomment}; 
         my @line; 
         push @line, $joinkey;
         push @line, $datatype;
+        push @line, $datatypeSource;
         push @line, $thisCurator;
         push @line, $donposneg;
         push @line, $selcomment;
@@ -1921,14 +1972,15 @@ sub submitNewResults {
 sub getPgDataForJoinkeys {
   my ($joinkeys, $datatype) = @_;
   my %pgData;
-  $result = $dbh->prepare( "SELECT * FROM cur_curdata WHERE cur_datatype = '$datatype' AND cur_paper IN ('$joinkeys')" );
+  $result = $dbh->prepare( "SELECT * FROM cur_curdata WHERE cur_datatype = '$datatype' AND cur_site = '$datatypeSource' AND cur_paper IN ('$joinkeys')" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) {
-    $pgData{$row[0]}{$row[1]}{curator}     = $row[2]; 
-    $pgData{$row[0]}{$row[1]}{donposneg}   = $row[3]; 
-    $pgData{$row[0]}{$row[1]}{selcomment}  = $row[4];
-    $pgData{$row[0]}{$row[1]}{txtcomment}  = $row[5];
-    $pgData{$row[0]}{$row[1]}{timestamp}   = $row[6]; }
+    $pgData{$row[0]}{$row[1]}{datatypeSource}   = $row[2]; 
+    $pgData{$row[0]}{$row[1]}{curator}          = $row[3]; 
+    $pgData{$row[0]}{$row[1]}{donposneg}        = $row[4]; 
+    $pgData{$row[0]}{$row[1]}{selcomment}       = $row[5];
+    $pgData{$row[0]}{$row[1]}{txtcomment}       = $row[6];
+    $pgData{$row[0]}{$row[1]}{timestamp}        = $row[7]; }
   return \%pgData;
 } # sub getPgDataForJoinkeys
 
@@ -1938,7 +1990,7 @@ sub processResultDataDuplicateData {
   my @duplicateData = @$duplicateDataRef;
   my %pgData        = %$pgDataRef;
   print qq(<table border="1">\n);
-  print qq(<tr>${thDot}paperId</td>${thDot}datatype</td>${thDot}curator</td>${thDot}value</td>${thDot}selcomment</td>${thDot}textcomment</td></tr>\n);
+  print qq(<tr>${thDot}paperId</td>${thDot}datatype</td>${thDot}site</td>${thDot}curator</td>${thDot}value</td>${thDot}selcomment</td>${thDot}textcomment</td></tr>\n);
   foreach my $lineRef (@data) {
     my @line = @$lineRef;
     foreach (@line) { unless ($_) { $_ = ''; } }	# initialize values if none are there
@@ -1963,17 +2015,19 @@ sub processResultDataDuplicateData {
   foreach my $lineRef (@duplicateData) {		# for data already in postgres, add option to overwrite
     my @line = @$lineRef;
     foreach (@line) { unless ($_) { $_ = ''; } }	# initialize values if none are there
-    my ( $joinkey, $datatype, $twonum, $donposneg, $selcomment, $txtcomment ) = @line;
-    my ( $curatorPg, $curatorPgName, $donposnegPg, $selcommentPg, $selcommentPgText, $txtcommentPg, $timestampPg ) = ( '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;' );
-    my ( $curatorFm, $curatorFmName, $donposnegFm, $selcommentFm, $selcommentFmText, $txtcommentFm, $timestampFm ) = ( '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '<td>&nbsp;</td>' );
-    if ( $pgData{$joinkey}{$datatype}{curator}    ) { $curatorPg    = $pgData{$joinkey}{$datatype}{curator};    $curatorPgName = $curators{$curatorPg}; }
-    if ( $pgData{$joinkey}{$datatype}{donposneg}  ) { $donposnegPg  = $pgData{$joinkey}{$datatype}{donposneg};  }
-    if ( $pgData{$joinkey}{$datatype}{selcomment} ) { $selcommentPg = $pgData{$joinkey}{$datatype}{selcomment}; $selcommentPgText = $premadeComments{$selcommentPg}; }
-    if ( $pgData{$joinkey}{$datatype}{txtcomment} ) { $txtcommentPg = $pgData{$joinkey}{$datatype}{txtcomment}; }
-    if ( $pgData{$joinkey}{$datatype}{timestamp}  ) { $timestampPg  = "<td>$pgData{$joinkey}{$datatype}{timestamp};</td>"  }
+    my ( $joinkey, $datatype, $datatypeSource, $twonum, $donposneg, $selcomment, $txtcomment ) = @line;
+    my ( $curatorPg, $curatorPgName, $datatypeSourcePg, $donposnegPg, $selcommentPg, $selcommentPgText, $txtcommentPg, $timestampPg ) = ( '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;' );
+    my ( $curatorFm, $curatorFmName, $datatypeSourceFm, $donposnegFm, $selcommentFm, $selcommentFmText, $txtcommentFm, $timestampFm ) = ( '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '&nbsp;', '<td>&nbsp;</td>' );
+    if ( $pgData{$joinkey}{$datatype}{curator}    )      { $curatorPg          = $pgData{$joinkey}{$datatype}{curator};    $curatorPgName = $curators{$curatorPg}; }
+    if ( $pgData{$joinkey}{$datatype}{datatypeSource}  ) { $datatypeSourcePg   = $pgData{$joinkey}{$datatype}{datatypeSource};  }
+    if ( $pgData{$joinkey}{$datatype}{donposneg}  )      { $donposnegPg        = $pgData{$joinkey}{$datatype}{donposneg};  }
+    if ( $pgData{$joinkey}{$datatype}{selcomment} )      { $selcommentPg       = $pgData{$joinkey}{$datatype}{selcomment}; $selcommentPgText = $premadeComments{$selcommentPg}; }
+    if ( $pgData{$joinkey}{$datatype}{txtcomment} )      { $txtcommentPg       = $pgData{$joinkey}{$datatype}{txtcomment}; }
+    if ( $pgData{$joinkey}{$datatype}{timestamp}  )      { $timestampPg        = "<td>$pgData{$joinkey}{$datatype}{timestamp};</td>"  }
     if ( $twonum ) { $curatorFm = $twonum;
       if ( $curators{$curatorFm} ) { $curatorFmName   = $curators{$curatorFm}; } }
     if ( $donposneg )  { $donposnegFm  = $donposneg;  }
+    if ( $datatypeSource )  { $datatypeSourceFm  = $datatypeSource;  }
     if ( $selcomment ) { $selcommentFm = $selcomment;
       if ( $premadeComments{$selcommentFm} ) { $selcommentFmText = $premadeComments{$selcommentFm}; } }
     if ( $txtcomment ) { $txtcommentFm = $txtcomment; }
@@ -1985,6 +2039,13 @@ sub processResultDataDuplicateData {
       else {
         $curatorFmName = '<td>' . $curatorFmName . '</td>';
         $curatorPgName = '<td>' . $curatorPgName . '</td>'; }
+    if ($datatypeSourceFm  ne $datatypeSourcePg) {
+        $isDifferent++;
+        $datatypeSourceFm = '<td style="background-color:yellow">' . $datatypeSourceFm . '</td>';
+        $datatypeSourcePg = '<td style="background-color:yellow">' . $datatypeSourcePg . '</td>'; }
+      else {
+        $datatypeSourceFm = '<td>' . $datatypeSourceFm . '</td>';
+        $datatypeSourcePg = '<td>' . $datatypeSourcePg . '</td>'; }
     if ($donposnegFm  ne $donposnegPg) {
         $isDifferent++;
         $donposnegFm = '<td style="background-color:yellow">' . $donposnegFm . '</td>';
@@ -2008,17 +2069,18 @@ sub processResultDataDuplicateData {
         $txtcommentPg = '<td>' . $txtcommentPg . '</td>'; }
     next unless ($isDifferent > 0);
     $overwriteCount++;
-    print qq(<input type="hidden" name="joinkey_$overwriteCount"       value="$joinkey"  >);
-    print qq(<input type="hidden" name="datatype_$overwriteCount"      value="$datatype" >);
-    print qq(<input type="hidden" name="twonum_$overwriteCount"        value="$twonum"   >);
-    print qq(<input type="hidden" name="donposneg_$overwriteCount"     value="$donposneg"   >);
-    print qq(<input type="hidden" name="selcomment_$overwriteCount"    value="$selcomment"  >);
-    print qq(<input type="hidden" name="txtcomment_$overwriteCount"    value="$txtcomment"  >);
+    print qq(<input type="hidden" name="joinkey_$overwriteCount"         value="$joinkey"  >);
+    print qq(<input type="hidden" name="datatype_$overwriteCount"        value="$datatype" >);
+    print qq(<input type="hidden" name="datatypeSource_$overwriteCount"  value="$datatypeSource" >);
+    print qq(<input type="hidden" name="twonum_$overwriteCount"          value="$twonum"   >);
+    print qq(<input type="hidden" name="donposneg_$overwriteCount"       value="$donposneg"   >);
+    print qq(<input type="hidden" name="selcomment_$overwriteCount"      value="$selcomment"  >);
+    print qq(<input type="hidden" name="txtcomment_$overwriteCount"      value="$txtcomment"  >);
     print qq(WBPaper$joinkey $datatype : <br/>\n);
     print qq(<table border="1">\n);
-    print qq(<tr><th>&nbsp;</th><th>curator</th><th>value</th><th>selcomment</th><th>txtcomment</th><th>timestamp</th></tr>);
-    print qq(<tr><td>old</td>${curatorPgName}${donposnegPg}${selcommentPgText}${txtcommentPg}${timestampPg}</tr>\n);
-    print qq(<tr><td>new</td>${curatorFmName}${donposnegFm}${selcommentFmText}${txtcommentFm}${timestampFm}</tr>\n);
+    print qq(<tr><th>&nbsp;</th><th>curator</th><th>datatypeSource</th><th>value</th><th>selcomment</th><th>txtcomment</th><th>timestamp</th></tr>);
+    print qq(<tr><td>old</td>${curatorPgName}${datatypeSourcePg}${donposnegPg}${selcommentPgText}${txtcommentPg}${timestampPg}</tr>\n);
+    print qq(<tr><td>new</td>${curatorFmName}${datatypeSourceFm}${donposnegFm}${selcommentFmText}${txtcommentFm}${timestampFm}</tr>\n);
     print qq(</table>\n);
     print qq(Confirm change <input type="checkbox" name="checkbox_$overwriteCount" value="overwrite"><br/><br/>\n);
   } # foreach my $lineRef (@data)
@@ -2030,6 +2092,7 @@ sub processResultDataDuplicateData {
 sub addResults {
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
   my $errorData = '';
   my %papersToAdd;
   my $twonum = $curator;
@@ -2060,6 +2123,7 @@ sub addResults {
           my @line; 
           push @line, $joinkey;
           push @line, $datatype;
+          push @line, $datatypeSource;
           push @line, $twonum;
           push @line, $donposneg;
           push @line, $selcomment;
@@ -2085,9 +2149,9 @@ sub overwriteSelectedResults {
     ($oop, my $selcomment ) = &getHtmlVar($query, "selcomment_$i" );
     ($oop, my $txtcomment ) = &getHtmlVar($query, "txtcomment_$i" );
     unless ($donposneg) { $donposneg = ''; } unless ($selcomment) { $selcomment = ''; } unless ($txtcomment) { $txtcomment = ''; }
-    push @pgcommands, qq(DELETE FROM cur_curdata WHERE cur_paper = '$joinkey' AND cur_datatype = '$datatype' AND cur_curator = '$twonum');
-    push @pgcommands, qq(INSERT INTO cur_curdata VALUES ('$joinkey', '$datatype', '$twonum', '$donposneg', '$selcomment', '$txtcomment'));
-    push @pgcommands, qq(INSERT INTO cur_curdata_hst VALUES ('$joinkey', '$datatype', '$twonum', '$donposneg', '$selcomment', '$txtcomment'));
+    push @pgcommands, qq(DELETE FROM cur_curdata WHERE cur_paper = '$joinkey' AND cur_datatype = '$datatype' AND cur_site = '$datatypeSource' AND cur_curator = '$twonum');
+    push @pgcommands, qq(INSERT INTO cur_curdata     VALUES ('$joinkey', '$datatype', '$datatypeSource', '$twonum', '$donposneg', '$selcomment', '$txtcomment'));
+    push @pgcommands, qq(INSERT INTO cur_curdata_hst VALUES ('$joinkey', '$datatype', '$datatypeSource', '$twonum', '$donposneg', '$selcomment', '$txtcomment'));
   } # for my $i (1 .. $overwriteCount)
   foreach my $pgcommand (@pgcommands) {
     print "$pgcommand<br />\n";
@@ -2099,6 +2163,8 @@ sub overwriteSelectedResults {
 sub getResults {
   &printFormOpen();
   &printHiddenCurator();
+  &printHiddenDatatypeSource();
+  print qq(<b>Curation for '${datatypeSource}'</b><br/>\n);
   &populateCuratablePapers(); 			# assume for now that we only care about curatable papers
 
   ($oop, my $all_datatypes_checkbox) = &getHtmlVar($query, "checkbox_all_datatypes");
@@ -2359,9 +2425,9 @@ sub populateCuratedPapers {
 #           if ($value eq 'curated') {       $valPos{$datatype}{$joinkey} = $value; $valCur{$datatype}{$joinkey} = $value; }
 #             elsif ($value eq 'positive') { $valPos{$datatype}{$joinkey} = $value; }
 #             elsif ($value eq 'negative') { $valNeg{$datatype}{$joinkey} = $value; } }
+      $validated{$datatype}{$joinkey}++;
       if (scalar @values < 2) {			# only one value, categorize it
-          my $value = shift @values;
-          $validated{$datatype}{$joinkey} = $value;
+          my $value = $values[0];
           if ($value eq 'curated') {       $valPos{$datatype}{$joinkey} = $value; $valCur{$datatype}{$joinkey} = $value; }
             elsif ($value eq 'positive') { $valPos{$datatype}{$joinkey} = $value; }
             elsif ($value eq 'negative') { $valNeg{$datatype}{$joinkey} = $value; } }
@@ -2375,10 +2441,21 @@ sub populateCuratedPapers {
 } # sub populateCuratedPapers
 
 sub populateCuratablePapers {
-  my $query = "SELECT * FROM pap_status WHERE pap_status = 'valid' AND joinkey IN (SELECT joinkey FROM pap_primary_data WHERE pap_primary_data = 'primary') AND joinkey NOT IN (SELECT joinkey FROM pap_curation_flags WHERE pap_curation_flags = 'non_nematode')";
+  my %papersByTaxon;
+  my @caltechTaxonIDs = qw( 6239 860376 135651 6238 6239 281687 1611254 31234 497829 1561998 1195656 54126 );
+  my $caltechTaxonIDs = join"','", @caltechTaxonIDs;
+  my $query = "SELECT * FROM pap_species WHERE pap_species IN ('$caltechTaxonIDs')";
+  if ($datatypeSource eq 'parasite') {
+    $query = "SELECT * FROM pap_species WHERE pap_species NOT IN ('$caltechTaxonIDs')"; }
+  $result = $dbh->prepare( $query );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n";
+  while (my @row = $result->fetchrow) { $papersByTaxon{$row[0]} = $row[1]; }
+  $query = "SELECT * FROM pap_status WHERE pap_status = 'valid' AND joinkey IN (SELECT joinkey FROM pap_primary_data WHERE pap_primary_data = 'primary') AND joinkey NOT IN (SELECT joinkey FROM pap_curation_flags WHERE pap_curation_flags = 'non_nematode')";
   $result = $dbh->prepare( $query );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
-  while (my @row = $result->fetchrow) { $curatablePapers{$row[0]} = $row[1]; }
+  while (my @row = $result->fetchrow) { 
+    next unless ($papersByTaxon{$row[0]});          # skip papers that are not in list of caltech taxon IDs
+    $curatablePapers{$row[0]} = $row[1]; }
 } # sub populateCuratablePapers
 
 sub populateSvmData {
@@ -2468,6 +2545,7 @@ sub populateCfpData {
 } # sub populateCfpData
 
 sub populateOaData {
+  return unless ($datatypeSource eq 'caltech');
   if ($chosenDatatypes{'chemicals'}) {
       # there are 5 source for curated molecules, and 7 sources for papers related to curated molecules, from Karen 2013 11 02
     $result = $dbh->prepare( "SELECT * FROM mop_name WHERE joinkey IN (SELECT joinkey FROM mop_paper WHERE mop_paper IS NOT NULL AND mop_paper != '')" );
@@ -2742,17 +2820,18 @@ sub populateOaData {
 } # sub populateOaData
 
 sub populateCurCurData {
-  $result = $dbh->prepare( "SELECT * FROM cur_curdata ORDER BY cur_timestamp" );	# in case multiple values get in for a paper-datatype (shouldn't happen), keep the latest
+  $result = $dbh->prepare( "SELECT * FROM cur_curdata WHERE cur_site = '$datatypeSource' ORDER BY cur_timestamp" );	# in case multiple values get in for a paper-datatype (shouldn't happen), keep the latest
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) {
     next unless ($chosenPapers{$row[0]} || $chosenPapers{all});
     next unless ($chosenDatatypes{$row[1]});
-    next if ( ($row[3] eq 'notvalidated') || ($row[3] eq '') );						# skip entries marked as notvalidated
-    $curData{$row[1]}{$row[0]}{curator}    = $row[2]; 
-    $curData{$row[1]}{$row[0]}{donposneg}  = $row[3]; 
-    $curData{$row[1]}{$row[0]}{selcomment} = $row[4];
-    $curData{$row[1]}{$row[0]}{txtcomment} = $row[5];
-    $curData{$row[1]}{$row[0]}{timestamp}  = $row[6]; }
+    next if ( ($row[4] eq 'notvalidated') || ($row[4] eq '') );						# skip entries marked as notvalidated
+    $curData{$row[1]}{$row[0]}{site}       = $row[2]; 
+    $curData{$row[1]}{$row[0]}{curator}    = $row[3]; 
+    $curData{$row[1]}{$row[0]}{donposneg}  = $row[4]; 
+    $curData{$row[1]}{$row[0]}{selcomment} = $row[5];
+    $curData{$row[1]}{$row[0]}{txtcomment} = $row[6];
+    $curData{$row[1]}{$row[0]}{timestamp}  = $row[7]; }
 } # sub populateCurCurData
 
 
@@ -2805,6 +2884,21 @@ sub makeNcbiLinkFromPmid {
   my $data = "<a href=\"$link\" target=\"new\">$pmid</a>"; return $data; }
 
 
+sub populateDatatypesParasite {
+  %datatypes = ();
+  $datatypeSource = 'parasite';
+  $result = $dbh->prepare( "SELECT DISTINCT(cur_datatype) FROM cur_svmdata" );
+  $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
+#   while (my @row = $result->fetchrow) { $datatypesParasite{$row[0]} = $row[0]; }
+#   $datatypesParasite{'rnaseq'}++;			# for Kimberly Parasite  2016 07 12
+#   $datatypesParasite{'proteomics'}++;			# for Kimberly Parasite  2016 07 12
+#   $datatypesParasite{'variants'}++;			# for Kimberly Parasite  2016 07 12
+  while (my @row = $result->fetchrow) { $datatypes{$row[0]} = $row[0]; }
+  $datatypes{'proteomics'}++;			# for Kimberly Parasite  2016 07 12
+  $datatypes{'rnaseq'}++;			# for Kimberly Parasite  2016 07 12
+  $datatypes{'variants'}++;			# for Kimberly Parasite  2016 07 12
+} # sub populateDatatypesParasite
+
 sub populateDatatypes {
   $result = $dbh->prepare( "SELECT DISTINCT(cur_datatype) FROM cur_svmdata" );
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
@@ -2818,7 +2912,11 @@ sub populateDatatypes {
   $datatypes{'geneticablation'}++;
   $datatypes{'picture'}++;			# for Daniela's pictures
   $datatypes{'optogenetic'}++;			# for Raymond's anatomy but without afp / cfp
+#   $datatypes{'rnaseq'}++;			# for Kimberly Parasite  2016 07 12
+#   $datatypes{'proteomics'}++;			# for Kimberly Parasite  2016 07 12
+#   $datatypes{'variants'}++;			# for Kimberly Parasite  2016 07 12
   delete $datatypesAfpCfp{'catalyticact'};	# has svm but no afp / cfp
+  delete $datatypesAfpCfp{'expression_cluster'};	# has svm but no afp / cfp	# should have been removed 2017 07 08, fixed 2017 08 04
   $result = $dbh->prepare( "SELECT DISTINCT(cur_datatype) FROM cur_strdata" );	# from string search data
   $result->execute() or die "Cannot prepare statement: $DBI::errstr\n"; 
   while (my @row = $result->fetchrow) { $datatypes{$row[0]} = $row[0]; }
@@ -2835,6 +2933,7 @@ sub populateDonPosNegOptions {
 sub populateCurators {
   $curators{"two1823"}   = 'Juancarlos Chan';
   $curators{"two101"}    = 'Wen Chen';
+  $curators{"two38423"}  = 'Jae Cho';
   $curators{"two1983"}   = 'Paul Davis';
   $curators{"two133"}    = 'John DeModena';
   $curators{"two2987"}   = 'Chris Grove';
@@ -3010,49 +3109,51 @@ sub populateStatisticsHashToLabel {
   $statsHashToLabel{"allval neg"}          = 'Papers validated negative';
   $statsHashToLabel{"allval conf"}         = 'Papers validated conflict';
 
-  $statsHashToLabel{"any"}                 = 'Any flagged';
-  $statsHashToLabel{"any pos"}             = 'Any positive';
-  $statsHashToLabel{"any pos val"}         = 'Any positive validated';
-  $statsHashToLabel{"any pos val tp"}      = 'Any positive validated true  positive';
-  $statsHashToLabel{"any pos val tp cur"}  = 'Any positive validated true  positive curated';
-  $statsHashToLabel{"any pos val tp ncur"} = 'Any positive validated true  positive not curated';
-  $statsHashToLabel{"any pos val fp"}      = 'Any positive validated false positive';
-  $statsHashToLabel{"any pos nval"}        = 'Any positive not validated';
-  $statsHashToLabel{"any pos ncur"}        = 'Any positive not curated';
-#   $statsHashToLabel{"any neg"}        = 'Any negative';		# these are not useful, would be among set of flagged that are not positive
-#   $statsHashToLabel{"any neg val"}    = 'Any negative validated';
-#   $statsHashToLabel{"any neg val tn"} = 'Any negative validated true  negative';
-#   $statsHashToLabel{"any neg val fn"} = 'Any negative validated false negative';
-#   $statsHashToLabel{"any neg nval"}   = 'Any negative not validated';
+  unless ($datatypeSource eq 'parasite') {
+    $statsHashToLabel{"any"}                 = 'Any flagged';
+    $statsHashToLabel{"any pos"}             = 'Any positive';
+    $statsHashToLabel{"any pos val"}         = 'Any positive validated';
+    $statsHashToLabel{"any pos val tp"}      = 'Any positive validated true  positive';
+    $statsHashToLabel{"any pos val tp cur"}  = 'Any positive validated true  positive curated';
+    $statsHashToLabel{"any pos val tp ncur"} = 'Any positive validated true  positive not curated';
+    $statsHashToLabel{"any pos val fp"}      = 'Any positive validated false positive';
+    $statsHashToLabel{"any pos nval"}        = 'Any positive not validated';
+    $statsHashToLabel{"any pos ncur"}        = 'Any positive not curated';
+#     $statsHashToLabel{"any neg"}        = 'Any negative';		# these are not useful, would be among set of flagged that are not positive
+#     $statsHashToLabel{"any neg val"}    = 'Any negative validated';
+#     $statsHashToLabel{"any neg val tn"} = 'Any negative validated true  negative';
+#     $statsHashToLabel{"any neg val fn"} = 'Any negative validated false negative';
+#     $statsHashToLabel{"any neg nval"}   = 'Any negative not validated';
 
-  $statsHashToLabel{"int"}                 = 'Intersection flagged';
-  $statsHashToLabel{"int pos"}             = 'Intersection positive';
-  $statsHashToLabel{"int pos val"}         = 'Intersection positive validated';
-  $statsHashToLabel{"int pos val tp"}      = 'Intersection positive validated true  positive';
-  $statsHashToLabel{"int pos val tp cur"}  = 'Intersection positive validated true  positive curated';
-  $statsHashToLabel{"int pos val tp ncur"} = 'Intersection positive validated true  positive not curated';
-  $statsHashToLabel{"int pos val fp"}      = 'Intersection positive validated false positive';
-  $statsHashToLabel{"int pos nval"}        = 'Intersection positive not validated';
-  $statsHashToLabel{"int pos ncur"}        = 'Intersection positive not curated';
+    $statsHashToLabel{"int"}                 = 'Intersection flagged';
+    $statsHashToLabel{"int pos"}             = 'Intersection positive';
+    $statsHashToLabel{"int pos val"}         = 'Intersection positive validated';
+    $statsHashToLabel{"int pos val tp"}      = 'Intersection positive validated true  positive';
+    $statsHashToLabel{"int pos val tp cur"}  = 'Intersection positive validated true  positive curated';
+    $statsHashToLabel{"int pos val tp ncur"} = 'Intersection positive validated true  positive not curated';
+    $statsHashToLabel{"int pos val fp"}      = 'Intersection positive validated false positive';
+    $statsHashToLabel{"int pos nval"}        = 'Intersection positive not validated';
+    $statsHashToLabel{"int pos ncur"}        = 'Intersection positive not curated';
 
 # TODO not sure these are useful/needed
-  $statsHashToLabel{"str"}                 = 'STR flagged';
-  $statsHashToLabel{"str neg"}             = 'STR negative';
-  $statsHashToLabel{"str neg val"}         = 'STR negative validated';
-  $statsHashToLabel{"str neg val tn"}      = 'STR negative validated true  negative';
-  $statsHashToLabel{"str neg val fn"}      = 'STR negative validated false negative';
-  $statsHashToLabel{"str neg val fn cur"}  = 'STR negative validated false negative curated';
-  $statsHashToLabel{"str neg val fn ncur"} = 'STR negative validated false negative not curated';
-  $statsHashToLabel{"str neg nval"}        = 'STR negative not validated';
-  $statsHashToLabel{"str neg ncur"}        = 'STR negative not curated';
-  $statsHashToLabel{"str pos"}             = 'STR positive';
-  $statsHashToLabel{"str pos val"}         = 'STR positive validated';
-  $statsHashToLabel{"str pos val tp"}      = 'STR positive validated true  positive';
-  $statsHashToLabel{"str pos val tp cur"}  = 'STR positive validated true  positive curated';
-  $statsHashToLabel{"str pos val tp ncur"} = 'STR positive validated true  positive not curated';
-  $statsHashToLabel{"str pos val fp"}      = 'STR positive validated false positive';
-  $statsHashToLabel{"str pos nval"}        = 'STR positive not validated';
-  $statsHashToLabel{"str pos ncur"}        = 'STR positive not curated';
+    $statsHashToLabel{"str"}                 = 'STR flagged';
+    $statsHashToLabel{"str neg"}             = 'STR negative';
+    $statsHashToLabel{"str neg val"}         = 'STR negative validated';
+    $statsHashToLabel{"str neg val tn"}      = 'STR negative validated true  negative';
+    $statsHashToLabel{"str neg val fn"}      = 'STR negative validated false negative';
+    $statsHashToLabel{"str neg val fn cur"}  = 'STR negative validated false negative curated';
+    $statsHashToLabel{"str neg val fn ncur"} = 'STR negative validated false negative not curated';
+    $statsHashToLabel{"str neg nval"}        = 'STR negative not validated';
+    $statsHashToLabel{"str neg ncur"}        = 'STR negative not curated';
+    $statsHashToLabel{"str pos"}             = 'STR positive';
+    $statsHashToLabel{"str pos val"}         = 'STR positive validated';
+    $statsHashToLabel{"str pos val tp"}      = 'STR positive validated true  positive';
+    $statsHashToLabel{"str pos val tp cur"}  = 'STR positive validated true  positive curated';
+    $statsHashToLabel{"str pos val tp ncur"} = 'STR positive validated true  positive not curated';
+    $statsHashToLabel{"str pos val fp"}      = 'STR positive validated false positive';
+    $statsHashToLabel{"str pos nval"}        = 'STR positive not validated';
+    $statsHashToLabel{"str pos ncur"}        = 'STR positive not curated';
+  } # unless ($datatypeSource eq 'parasite')
 
   $statsHashToLabel{"svmnotdone"}          = 'SVM no svm processed';
   $statsHashToLabel{"svm"}                 = 'SVM has svm';
@@ -3097,6 +3198,7 @@ sub populateStatisticsHashToLabel {
   $statsHashToLabel{"svm low nval"}        = 'SVM positive low not validated';
   $statsHashToLabel{"svm low ncur"}        = 'SVM positive low not curated';
 
+#   unless ($datatypeSource eq 'parasite') {
   $statsHashToLabel{"afpemailed"}          = 'AFP emailed';
   $statsHashToLabel{"afp"}                 = 'AFP flagged';
   $statsHashToLabel{"afp neg"}             = 'AFP negative';
@@ -3138,10 +3240,12 @@ sub populateStatisticsHashToLabel {
 
   $statsHashToLabel{"dividerany"}     = '&nbsp;';
   $statsHashToLabel{"dividerint"}     = '&nbsp;';
-  $statsHashToLabel{"dividersvm"}     = '&nbsp;';
   $statsHashToLabel{"dividerstr"}     = '&nbsp;';
   $statsHashToLabel{"dividerafp"}     = '&nbsp;';
   $statsHashToLabel{"dividercfp"}     = '&nbsp;';
+#   } # unless ($datatypeSource eq 'parasite')
+
+  $statsHashToLabel{"dividersvm"}     = '&nbsp;';
 } # sub populateStatisticsHashToLabel
 
 __END__
